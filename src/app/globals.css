@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F5F2EB; /* Arena/Beige Original */
+  --foreground: #171717;
+  --beige: #E7D8C9;
+  --taupe: #8C7A6B; /* Marrón más oscuro para mejor contraste */
+  --sage: #A8B69A;
+  --gold: #D7B98E;
+  --font-quicksand: 'Quicksand', sans-serif;
+  --font-outfit: 'Outfit', sans-serif;
+  /* Textura de Fibras de Papel Orgánicas (SVG Suave) */
+  --paper-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 800 800' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paperFibers'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paperFibers)'/%3E%3C/svg%3E");
+}
+
+.dark {
+  --background: #0A0D14; /* Noche profunda */
+  --foreground: #F8F3EC;
+  --beige: #1C2433; /* Gris azulado oscuro */
+  --taupe: #DCC2A6; /* Beige claro brillante para texto */
+  --sage: #84E296; /* Verde neon suave */
+  --gold: #FFD966; /* Oro brillante neon */
+  /* Textura de Polvo Estelar Orgánico para modo oscuro */
+  --paper-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 800 800' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='stars'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23stars)'/%3E%3C/svg%3E");
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-beige: var(--beige);
+  --color-taupe: var(--taupe);
+  --color-sage: var(--sage);
+  --color-gold: var(--gold);
+  --font-quicksand: 'Quicksand', sans-serif;
+  --font-outfit: 'Outfit', sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  background-image: var(--paper-texture);
+  color: var(--taupe);
+  font-family: var(--font-quicksand);
+  overflow-x: hidden;
+  transition: background-color 0.8s ease-in-out, color 0.8s ease-in-out;
+}
+
+.bg-texture {
+  background-image: var(--paper-texture);
+  /* Mezclar suavemente la textura con el color de fondo dinámico */
+  background-blend-mode: multiply;
+}
+
+/* Efecto de líneas de cuaderno */
+.notebook-lines {
+  background-image: linear-gradient(var(--beige) 1px, transparent 1px);
+  background-size: 100% 2rem;
+  transition: background-image 0.8s ease-in-out;
+}
+
+/* Difuminado suave para las secciones */
+.fade-mask-y {
+  mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+}
+
+/* Glassmorphism para Sidebar */
+.glass-panel {
+  background: rgba(248, 243, 236, 0.7);
+  backdrop-filter: blur(10px);
+  border-left: 1px solid rgba(184, 153, 122, 0.2);
+  transition: background 0.8s ease-in-out, border-color 0.8s ease-in-out;
+}
+
+.dark .glass-panel {
+  background: rgba(10, 13, 20, 0.7);
+  border-left: 1px solid rgba(220, 194, 166, 0.2);
+}
+
+/* Movimiento del Cielo Estrellado (Fondo) */
+@keyframes starScroll {
+  from { background-position: 0 0; }
+  to { background-position: -1000px 1000px; }
+}
+
+.dark body {
+  animation: starScroll 120s linear infinite;
+}
+
+/* Efectos Neon Universales (Claro y Oscuro) */
+.title-glow {
+  text-shadow: 0 0 10px #ffffff, 0 0 20px #ffffff, 0 0 40px #ffffff, 0 0 80px #ffffff;
+  color: var(--taupe);
+}
+
+.dark .title-glow {
+  text-shadow: 0 0 20px rgba(255, 217, 102, 0.9), 0 0 40px rgba(255, 217, 102, 0.6), 0 0 80px rgba(255, 217, 102, 0.4);
+  color: #FFE6A0;
+}
+
+.neon-text-yellow {
+  text-shadow: 0 0 20px rgba(255, 217, 102, 0.9), 0 0 40px rgba(255, 217, 102, 0.5);
+  color: var(--gold);
+}
+
+.neon-text-white {
+  text-shadow: 0 0 15px rgba(255, 255, 255, 1), 0 0 30px rgba(255, 255, 255, 0.8);
+  color: var(--taupe);
+}
+
+.dark .neon-text-white {
+  color: #fff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.5);
+}
+
+.neon-logo-yellow {
+  filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.8));
+}
+
+.dark .neon-logo-yellow {
+  filter: drop-shadow(0 0 25px rgba(255, 217, 102, 0.8));
+}
+
+/* Efectos Neon para modo oscuro */
+.dark .neon-glow-sage {
+  box-shadow: 0 0 20px var(--sage), inset 0 0 10px var(--sage);
+  border-color: var(--sage) !important;
+}
+
+.dark .neon-glow-gold {
+  box-shadow: 0 0 20px var(--gold), inset 0 0 10px var(--gold);
+  border-color: var(--gold) !important;
+}
+
+.dark .neon-text-gold {
+  text-shadow: 0 0 20px rgba(255, 217, 102, 0.8), 0 0 40px rgba(255, 217, 102, 0.4);
+  color: var(--gold);
+}
+
+.dark .neon-text-sage {
+  text-shadow: 0 0 20px rgba(132, 226, 150, 0.8), 0 0 40px rgba(132, 226, 150, 0.4);
+  color: var(--sage);
+}
+
+.dark .neon-text-taupe {
+  text-shadow: 0 0 15px rgba(220, 194, 166, 0.6);
+  color: var(--taupe);
+}
