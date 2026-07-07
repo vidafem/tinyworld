@@ -47,6 +47,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
   const [mediaList, setMediaList] = useState<EventMedia[]>([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [galleryTab, setGalleryTab] = useState<"all" | "image" | "video">("all");
+  const [previewItem, setPreviewItem] = useState<EventMedia | null>(null);
 
   // Modales
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -289,6 +290,26 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
       setSelectedMedia(selectedMedia.filter(id => id !== mediaId));
     } catch (err) {
       console.error(err);
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selectedMedia.length === 0) return;
+    if (!confirm(`¿Seguro que deseas eliminar los ${selectedMedia.length} archivos seleccionados?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from("pregnancy_event_media")
+        .delete()
+        .in("id", selectedMedia);
+
+      if (error) throw error;
+
+      setMediaList(mediaList.filter(m => !selectedMedia.includes(m.id)));
+      setSelectedMedia([]);
+    } catch (err) {
+      console.error(err);
+      alert("Error al eliminar los archivos seleccionados.");
     }
   }
 
@@ -569,14 +590,23 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                       </button>
 
                       {selectedMedia.length > 0 && (
-                        <button
-                          onClick={handleDownloadZip}
-                          disabled={zipping}
-                          className={`${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-md disabled:opacity-50`}
-                        >
-                          {zipping ? <Loader2 className="animate-spin" size={10} /> : <FileDown size={10} />}
-                          Descargar ZIP ({selectedMedia.length})
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={handleDownloadZip}
+                            disabled={zipping}
+                            className={`${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-md disabled:opacity-50`}
+                          >
+                            {zipping ? <Loader2 className="animate-spin" size={10} /> : <FileDown size={10} />}
+                            Descargar ZIP ({selectedMedia.length})
+                          </button>
+                          <button
+                            onClick={handleBulkDelete}
+                            className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-550 hover:text-white rounded-xl font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-md transition-colors"
+                          >
+                            <Trash2 size={10} />
+                            Borrar Seleccionados ({selectedMedia.length})
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -607,38 +637,45 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                     <p className="text-xs uppercase tracking-widest font-black">No hay archivos en esta pestaña</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                    {filteredMedia.map(item => (
-                      <div
-                        key={item.id}
-                        onClick={() => toggleSelectMedia(item.id)}
-                        className={`relative rounded-xl overflow-hidden shadow-sm aspect-square border-4 cursor-pointer group transition-all ${selectedMedia.includes(item.id)
-                            ? `border-${theme.text.split("-")[1]}`
-                            : "border-white hover:border-stone-250"
-                          }`}
-                      >
-                        {item.type === "video" ? (
-                          <div className="w-full h-full relative bg-black flex items-center justify-center">
-                            <video src={item.url} className="w-full h-full object-cover" muted playsInline />
-                            <div className="absolute top-1 right-1 bg-black/60 p-1.5 rounded-full text-white">
-                              <Video size={10} />
-                            </div>
-                          </div>
-                        ) : (
-                          <img src={item.url} alt="Invitado" className="w-full h-full object-cover" loading="lazy" />
-                        )}
-
-                        <div className="absolute top-1.5 left-1.5 z-10">
-                          {selectedMedia.includes(item.id) ? (
-                            <div className={`w-4 h-4 rounded-md ${theme.primaryBg} text-white flex items-center justify-center shadow`}>
-                              <Check size={10} />
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                      {filteredMedia.map(item => (
+                        <div
+                          key={item.id}
+                          onClick={() => setPreviewItem(item)}
+                          className={`relative rounded-xl overflow-hidden shadow-sm aspect-square border-4 cursor-pointer group transition-all ${selectedMedia.includes(item.id)
+                              ? `border-${theme.text.split("-")[1]}`
+                              : "border-white hover:border-stone-250"
+                            }`}
+                        >
+                          {item.type === "video" ? (
+                            <div className="w-full h-full relative bg-black flex items-center justify-center">
+                              <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                              <div className="absolute top-1 right-1 bg-black/60 p-1.5 rounded-full text-white">
+                                <Video size={10} />
+                              </div>
                             </div>
                           ) : (
-                            <div className="w-4 h-4 rounded-md bg-black/30 border border-white/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-1.5 h-1.5 rounded-sm bg-transparent" />
-                            </div>
+                            <img src={item.url} alt="Invitado" className="w-full h-full object-cover" loading="lazy" />
                           )}
-                        </div>
+
+                          {/* Checkbox de Selección */}
+                          <div 
+                            className="absolute top-1.5 left-1.5 z-10 p-1 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelectMedia(item.id);
+                            }}
+                          >
+                            {selectedMedia.includes(item.id) ? (
+                              <div className={`w-4.5 h-4.5 rounded-md ${theme.primaryBg} text-white flex items-center justify-center shadow`}>
+                                <Check size={11} />
+                              </div>
+                            ) : (
+                              <div className="w-4.5 h-4.5 rounded-md bg-black/35 border border-white/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-1.5 h-1.5 rounded-sm bg-transparent" />
+                              </div>
+                            )}
+                          </div>
 
                         <button
                           onClick={e => {
@@ -1056,6 +1093,53 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                 </a>
               </div>
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Previsualización y Descarga para el Creador */}
+      <AnimatePresence>
+        {previewItem && (
+          <div className="fixed inset-0 z-[2500] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+            <button
+              onClick={() => setPreviewItem(null)}
+              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="max-w-2xl w-full max-h-[75vh] flex items-center justify-center p-2">
+              {previewItem.type === "video" ? (
+                <video
+                  src={previewItem.url}
+                  className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl"
+                  controls
+                  autoPlay
+                />
+              ) : (
+                <img
+                  src={previewItem.url}
+                  className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl"
+                  alt="Vista previa"
+                />
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <a
+                href={`/api/download?url=${encodeURIComponent(previewItem.url)}`}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg"
+              >
+                <FileDown size={14} />
+                Descargar Archivo
+              </a>
+              <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
+                Subido el {new Date(previewItem.created_at).toLocaleString()}
+              </span>
+            </div>
           </div>
         )}
       </AnimatePresence>

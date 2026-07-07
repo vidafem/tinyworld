@@ -453,7 +453,17 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       </div>
                       <div className="flex items-center justify-between text-[8px] font-bold text-stone-400 uppercase">
                         <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                        <Download size={12} className="text-stone-400" />
+                        <a
+                          href={`/api/download?url=${encodeURIComponent(item.url)}`}
+                          download
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 hover:bg-stone-50 rounded-lg text-stone-500 hover:text-sage transition-all"
+                          title="Descargar"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Download size={14} />
+                        </a>
                       </div>
                     </div>
                   ))}
@@ -528,7 +538,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
 
             <div className="mt-6 flex flex-col items-center gap-2">
               <a
-                href={previewItem.url}
+                href={`/api/download?url=${encodeURIComponent(previewItem.url)}`}
                 download
                 target="_blank"
                 rel="noreferrer"
