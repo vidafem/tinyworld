@@ -25,6 +25,13 @@ interface PregnancyEvent {
   greeting_message: string;
   is_active: boolean;
   background_style: string;
+  style_settings?: {
+    effectType?: string;
+    leftStickerUrl?: string;
+    rightStickerUrl?: string;
+    cardColor?: string;
+    cardOpacity?: number;
+  };
   created_at: string;
 }
 
@@ -59,7 +66,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
   const [title, setTitle] = useState("");
   const [greetingMessage, setGreetingMessage] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const [bgType, setBgType] = useState<"default" | "image">("default");
+  const [bgType, setBgType] = useState<"default" | "image" | "color">("default");
+  const [bgColor, setBgColor] = useState("#F5F2EB");
   const [bgImageFile, setBgImageFile] = useState<File | null>(null);
   const [bgImageUrl, setBgImageUrl] = useState("");
   const [bgSourceMode, setBgSourceMode] = useState<"upload" | "gallery">("upload");
@@ -74,8 +82,17 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
   const [zipping, setZipping] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Animaciones y Estilos de Tarjeta
+  const [bgEffect, setBgEffect] = useState<"none" | "bubbles" | "hearts" | "sparkles" | "clouds">("none");
+  const [cardColor, setCardColor] = useState("#ffffff");
+  const [cardOpacity, setCardOpacity] = useState(0.7);
+  const [availableStickers, setAvailableStickers] = useState<string[]>([]);
+  const [leftSticker, setLeftSticker] = useState("");
+  const [rightSticker, setRightSticker] = useState("");
+
   useEffect(() => {
     loadEvents();
+    loadStickers();
   }, [childId, sectionId]);
 
   async function loadEvents() {
@@ -100,6 +117,29 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
       console.error("Error al cargar eventos:", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadStickers() {
+    try {
+      const { data } = await supabase
+        .from("assets")
+        .select("url")
+        .eq("type", "sticker");
+
+      const urls = data ? data.map(s => s.url) : [];
+      const fallbacks = [
+        "/stickers/st1.png",
+        "/stickers/st2.png",
+        "/stickers/st3.png",
+        "/stickers/st4.png",
+        "/stickers/st5.png",
+        "/stickers/st10.png"
+      ];
+      const combined = Array.from(new Set([...urls, ...fallbacks]));
+      setAvailableStickers(combined);
+    } catch (err) {
+      console.error("Error loading stickers:", err);
     }
   }
 
@@ -183,7 +223,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
 
     setSaving(true);
     try {
-      let finalBg = "";
+      let finalBg = "default";
       if (bgType === "image") {
         if (bgSourceMode === "upload" && bgImageFile) {
           const uploadedUrl = await handleUploadBgImage();
@@ -191,6 +231,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
         } else if (bgSourceMode === "gallery" && bgImageUrl) {
           finalBg = bgImageUrl.startsWith("image:") ? bgImageUrl : `image:${bgImageUrl}`;
         }
+      } else if (bgType === "color") {
+        finalBg = `color:${bgColor}`;
       }
 
       const { data, error } = await supabase
@@ -202,6 +244,13 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
           greeting_message: greetingMessage.trim(),
           is_active: isActive,
           background_style: finalBg,
+          style_settings: {
+            effectType: bgEffect,
+            leftStickerUrl: leftSticker,
+            rightStickerUrl: rightSticker,
+            cardColor: cardColor,
+            cardOpacity: cardOpacity
+          }
         })
         .select()
         .single();
@@ -227,7 +276,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
 
     setSaving(true);
     try {
-      let finalBg = "";
+      let finalBg = "default";
       if (bgType === "image") {
         if (bgSourceMode === "upload" && bgImageFile) {
           const uploadedUrl = await handleUploadBgImage();
@@ -235,6 +284,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
         } else {
           finalBg = bgImageUrl.startsWith("image:") ? bgImageUrl : `image:${bgImageUrl}`;
         }
+      } else if (bgType === "color") {
+        finalBg = `color:${bgColor}`;
       }
 
       const { data, error } = await supabase
@@ -244,6 +295,13 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
           greeting_message: greetingMessage.trim(),
           is_active: isActive,
           background_style: finalBg,
+          style_settings: {
+            effectType: bgEffect,
+            leftStickerUrl: leftSticker,
+            rightStickerUrl: rightSticker,
+            cardColor: cardColor,
+            cardOpacity: cardOpacity
+          }
         })
         .eq("id", activeEvent.id)
         .select()
@@ -373,7 +431,13 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setBgType("default");
     setBgImageFile(null);
     setBgImageUrl("");
+    setBgColor("#F5F2EB");
     setBgSourceMode("upload");
+    setBgEffect("none");
+    setLeftSticker("");
+    setRightSticker("");
+    setCardColor("#ffffff");
+    setCardOpacity(0.7);
   }
 
   function openSettings(ev: PregnancyEvent) {
@@ -382,14 +446,28 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setGreetingMessage(ev.greeting_message || "");
     setIsActive(ev.is_active);
 
-    if (!ev.background_style) {
-      setBgType("default");
-      setBgImageUrl("");
-    } else if (ev.background_style.startsWith("image:")) {
+    const legacyBg = ev.background_style || "default";
+    if (legacyBg.startsWith("image:")) {
       setBgType("image");
       setBgSourceMode("gallery");
-      setBgImageUrl(ev.background_style.replace("image:", ""));
+      setBgImageUrl(legacyBg.replace("image:", ""));
+      setBgColor("#F5F2EB");
+    } else if (legacyBg.startsWith("color:")) {
+      setBgType("color");
+      setBgImageUrl("");
+      setBgColor(legacyBg.replace("color:", ""));
+    } else {
+      setBgType("default");
+      setBgImageUrl("");
+      setBgColor("#F5F2EB");
     }
+
+    const style = ev.style_settings || {};
+    setBgEffect((style.effectType as any) || "none");
+    setLeftSticker(style.leftStickerUrl || "");
+    setRightSticker(style.rightStickerUrl || "");
+    setCardColor(style.cardColor || "#ffffff");
+    setCardOpacity(style.cardOpacity !== undefined ? style.cardOpacity : 0.7);
 
     setShowSettingsModal(true);
   }
@@ -538,73 +616,39 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                 </span>
               </div>
 
-              {/* URL & Acciones de Enlace */}
-              <div className="bg-white/80 backdrop-blur-md p-5 rounded-[2.5rem] border border-white/50 shadow-sm space-y-3">
-                <div className="bg-stone-50/80 p-4 rounded-2xl border border-stone-200/40 space-y-1">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-stone-400">Enlace de Subida para Invitados:</p>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[10px] font-medium text-stone-650 underline truncate">{getShareUrl(activeEvent.id)}</span>
-                    <button
-                      onClick={() => handleCopyLink(activeEvent.id)}
-                      className={`px-3 py-1.5 bg-white text-stone-700 border border-stone-200 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm hover:bg-stone-50 flex items-center gap-1`}
-                    >
-                      {copiedLink ? <Check size={10} className="text-green-500" /> : <Copy size={10} />}
-                      {copiedLink ? "¡Copiado!" : "Copiar"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowSettingsModal(true)}
-                    className="flex-1 py-3.5 bg-white border border-stone-200/60 rounded-xl text-stone-700 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <Settings size={14} />
-                    Editar Mensaje / Fondo
-                  </button>
-                  <button
-                    onClick={() => setShowQrModal(true)}
-                    className="flex-1 py-3.5 bg-white border border-stone-200/60 rounded-xl text-stone-700 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <QrCode size={14} />
-                    Mostrar Código QR
-                  </button>
-                </div>
-              </div>
-
-              {/* Galería de Contenido */}
+               {/* Galería de Contenido */}
               <div className="bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-sm space-y-5">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-stone-100/50 pb-4">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-stone-500">
                     Galería de Contenido ({mediaList.length})
                   </h4>
 
                   {mediaList.length > 0 && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={handleSelectAll}
-                        className="px-2.5 py-1.5 bg-white border border-stone-200 rounded-xl text-stone-700 font-black text-[8px] uppercase tracking-widest flex items-center gap-1"
+                        className="px-2.5 py-1.5 bg-white border border-stone-200 rounded-xl text-stone-700 font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-sm transition-all hover:bg-stone-50"
                       >
                         {selectedMedia.length === mediaList.length ? <CheckSquare size={10} /> : <Square size={10} />}
                         Seleccionar Todo
                       </button>
 
                       {selectedMedia.length > 0 && (
-                        <div className="flex gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <button
                             onClick={handleDownloadZip}
                             disabled={zipping}
-                            className={`${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-md disabled:opacity-50`}
+                            className={`${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} px-3 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-md disabled:opacity-50 transition-all`}
                           >
                             {zipping ? <Loader2 className="animate-spin" size={10} /> : <FileDown size={10} />}
-                            Descargar ZIP ({selectedMedia.length})
+                            ZIP ({selectedMedia.length})
                           </button>
                           <button
                             onClick={handleBulkDelete}
-                            className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-550 hover:text-white rounded-xl font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-md transition-colors"
+                            className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-md transition-colors"
                           >
                             <Trash2 size={10} />
-                            Borrar Seleccionados ({selectedMedia.length})
+                            Borrar ({selectedMedia.length})
                           </button>
                         </div>
                       )}
@@ -677,15 +721,15 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                             )}
                           </div>
 
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleDeleteMedia(item.id, item.url);
-                          }}
-                          className="absolute bottom-1.5 right-1.5 p-1.5 bg-red-500/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                        >
-                          <Trash2 size={10} />
-                        </button>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleDeleteMedia(item.id, item.url);
+                            }}
+                            className="absolute bottom-1.5 right-1.5 p-1.5 bg-red-500/95 text-white rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-md z-20"
+                          >
+                            <Trash2 size={10} />
+                          </button>
                       </div>
                     ))}
                   </div>
@@ -751,24 +795,46 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                     <button
                       type="button"
                       onClick={() => setBgType("default")}
-                      className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${bgType === "default"
-                          ? `bg-${theme.text.split("-")[1]} text-white border-transparent`
-                          : "bg-white border-black/10 text-black/50"
+                      className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border transition-all ${bgType === "default"
+                          ? "bg-stone-850 text-white border-transparent"
+                          : "bg-white border-black/10 text-stone-500"
                         }`}
                     >
                       Por Defecto
                     </button>
                     <button
                       type="button"
-                      onClick={() => setBgType("image")}
-                      className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${bgType === "image"
-                          ? `bg-${theme.text.split("-")[1]} text-white border-transparent`
-                          : "bg-white border-black/10 text-black/50"
+                      onClick={() => setBgType("color")}
+                      className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border transition-all ${bgType === "color"
+                          ? "bg-stone-850 text-white border-transparent"
+                          : "bg-white border-black/10 text-stone-500"
                         }`}
                     >
-                      Imagen Personalizada
+                      Color Sólido
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBgType("image")}
+                      className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border transition-all ${bgType === "image"
+                          ? "bg-stone-850 text-white border-transparent"
+                          : "bg-white border-black/10 text-stone-500"
+                        }`}
+                    >
+                      Imagen
                     </button>
                   </div>
+
+                  {bgType === "color" && (
+                    <div className="space-y-1.5 p-3 bg-black/5 rounded-2xl flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Color de Fondo</span>
+                      <input
+                        type="color"
+                        value={bgColor}
+                        onChange={e => setBgColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer border border-black/10 overflow-hidden"
+                      />
+                    </div>
+                  )}
 
                   {bgType === "image" && (
                     <div className="space-y-3 p-3 bg-black/5 rounded-2xl">
@@ -818,18 +884,117 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 py-2">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={isActive}
-                    onChange={e => setIsActive(e.target.checked)}
-                    className="w-4 h-4 rounded text-sage focus:ring-0"
-                  />
-                  <label htmlFor="isActive" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
-                    Habilitar enlace de inmediato
-                  </label>
+              <div className="space-y-3 pt-2 border-t border-black/5">
+                <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                  Efectos de Animación
+                </label>
+                <select
+                  value={bgEffect}
+                  onChange={e => setBgEffect(e.target.value as any)}
+                  className={`w-full p-3 bg-black/5 rounded-xl text-xs font-bold uppercase tracking-wider outline-none border border-transparent focus:border-${theme.text.split("-")[1]}`}
+                >
+                  <option value="none">Sin Efecto</option>
+                  <option value="bubbles">Burbujas Flotantes</option>
+                  <option value="hearts">Corazones Flotantes</option>
+                  <option value="sparkles">Destellos de Luz</option>
+                  <option value="clouds">Nubes en Movimiento</option>
+                </select>
+              </div>
+
+              <div className="space-y-2.5 pt-2 border-t border-black/5">
+                <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                  Sticker Esquina Izquierda
+                </label>
+                <div className="flex gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar max-w-full">
+                  <button
+                    type="button"
+                    onClick={() => setLeftSticker("")}
+                    className={`flex-shrink-0 w-12 h-12 rounded-xl border flex items-center justify-center text-[8px] font-bold uppercase transition-all ${leftSticker === "" ? "border-sage bg-sage/10 text-sage font-black" : "border-black/10 bg-white text-stone-400 font-bold"}`}
+                  >
+                    Ninguno
+                  </button>
+                  {availableStickers.map((url, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setLeftSticker(url)}
+                      className={`flex-shrink-0 w-12 h-12 rounded-xl border p-1 overflow-hidden transition-all relative ${leftSticker === url ? "border-sage bg-sage/5 scale-105" : "border-black/10 bg-white hover:scale-102"}`}
+                    >
+                      <img src={url} alt="sticker" className="w-full h-full object-contain" />
+                    </button>
+                  ))}
                 </div>
+              </div>
+
+              <div className="space-y-2.5 pt-2 border-t border-black/5">
+                <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                  Sticker Esquina Derecha
+                </label>
+                <div className="flex gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar max-w-full">
+                  <button
+                    type="button"
+                    onClick={() => setRightSticker("")}
+                    className={`flex-shrink-0 w-12 h-12 rounded-xl border flex items-center justify-center text-[8px] font-bold uppercase transition-all ${rightSticker === "" ? "border-sage bg-sage/10 text-sage font-black" : "border-black/10 bg-white text-stone-400 font-bold"}`}
+                  >
+                    Ninguno
+                  </button>
+                  {availableStickers.map((url, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setRightSticker(url)}
+                      className={`flex-shrink-0 w-12 h-12 rounded-xl border p-1 overflow-hidden transition-all relative ${rightSticker === url ? "border-sage bg-sage/5 scale-105" : "border-black/10 bg-white hover:scale-102"}`}
+                    >
+                      <img src={url} alt="sticker" className="w-full h-full object-contain" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-black/5">
+                <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                  Personalización de Tarjetas (Color y Transparencia)
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest">Color</span>
+                    <input
+                      type="color"
+                      value={cardColor}
+                      onChange={e => setCardColor(e.target.value)}
+                      className="w-10 h-10 rounded-lg cursor-pointer border border-black/10 overflow-hidden"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="flex justify-between text-[8px] font-bold text-stone-400 uppercase tracking-widest">
+                      <span>Transparencia</span>
+                      <span>{Math.round(cardOpacity * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.05"
+                      value={cardOpacity}
+                      onChange={e => setCardOpacity(parseFloat(e.target.value))}
+                      className="w-full accent-sage cursor-pointer mt-2"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 py-2 border-t border-black/5">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={isActive}
+                  onChange={e => setIsActive(e.target.checked)}
+                  className="w-4 h-4 rounded text-sage focus:ring-0"
+                />
+                <label htmlFor="isActive" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
+                  Habilitar enlace de inmediato
+                </label>
+              </div>
 
                 <button
                   type="submit"
@@ -898,24 +1063,46 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                     <button
                       type="button"
                       onClick={() => setBgType("default")}
-                      className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${bgType === "default"
-                          ? `bg-${theme.text.split("-")[1]} text-white border-transparent`
-                          : "bg-white border-black/10 text-black/50"
+                      className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border transition-all ${bgType === "default"
+                          ? "bg-stone-850 text-white border-transparent"
+                          : "bg-white border-black/10 text-stone-500"
                         }`}
                     >
                       Por Defecto
                     </button>
                     <button
                       type="button"
-                      onClick={() => setBgType("image")}
-                      className={`flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${bgType === "image"
-                          ? `bg-${theme.text.split("-")[1]} text-white border-transparent`
-                          : "bg-white border-black/10 text-black/50"
+                      onClick={() => setBgType("color")}
+                      className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border transition-all ${bgType === "color"
+                          ? "bg-stone-850 text-white border-transparent"
+                          : "bg-white border-black/10 text-stone-500"
                         }`}
                     >
-                      Imagen Personalizada
+                      Color Sólido
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBgType("image")}
+                      className={`flex-1 py-2 px-1 rounded-xl text-[9px] font-bold uppercase tracking-wider border transition-all ${bgType === "image"
+                          ? "bg-stone-850 text-white border-transparent"
+                          : "bg-white border-black/10 text-stone-500"
+                        }`}
+                    >
+                      Imagen
                     </button>
                   </div>
+
+                  {bgType === "color" && (
+                    <div className="space-y-1.5 p-3 bg-black/5 rounded-2xl flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Color de Fondo</span>
+                      <input
+                        type="color"
+                        value={bgColor}
+                        onChange={e => setBgColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer border border-black/10 overflow-hidden"
+                      />
+                    </div>
+                  )}
 
                   {bgType === "image" && (
                     <div className="space-y-3 p-3 bg-black/5 rounded-2xl">
@@ -965,7 +1152,106 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 py-2">
+                <div className="space-y-3 pt-2 border-t border-black/5">
+                  <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                    Efectos de Animación
+                  </label>
+                  <select
+                    value={bgEffect}
+                    onChange={e => setBgEffect(e.target.value as any)}
+                    className={`w-full p-3 bg-black/5 rounded-xl text-xs font-bold uppercase tracking-wider outline-none border border-transparent focus:border-${theme.text.split("-")[1]}`}
+                  >
+                    <option value="none">Sin Efecto</option>
+                    <option value="bubbles">Burbujas Flotantes</option>
+                    <option value="hearts">Corazones Flotantes</option>
+                    <option value="sparkles">Destellos de Luz</option>
+                    <option value="clouds">Nubes en Movimiento</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2.5 pt-2 border-t border-black/5">
+                  <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                    Sticker Esquina Izquierda
+                  </label>
+                  <div className="flex gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar max-w-full">
+                    <button
+                      type="button"
+                      onClick={() => setLeftSticker("")}
+                      className={`flex-shrink-0 w-12 h-12 rounded-xl border flex items-center justify-center text-[8px] font-bold uppercase transition-all ${leftSticker === "" ? "border-sage bg-sage/10 text-sage font-black" : "border-black/10 bg-white text-stone-400 font-bold"}`}
+                    >
+                      Ninguno
+                    </button>
+                    {availableStickers.map((url, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setLeftSticker(url)}
+                        className={`flex-shrink-0 w-12 h-12 rounded-xl border p-1 overflow-hidden transition-all relative ${leftSticker === url ? "border-sage bg-sage/5 scale-105" : "border-black/10 bg-white hover:scale-102"}`}
+                      >
+                        <img src={url} alt="sticker" className="w-full h-full object-contain" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 pt-2 border-t border-black/5">
+                  <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                    Sticker Esquina Derecha
+                  </label>
+                  <div className="flex gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar max-w-full">
+                    <button
+                      type="button"
+                      onClick={() => setRightSticker("")}
+                      className={`flex-shrink-0 w-12 h-12 rounded-xl border flex items-center justify-center text-[8px] font-bold uppercase transition-all ${rightSticker === "" ? "border-sage bg-sage/10 text-sage font-black" : "border-black/10 bg-white text-stone-400 font-bold"}`}
+                    >
+                      Ninguno
+                    </button>
+                    {availableStickers.map((url, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setRightSticker(url)}
+                        className={`flex-shrink-0 w-12 h-12 rounded-xl border p-1 overflow-hidden transition-all relative ${rightSticker === url ? "border-sage bg-sage/5 scale-105" : "border-black/10 bg-white hover:scale-102"}`}
+                      >
+                        <img src={url} alt="sticker" className="w-full h-full object-contain" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-black/5">
+                  <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                    Personalización de Tarjetas (Color y Transparencia)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest">Color</span>
+                      <input
+                        type="color"
+                        value={cardColor}
+                        onChange={e => setCardColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer border border-black/10 overflow-hidden"
+                      />
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex justify-between text-[8px] font-bold text-stone-400 uppercase tracking-widest">
+                        <span>Transparencia</span>
+                        <span>{Math.round(cardOpacity * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="1"
+                        step="0.05"
+                        value={cardOpacity}
+                        onChange={e => setCardOpacity(parseFloat(e.target.value))}
+                        className="w-full accent-sage cursor-pointer mt-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 py-2 border-t border-black/5">
                   <input
                     type="checkbox"
                     id="isActiveUpdate"

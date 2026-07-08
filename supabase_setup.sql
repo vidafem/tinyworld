@@ -309,3 +309,7 @@ DO $$ BEGIN
         WITH CHECK (event_id IN (SELECT id FROM public.pregnancy_events WHERE is_active = true));
     END IF;
 END $$;
+
+-- Configuración de estilos para eventos compartidos
+ALTER TABLE public.pregnancy_events
+    ADD COLUMN IF NOT EXISTS style_settings JSONB DEFAULT '{}'::jsonb;

@@ -17,6 +17,13 @@ interface PregnancyEvent {
   greeting_message: string;
   is_active: boolean;
   background_style: string;
+  style_settings?: {
+    effectType?: string;
+    leftStickerUrl?: string;
+    rightStickerUrl?: string;
+    cardColor?: string;
+    cardOpacity?: number;
+  };
 }
 
 interface EventMedia {
@@ -24,6 +31,220 @@ interface EventMedia {
   url: string;
   type: "image" | "video";
   created_at: string;
+}
+
+// Componente auxiliar para previsualizar los archivos seleccionados de forma eficiente en cuadrícula
+function FilePreviewSquare({ file, onRemove, uploading }: { file: File; onRemove: () => void; uploading: boolean }) {
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  useEffect(() => {
+    if (!file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const isImage = file.type.startsWith("image/");
+
+  return (
+    <div className="relative rounded-xl overflow-hidden aspect-square border border-stone-200/50 bg-stone-50/50 flex items-center justify-center group shadow-sm">
+      {isImage && previewUrl ? (
+        <img src={previewUrl} alt={file.name} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full bg-stone-900 flex flex-col items-center justify-center p-1 text-center">
+          <Film size={18} className="text-amber-500 mb-0.5 shrink-0" />
+          <span className="text-[6.5px] text-white/80 font-bold truncate w-full px-0.5 leading-tight shrink-0">
+            {file.name}
+          </span>
+        </div>
+      )}
+      {!uploading && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onRemove();
+          }}
+          className="absolute top-1 right-1 p-1 bg-black/50 hover:bg-red-500 rounded-full text-white transition-colors shadow z-10"
+        >
+          <X size={8} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Componente de Efectos de Fondo Animados (Burbujas, Corazones, Estrellas, Nubes)
+function BackgroundEffects({ type }: { type: string }) {
+  if (type === "none") return null;
+
+  const particles = Array.from({ length: 30 });
+
+  if (type === "bubbles") {
+    return (
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 w-screen h-screen">
+        {particles.map((_, i) => {
+          const left = `${2 + i * 3.3}%`;
+          const delay = `${i * 0.7}s`;
+          const duration = `${12 + (i % 5) * 4}s`;
+          const size = `${16 + (i % 6) * 10}px`;
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full border border-white/50 bg-white/5 shadow-[inset_0_1px_3px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.05)] backdrop-blur-[0.5px]"
+              style={{
+                left,
+                bottom: "-60px",
+                width: size,
+                height: size,
+                animation: `float-up ${duration} ease-in-out infinite`,
+                animationDelay: delay,
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (type === "hearts") {
+    return (
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 w-screen h-screen">
+        {particles.map((_, i) => {
+          const left = `${4 + i * 3.1}%`;
+          const delay = `${i * 0.8}s`;
+          const duration = `${14 + (i % 4) * 3.5}s`;
+          const size = `${18 + (i % 5) * 8}px`;
+          return (
+            <div
+              key={i}
+              className="absolute flex items-center justify-center text-pink-400/35 select-none font-bold filter drop-shadow-[0_1px_1px_rgba(244,63,94,0.05)]"
+              style={{
+                left,
+                bottom: "-60px",
+                fontSize: size,
+                animation: `float-up ${duration} ease-in-out infinite`,
+                animationDelay: delay,
+              }}
+            >
+              ♥
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (type === "sparkles") {
+    return (
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 w-screen h-screen">
+        {particles.map((_, i) => {
+          const left = `${5 + (i * 9.5) % 90}%`;
+          const top = `${5 + (i * 17) % 90}%`;
+          const delay = `${i * 0.25}s`;
+          const duration = `${2.5 + (i % 4) * 1.2}s`;
+          const size = `${10 + (i % 5) * 7}px`;
+          return (
+            <div
+              key={i}
+              className="absolute text-amber-300/40 font-serif filter drop-shadow-[0_0_2px_rgba(251,191,36,0.3)]"
+              style={{
+                left,
+                top,
+                fontSize: size,
+                animation: `sparkle-twinkle ${duration} ease-in-out infinite`,
+                animationDelay: delay,
+              }}
+            >
+              ✦
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (type === "clouds") {
+    return (
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 w-screen h-screen">
+        {Array.from({ length: 8 }).map((_, i) => {
+          const top = `${8 + i * 11}%`;
+          const delay = `${i * 3.5}s`;
+          const duration = `${28 + (i % 3) * 8}s`;
+          const scale = 0.6 + (i % 3) * 0.3;
+          return (
+            <div
+              key={i}
+              className="absolute text-white/30 fill-current opacity-40 filter drop-shadow-[0_4px_6px_rgba(255,255,255,0.1)]"
+              style={{
+                top,
+                left: "-180px",
+                transform: `scale(${scale})`,
+                animation: `cloud-move ${duration} linear infinite`,
+                animationDelay: delay,
+              }}
+            >
+              <svg width="120" height="80" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 20 40 a 12 12 0 0 1 10 -9 a 18 18 0 0 1 32 -4 a 14 14 0 0 1 20 13 a 10 10 0 0 1 0 18 H 20 a 10 10 0 0 1 0 -18 Z" fill="currentColor" />
+              </svg>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Componente para Stickers Ilustrativos Infantiles en Esquinas
+function EventStickers({ leftUrl, rightUrl }: { leftUrl?: string; rightUrl?: string }) {
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 w-screen h-screen">
+      {leftUrl && (
+        <div className="absolute bottom-6 left-6 opacity-50 select-none animate-[bounce_6s_ease-in-out_infinite] scale-75 md:scale-100 origin-bottom-left max-w-[120px] max-h-[120px]">
+          <img src={leftUrl} alt="" className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]" />
+        </div>
+      )}
+      {rightUrl && (
+        <div className="absolute top-16 right-6 opacity-50 select-none animate-[bounce_8s_ease-in-out_infinite] scale-75 md:scale-100 origin-top-right max-w-[120px] max-h-[120px]">
+          <img src={rightUrl} alt="" className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente de Confeti de Celebración al finalizar subida
+function ConfettiBurst() {
+  const colors = ["bg-pink-300", "bg-sky-300", "bg-amber-300", "bg-emerald-300", "bg-purple-300", "bg-rose-300"];
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-50">
+      {Array.from({ length: 60 }).map((_, i) => {
+        const color = colors[i % colors.length];
+        const left = `${Math.random() * 100}%`;
+        const top = `${Math.random() * 15 - 15}%`;
+        const size = `${6 + Math.random() * 8}px`;
+        const delay = `${Math.random() * 1.5}s`;
+        const duration = `${2.5 + Math.random() * 2}s`;
+        const rotate = `${Math.random() * 360}deg`;
+        return (
+          <div
+            key={i}
+            className={`absolute rounded-sm ${color} opacity-85`}
+            style={{
+              left,
+              top,
+              width: size,
+              height: size,
+              transform: `rotate(${rotate})`,
+              animation: `confetti-fall ${duration} ease-out forwards`,
+              animationDelay: delay,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 export default function GuestEventPage({ params }: GuestEventPageProps) {
@@ -218,21 +439,75 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     }
   }
 
-  const getBackgroundStyles = () => {
-    if (!event || !event.background_style) return {};
+  const getParsedStyle = () => {
+    const defaults = {
+      bgType: "default",
+      bgUrl: "default",
+      bgColor: "#F5F2EB",
+      effectType: "none",
+      leftStickerUrl: "",
+      rightStickerUrl: "",
+      cardColor: "#ffffff",
+      cardOpacity: 0.7
+    };
 
-    const style = event.background_style;
-    if (style.startsWith("color:")) {
-      return { backgroundColor: style.replace("color:", ""), backgroundImage: "none" };
-    } else if (style.startsWith("image:")) {
+    if (!event) return defaults;
+
+    const legacyBg = event.background_style || "default";
+    let bgType: "default" | "image" | "color" = "default";
+    let bgUrl = "default";
+    let bgColor = "#F5F2EB";
+
+    if (legacyBg.startsWith("image:")) {
+      bgType = "image";
+      bgUrl = legacyBg.replace("image:", "");
+    } else if (legacyBg.startsWith("color:")) {
+      bgType = "color";
+      bgColor = legacyBg.replace("color:", "");
+    }
+
+    // Read configuration from style_settings object
+    const style = event.style_settings || {};
+
+    return {
+      bgType,
+      bgUrl,
+      bgColor,
+      effectType: style.effectType || "none",
+      leftStickerUrl: style.leftStickerUrl || "",
+      rightStickerUrl: style.rightStickerUrl || "",
+      cardColor: style.cardColor || "#ffffff",
+      cardOpacity: style.cardOpacity !== undefined ? style.cardOpacity : 0.7
+    };
+  };
+
+  const getBackgroundStyles = (parsed: any) => {
+    if (parsed.bgType === "image" && parsed.bgUrl && parsed.bgUrl !== "default") {
       return {
-        backgroundImage: `url(${style.replace("image:", "")})`,
+        backgroundImage: `url(${parsed.bgUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
       };
     }
+    if (parsed.bgType === "color" && parsed.bgColor) {
+      return {
+        backgroundColor: parsed.bgColor,
+      };
+    }
     return {};
+  };
+
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+      : "255, 255, 255";
+  };
+
+  const hexToRgbaStr = (hex: string, alpha: number) => {
+    const rgb = hexToRgb(hex);
+    return `rgba(${rgb}, ${alpha})`;
   };
 
   if (loading) {
@@ -268,8 +543,15 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     );
   }
 
-  const customBgStyle = getBackgroundStyles();
+  const parsedStyle = getParsedStyle();
+  const customBgStyle = getBackgroundStyles(parsedStyle);
   const isCustomBg = Object.keys(customBgStyle).length > 0;
+
+  const primaryGlowColor = parsedStyle.bgType === 'color'
+    ? parsedStyle.bgColor
+    : (parsedStyle.cardColor && parsedStyle.cardColor !== 'transparent' ? parsedStyle.cardColor : '#ffffff');
+  const glowShadow1 = hexToRgbaStr(primaryGlowColor, 0.45);
+  const glowShadow2 = hexToRgbaStr(primaryGlowColor, 0.2);
 
   const filteredMedia = mediaList.filter(item => {
     if (galleryTab === "all") return true;
@@ -278,7 +560,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
 
   return (
     <div
-      className={`min-h-screen p-4 md:p-8 flex flex-col items-center relative transition-all duration-500 ${
+      className={`min-h-screen p-4 md:p-8 flex flex-col items-center relative transition-all duration-500 overflow-x-hidden ${
         !isCustomBg ? "bg-[#F5F2EB]" : ""
       }`}
       style={customBgStyle}
@@ -286,6 +568,80 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       {!isCustomBg && (
         <div className="absolute inset-0 pointer-events-none opacity-5 bg-repeat" style={{ backgroundImage: 'var(--paper-texture)' }} />
       )}
+
+      {/* Estilos CSS Inyectados */}
+      <style>{`
+        @keyframes float-up {
+          0% { transform: translateY(0) translateX(0) scale(0.5); opacity: 0; }
+          10% { opacity: 0.8; }
+          50% { transform: translateY(-55vh) translateX(20px) scale(0.85); opacity: 0.8; }
+          90% { opacity: 0.8; }
+          100% { transform: translateY(-115vh) translateX(-20px) scale(1.2); opacity: 0; }
+        }
+        @keyframes sparkle-twinkle {
+          0%, 100% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1); opacity: 0.9; }
+        }
+        @keyframes cloud-move {
+          0% { transform: translateX(0); opacity: 0; }
+          10% { opacity: 0.6; }
+          90% { opacity: 0.6; }
+          100% { transform: translateX(125vw); opacity: 0; }
+        }
+        @keyframes border-gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes pulse-glow {
+          0%, 100% {
+            filter: drop-shadow(0 0 5px var(--glow-shadow-1, rgba(255, 255, 255, 0.2))) drop-shadow(0 0 12px var(--glow-shadow-2, rgba(255, 255, 255, 0.15)));
+          }
+          50% {
+            filter: drop-shadow(0 0 14px var(--glow-shadow-1, rgba(255, 255, 255, 0.45))) drop-shadow(0 0 28px var(--glow-shadow-2, rgba(255, 255, 255, 0.35)));
+          }
+        }
+        @keyframes confetti-fall {
+          0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        .animate-border-aura {
+          background-size: 200% 200%;
+          animation: border-gradient 6s ease infinite;
+        }
+        .animate-pulse-glow {
+          animation: pulse-glow 3.5s ease-in-out infinite;
+        }
+        .glow-card-border {
+          position: relative;
+          border-radius: 2.5rem;
+          background: transparent;
+        }
+        .glow-card-border::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: 2.5rem;
+          padding: 3px;
+          background: linear-gradient(to right, var(--glow-color-1, #ffffff), var(--glow-color-2, #ffffff));
+          background-size: 200% 200%;
+          animation: border-gradient 6s ease infinite;
+          -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+                  mask-composite: exclude;
+          pointer-events: none;
+        }
+      `}</style>
+
+      {/* Animación de Confeti de éxito */}
+      {showThankYou && <ConfettiBurst />}
+
+      {/* Efectos de fondo opcionales */}
+      <BackgroundEffects type={parsedStyle.effectType} />
+
+      {/* Stickers de esquinas opcionales */}
+      <EventStickers leftUrl={parsedStyle.leftStickerUrl} rightUrl={parsedStyle.rightStickerUrl} />
 
       <AnimatePresence mode="wait">
         {!showGuestGallery ? (
@@ -295,13 +651,22 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="w-full max-w-md space-y-6 z-10"
+            className="w-full max-w-md space-y-6 z-10 pt-10 md:pt-16"
           >
-            {/* Cabecera translúcida */}
-            <div className="bg-white/70 backdrop-blur-md p-6 rounded-[2.5rem] shadow-xl border border-white/40 text-center space-y-3 relative overflow-hidden">
-              <div className="w-12 h-12 bg-sage/15 text-sage rounded-full flex items-center justify-center mx-auto shadow-inner border border-white/50">
-                <Sparkles size={20} />
-              </div>
+            {/* Cabecera translúcida con aura */}
+            <div
+              className="w-full relative rounded-[2.5rem] glow-card-border animate-pulse-glow shadow-xl"
+              style={{
+                '--glow-color-1': primaryGlowColor,
+                '--glow-color-2': primaryGlowColor,
+                '--glow-shadow-1': glowShadow1,
+                '--glow-shadow-2': glowShadow2,
+              } as React.CSSProperties}
+            >
+              <div
+                className="backdrop-blur-md p-6 rounded-[2.4rem] text-center space-y-3 relative overflow-hidden"
+                style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
+              >
               <h1 className="text-2xl font-black italic tracking-tighter text-stone-850 leading-tight">
                 {event?.title}
               </h1>
@@ -309,64 +674,97 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                 {event?.greeting_message || "¡Hola! Comparte tus mejores fotos y videos con nosotros para guardarlos en el álbum de recuerdos del bebé."}
               </p>
             </div>
+          </div>
 
-            {/* Cargador translúcido */}
-            <div className="bg-white/70 backdrop-blur-md p-6 rounded-[2.5rem] shadow-xl border border-white/40 space-y-4">
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-stone-500">
-                Subir Fotos y Videos
-              </h2>
+            {/* Cargador translúcido con aura */}
+            <div
+              className="w-full relative rounded-[2.5rem] glow-card-border animate-pulse-glow shadow-xl"
+              style={{
+                '--glow-color-1': primaryGlowColor,
+                '--glow-color-2': primaryGlowColor,
+                '--glow-shadow-1': glowShadow1,
+                '--glow-shadow-2': glowShadow2,
+              } as React.CSSProperties}
+            >
+              <div
+                className="backdrop-blur-md p-6 rounded-[2.4rem] space-y-4 relative overflow-hidden"
+                style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
+              >
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-stone-500">
+                  Subir Fotos y Videos
+                </h2>
 
-              <div className="relative border-2 border-dashed border-stone-300 hover:border-sage rounded-2xl p-6 text-center cursor-pointer transition-colors group">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,video/*"
-                  onChange={handleFileChange}
-                  disabled={uploading}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                />
-                <div className="space-y-2">
-                  <UploadCloud className="mx-auto text-stone-400 group-hover:text-sage transition-colors" size={40} />
-                  <p className="text-stone-800 font-bold text-xs uppercase tracking-wider">
-                    {selectedFiles.length > 0
-                      ? `${selectedFiles.length} archivos seleccionados`
-                      : "Selecciona fotos o videos"}
-                  </p>
-                  <p className="text-[8px] text-stone-400 uppercase tracking-widest">
-                    Máximo 10 archivos a la vez
-                  </p>
+                <div className="relative border-2 border-dashed border-stone-300 hover:border-sage rounded-2xl p-6 text-center cursor-pointer transition-colors group">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/*"
+                    onChange={handleFileChange}
+                    disabled={uploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <div className="space-y-2">
+                    <UploadCloud className="mx-auto text-stone-400 group-hover:text-sage transition-colors" size={40} />
+                    <p className="text-stone-800 font-bold text-xs uppercase tracking-wider">
+                      {selectedFiles.length > 0
+                        ? `${selectedFiles.length} archivos seleccionados`
+                        : "Selecciona fotos o videos"}
+                    </p>
+                    <p className="text-[8px] text-stone-400 uppercase tracking-widest">
+                      Máximo 10 archivos a la vez
+                    </p>
+                  </div>
                 </div>
+
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-stone-400">
+                      Cola de Subida ({selectedFiles.length}):
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {selectedFiles.map((file, idx) => (
+                        <FilePreviewSquare
+                          key={idx}
+                          file={file}
+                          onRemove={() => setSelectedFiles(selectedFiles.filter((_, i) => i !== idx))}
+                          uploading={uploading}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedFiles.length > 0 && !uploading && (
+                  <button
+                    onClick={handleUpload}
+                    className="w-full py-4 bg-sage text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-md hover:bg-sage/90 transition-transform active:scale-[0.99]"
+                  >
+                    Comenzar Carga
+                  </button>
+                )}
+
+                {uploading && (
+                  <div className="space-y-2.5">
+                    <div className="w-full h-2.5 bg-stone-200/50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-sage transition-all duration-300 rounded-full"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-stone-500">
+                      <span>Subiendo archivos...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {selectedFiles.length > 0 && !uploading && (
-                <button
-                  onClick={handleUpload}
-                  className="w-full py-4 bg-sage text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-md hover:bg-sage/90 transition-transform active:scale-[0.99]"
-                >
-                  Comenzar Carga
-                </button>
-              )}
-
-              {uploading && (
-                <div className="space-y-2.5">
-                  <div className="w-full h-2.5 bg-stone-200/50 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-sage transition-all duration-300 rounded-full"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-stone-500">
-                    <span>Subiendo archivos...</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* BOTÓN PARA ABRIR LA GALERÍA COMPLETA */}
             <button
               onClick={() => setShowGuestGallery(true)}
-              className="w-full py-5 bg-white/70 backdrop-blur-md text-stone-800 rounded-[2rem] border border-white/40 shadow-xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full py-5 text-stone-800 rounded-[2rem] border border-white/40 shadow-xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] backdrop-blur-md relative"
+              style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
             >
               <ImageIcon size={16} />
               Ver Galería del Evento ({mediaList.length})
@@ -557,3 +955,4 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     </div>
   );
 }
+// Forzar recarga de Next.js HMR

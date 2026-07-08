@@ -88,21 +88,29 @@ export async function POST(req: NextRequest) {
 
       const fileBuffer = Buffer.from(await file.arrayBuffer());
 
-      // Subida física a Cloudflare R2
-      await s3Client.send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key: key,
-          Body: fileBuffer,
-          ContentType: file.type || "application/octet-stream",
-          Metadata: {
-            childId: event.child_id,
-            eventId,
-            module: "pregnancy",
-            section: "events",
-          },
-        })
-      );
+      // Subida física a Cloudflare R2 con timeout de 90s para evitar cuelgues
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+      try {
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: fileBuffer,
+            ContentType: file.type || "application/octet-stream",
+            Metadata: {
+              childId: event.child_id,
+              eventId,
+              module: "pregnancy",
+              section: "events",
+            },
+          }),
+          { abortSignal: controller.signal }
+        );
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       const url = `${publicUrl}/${key}`;
       const mediaType = file.type.startsWith("video") ? "video" : "image";
