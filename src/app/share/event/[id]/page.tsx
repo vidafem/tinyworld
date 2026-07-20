@@ -929,7 +929,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       <div className="flex items-center justify-between text-[8px] font-bold text-stone-400 uppercase">
                         <span>{new Date(item.created_at).toLocaleDateString()}</span>
                         <a
-                          href={`/api/download?url=${encodeURIComponent(item.url)}`}
+                          href={`/api/download?url=${encodeURIComponent(item.url)}&filename=TinyWorld_${item.type === 'video' ? 'Video' : 'Foto'}_${item.id.slice(0, 8)}.${item.url.split('.').pop()?.split('?')[0] || (item.type === 'video' ? 'mp4' : 'jpeg')}`}
                           download
                           target="_blank"
                           rel="noreferrer"
@@ -1052,7 +1052,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
 
             <div className="mt-6 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <a
-                href={`/api/download?url=${encodeURIComponent(previewItem.url)}`}
+                href={`/api/download?url=${encodeURIComponent(previewItem.url)}&filename=TinyWorld_${previewItem.type === 'video' ? 'Video' : 'Foto'}_${previewItem.id.slice(0, 8)}.${previewItem.url.split('.').pop()?.split('?')[0] || (previewItem.type === 'video' ? 'mp4' : 'jpeg')}`}
                 download
                 target="_blank"
                 rel="noreferrer"
