@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Images, Video, Mic, ChevronLeft, 
+  Images, Video, Mic, ChevronLeft, ChevronRight,
   Download, X, Loader2, Play,
   Music, Folder, Calendar, FolderHeart, Sparkles, Clock
 } from "lucide-react";
@@ -243,6 +243,35 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
 
   const currentFolderItemsList = getDisplayItems();
   const filteredItems = currentFolderItemsList.filter(it => it.type === activeTab);
+
+  const showNextPreview = () => {
+    if (!previewItem) return;
+    const idx = filteredItems.findIndex((item) => item.id === previewItem.id);
+    if (idx !== -1 && idx < filteredItems.length - 1) {
+      setPreviewItem(filteredItems[idx + 1]);
+    }
+  };
+
+  const showPrevPreview = () => {
+    if (!previewItem) return;
+    const idx = filteredItems.findIndex((item) => item.id === previewItem.id);
+    if (idx > 0) {
+      setPreviewItem(filteredItems[idx - 1]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!previewItem) return;
+      if (e.key === "ArrowRight") {
+        showNextPreview();
+      } else if (e.key === "ArrowLeft") {
+        showPrevPreview();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewItem, filteredItems]);
 
   const tabCounts = {
     image: currentFolderItemsList.filter(it => it.type === 'image').length,
@@ -599,7 +628,23 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
                 <X size={20} />
               </button>
 
-              <div className="relative group max-w-full w-fit mx-auto">
+              <div className="relative group max-w-full w-fit mx-auto flex items-center justify-center gap-4">
+                {/* Visual Chevron Left */}
+                {(() => {
+                  const idx = filteredItems.findIndex(item => item.id === previewItem.id);
+                  return idx > 0 ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
+                      className="p-3 bg-black/60 hover:bg-black/85 text-white rounded-full transition-all shrink-0 cursor-pointer shadow-lg border border-white/10 hover:scale-110"
+                      title="Anterior"
+                    >
+                      <ChevronLeft size={24} strokeWidth={2.5} />
+                    </button>
+                  ) : (
+                    <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
+                  );
+                })()}
+
                 {previewItem.type === 'image' ? (
                   <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white/20 bg-white/5 backdrop-blur-sm group/img">
                     <img 
@@ -637,6 +682,22 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
                     </button>
                   </div>
                 )}
+
+                {/* Visual Chevron Right */}
+                {(() => {
+                  const idx = filteredItems.findIndex(item => item.id === previewItem.id);
+                  return idx !== -1 && idx < filteredItems.length - 1 ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
+                      className="p-3 bg-black/60 hover:bg-black/85 text-white rounded-full transition-all shrink-0 cursor-pointer shadow-lg border border-white/10 hover:scale-110"
+                      title="Siguiente"
+                    >
+                      <ChevronRight size={24} strokeWidth={2.5} />
+                    </button>
+                  ) : (
+                    <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
+                  );
+                })()}
               </div>
 
               <div className="mt-8 text-center px-6">

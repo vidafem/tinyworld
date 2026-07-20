@@ -9,7 +9,7 @@ import {
   X, Check, MoreVertical, 
   ArrowLeft, CheckCircle2, Circle, AlertCircle,
   Camera, Wand2, MousePointer2, LogOut,
-  Book, BookOpen, Layers, Filter, ChevronDown, Sparkles, ChevronLeft,
+  Book, BookOpen, Layers, Filter, ChevronDown, Sparkles, ChevronLeft, ChevronRight,
   Loader2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -464,6 +464,35 @@ export default function PregnancyGallery({
   const audiosCount = filteredItems.filter(it => it.type === 'audio').length;
   const displayedItems = filteredItems.filter(it => it.type === activeMediaTab);
 
+  const showNextPreview = () => {
+    if (!previewItem) return;
+    const idx = displayedItems.findIndex((item) => item.id === previewItem.id);
+    if (idx !== -1 && idx < displayedItems.length - 1) {
+      setPreviewItem(displayedItems[idx + 1]);
+    }
+  };
+
+  const showPrevPreview = () => {
+    if (!previewItem) return;
+    const idx = displayedItems.findIndex((item) => item.id === previewItem.id);
+    if (idx > 0) {
+      setPreviewItem(displayedItems[idx - 1]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showPreviewModal || !previewItem) return;
+      if (e.key === "ArrowRight") {
+        showNextPreview();
+      } else if (e.key === "ArrowLeft") {
+        showPrevPreview();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showPreviewModal, previewItem, displayedItems]);
+
   const monthsWithContent = Array.from(new Set(items.map(it => it.month))).sort((a, b) => a - b);
 
   async function handleFileUpload(e: any) {
@@ -912,6 +941,33 @@ export default function PregnancyGallery({
                     <audio src={getProxiedUrl(previewItem.url)} crossOrigin="anonymous" controls className="w-full" />
                   </div>
                 )}
+
+                {/* Visual Chevrons */}
+                {(() => {
+                  const idx = displayedItems.findIndex(item => item.id === previewItem.id);
+                  return (
+                    <>
+                      {idx > 0 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/75 text-white rounded-full transition-all z-40 cursor-pointer shadow-md"
+                          title="Anterior"
+                        >
+                          <ChevronLeft size={20} />
+                        </button>
+                      )}
+                      {idx !== -1 && idx < displayedItems.length - 1 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/75 text-white rounded-full transition-all z-40 cursor-pointer shadow-md"
+                          title="Siguiente"
+                        >
+                          <ChevronRight size={20} />
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
                 
                 <div className="absolute bottom-4 right-4 z-30">
                   {!showDownloadChoice ? (

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Ruler, Info, Sparkles, Box } from "lucide-react";
+import { ChevronLeft, ChevronRight, Ruler, Info, Sparkles, Box, Heart, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PREGNANCY_ADVICE } from "@/lib/pregnancyAdvice";
 
 const calculateExactWeeks = (fumStr: string) => {
   const fum = new Date(fumStr + "T12:00:00");
@@ -82,7 +83,14 @@ export default function HowIsBabyCard({ fum, theme, initialOpen }: HowIsBabyCard
   const [activeOverlay, setActiveOverlay] = useState<"ruler" | "info" | null>(null);
   const [isChanging, setIsChanging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState<"baby" | "health" | "love" | "todo">("baby");
   const panContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+      setActiveTab("baby");
+    }
+  }, [isModalOpen]);
 
   // Sync isMobile state
   useEffect(() => {
@@ -255,82 +263,161 @@ export default function HowIsBabyCard({ fum, theme, initialOpen }: HowIsBabyCard
               <div className="w-11 h-11" />
             </div>
 
+            {/* Tabs for Pregnancy Advice */}
+            <div className="absolute top-20 md:top-24 left-0 right-0 px-6 z-30 flex items-center gap-1 justify-center select-none">
+              {[
+                { id: "baby", label: "👶 Bebé" },
+                { id: "health", label: "🤰 Mamá" },
+                { id: "love", label: "💖 Pareja" },
+                { id: "todo", label: "✅ Tareas" }
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id as any)}
+                  className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all border cursor-pointer ${
+                    activeTab === t.id
+                      ? "bg-white text-black border-white shadow-md scale-105"
+                      : "bg-black/35 text-white/60 border-white/10 hover:bg-black/50"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {/* Immersive 3D Visual Content (fills 100% of background) */}
-            <div ref={panContainerRef} className="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-auto">
-              {/* Drag-to-pan Background Image */}
-              <motion.img 
-                key={roundedWeek}
-                drag="x"
-                dragConstraints={panContainerRef}
-                dragElastic={0.08}
-                dragMomentum={true}
-                src={currentWeekData.image} 
-                alt={`Feto semana ${roundedWeek}`}
-                className={`h-full max-w-none object-cover select-none cursor-grab active:cursor-grabbing transition-opacity duration-300 absolute ${
-                  isChanging ? "opacity-0 blur-md" : "opacity-100 blur-0"
-                }`}
-                style={{
-                  width: "160%",
-                  left: "-30%",
-                  objectPosition: "center 38%",
-                  filter: "brightness(0.85) contrast(1.05)"
-                }}
-              />
-              {/* Bottom and Top gradients for visual blending */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#07080d] via-transparent to-black/55 pointer-events-none z-10" />
-            </div>
+            {activeTab === "baby" ? (
+              <div ref={panContainerRef} className="absolute inset-0 w-full h-full z-0 overflow-hidden pointer-events-auto">
+                {/* Drag-to-pan Background Image */}
+                <motion.img 
+                  key={roundedWeek}
+                  drag="x"
+                  dragConstraints={panContainerRef}
+                  dragElastic={0.08}
+                  dragMomentum={true}
+                  src={currentWeekData.image} 
+                  alt={`Feto semana ${roundedWeek}`}
+                  className={`h-full max-w-none object-cover select-none cursor-grab active:cursor-grabbing transition-opacity duration-300 absolute ${
+                    isChanging ? "opacity-0 blur-md" : "opacity-100 blur-0"
+                  }`}
+                  style={{
+                    width: "160%",
+                    left: "-30%",
+                    objectPosition: "center 38%",
+                    filter: "brightness(0.85) contrast(1.05)"
+                  }}
+                />
+                {/* Bottom and Top gradients for visual blending */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#07080d] via-transparent to-black/55 pointer-events-none z-10" />
+              </div>
+            ) : (
+              <div className="absolute inset-0 w-full h-full z-0 flex flex-col justify-center px-6 pt-32 pb-44 overflow-y-auto pointer-events-auto bg-[#07080d]/90">
+                {/* Content Card */}
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 text-left space-y-6 shadow-2xl flex-1 flex flex-col justify-center min-h-[300px]"
+                  style={{ borderLeftColor: theme.hex, borderLeftWidth: "4px" }}
+                >
+                  {activeTab === "health" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-2xl"><Sparkles size={22} /></div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-white">Salud y Nutrición</h3>
+                      </div>
+                      <p className="text-gray-200 font-medium text-xs leading-relaxed">
+                        {PREGNANCY_ADVICE[roundedWeek]?.health || "Mantén hábitos saludables y consulta a tu obstetra ante cualquier duda."}
+                      </p>
+                    </div>
+                  )}
 
-            {/* INFORMATION OVERLAYS (Rendered directly over the image with fade transition) */}
-            <div className="absolute bottom-[220px] left-6 right-20 z-20 pointer-events-none">
-              <AnimatePresence mode="wait">
-                {activeOverlay === "ruler" && (
-                  <motion.div
-                    key="ruler-overlay"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.25 }}
-                    className="max-w-[280px] bg-black/85 backdrop-blur-xl border border-white/10 rounded-[1.5rem] p-5 text-left shadow-2xl pointer-events-auto"
-                    style={{ borderLeftColor: theme.hex, borderLeftWidth: "3px" }}
-                  >
-                    <span className="text-[8px] font-black uppercase tracking-widest block mb-1" style={{ color: theme.hex }}>
-                      Comparativa de Tamaño
-                    </span>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-3xl select-none">{currentWeekData.emoji}</span>
-                      <span className="font-outfit font-black text-sm text-white uppercase tracking-tight">
-                        {currentWeekData.fruit}
+                  {activeTab === "love" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-pink-500/10 text-pink-400 rounded-2xl"><Heart size={22} className="text-pink-400" /></div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-white">Conexión y Pareja</h3>
+                      </div>
+                      <p className="text-gray-200 font-medium text-xs leading-relaxed">
+                        {PREGNANCY_ADVICE[roundedWeek]?.love || "El apoyo mutuo es fundamental en esta etapa. Compartan momentos juntos."}
+                      </p>
+                    </div>
+                  )}
+
+                  {activeTab === "todo" && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-sky-500/10 text-sky-400 rounded-2xl"><CheckCircle size={22} className="text-sky-400" /></div>
+                        <h3 className="text-sm font-black uppercase tracking-wider text-white">Pendientes Semanales</h3>
+                      </div>
+                      <ul className="space-y-3">
+                        {(PREGNANCY_ADVICE[roundedWeek]?.todo || ["Seguir con tus citas de control"]).map((todoItem, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs text-gray-200 font-medium">
+                            <span className="text-[10px] mt-0.5" style={{ color: theme.hex }}>✦</span>
+                            <span>{todoItem}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+            )}
+
+            {/* INFORMATION OVERLAYS */}
+            {activeTab === "baby" && (
+              <div className="absolute bottom-[220px] left-6 right-20 z-20 pointer-events-none">
+                <AnimatePresence mode="wait">
+                  {activeOverlay === "ruler" && (
+                    <motion.div
+                      key="ruler-overlay"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.25 }}
+                      className="max-w-[280px] bg-black/85 backdrop-blur-xl border border-white/10 rounded-[1.5rem] p-5 text-left shadow-2xl pointer-events-auto"
+                      style={{ borderLeftColor: theme.hex, borderLeftWidth: "3px" }}
+                    >
+                      <span className="text-[8px] font-black uppercase tracking-widest block mb-1" style={{ color: theme.hex }}>
+                        Comparativa de Tamaño
                       </span>
-                    </div>
-                    <p className="text-[11px] text-gray-200 font-medium leading-relaxed">
-                      Tu bebé mide aproximadamente lo mismo que un/a <strong className="text-white font-bold">{currentWeekData.fruit.toLowerCase()}</strong> esta semana.
-                    </p>
-                  </motion.div>
-                )}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-3xl select-none">{currentWeekData.emoji}</span>
+                        <span className="font-outfit font-black text-sm text-white uppercase tracking-tight">
+                          {currentWeekData.fruit}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-200 font-medium leading-relaxed">
+                        Tu bebé mide aproximadamente lo mismo que un/a <strong className="text-white font-bold">{currentWeekData.fruit.toLowerCase()}</strong> esta semana.
+                      </p>
+                    </motion.div>
+                  )}
 
-                {activeOverlay === "info" && (
-                  <motion.div
-                    key="info-overlay"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.25 }}
-                    className="max-w-[280px] bg-black/85 backdrop-blur-xl border border-white/10 rounded-[1.5rem] p-5 text-left shadow-2xl pointer-events-auto"
-                    style={{ borderLeftColor: theme.hex, borderLeftWidth: "3px" }}
-                  >
-                    <div className="text-[8.5px] font-black uppercase tracking-wider mb-1.5" style={{ color: theme.hex }}>
-                      🤰🏻 desarrollo esta semana
-                    </div>
-                    <p className="text-[11.5px] text-gray-200 font-medium leading-relaxed">
-                      {currentWeekData.desc}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                  {activeOverlay === "info" && (
+                    <motion.div
+                      key="info-overlay"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.25 }}
+                      className="max-w-[280px] bg-black/85 backdrop-blur-xl border border-white/10 rounded-[1.5rem] p-5 text-left shadow-2xl pointer-events-auto"
+                      style={{ borderLeftColor: theme.hex, borderLeftWidth: "3px" }}
+                    >
+                      <div className="text-[8.5px] font-black uppercase tracking-wider mb-1.5" style={{ color: theme.hex }}>
+                        🤰🏻 desarrollo esta semana
+                      </div>
+                      <p className="text-[11.5px] text-gray-200 font-medium leading-relaxed">
+                        {currentWeekData.desc}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Mode Button Stack & Metrics (Floating Lower Right Sidebar) */}
-            <div className="absolute bottom-[220px] right-5 flex flex-col items-center gap-3.5 z-30">
+            {activeTab === "baby" ? (
+              <div className="absolute bottom-[220px] right-5 flex flex-col items-center gap-3.5 z-30">
               {/* Length Capsule */}
               <div 
                 className="bg-black/45 backdrop-blur-md border border-white/10 rounded-2xl py-2.5 w-12 text-center select-none shadow-xl flex flex-col items-center justify-center transition-all duration-300"
@@ -391,6 +478,7 @@ export default function HowIsBabyCard({ fum, theme, initialOpen }: HowIsBabyCard
                 <Info size={19} className="stroke-[2]" />
               </button>
             </div>
+            ) : null}
 
             {/* Bottom Panel (Transparent container for Weeks Slider & Capsule) */}
             <div className="absolute bottom-0 left-0 right-0 p-5 pb-8 flex flex-col gap-4 z-20 bg-gradient-to-t from-black/75 via-black/40 to-transparent">

@@ -532,6 +532,8 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
   const [showStickerModal, setShowStickerModal] = useState(false);
   const [stickerModalTab, setStickerModalTab] = useState<"sticker" | "tape">("sticker");
   const [mediaPickerTab, setMediaPickerTab] = useState<"images" | "videos" | "audio">("images");
+  const [snapLineX, setSnapLineX] = useState<{ pageNumber: number; x: number } | null>(null);
+  const [snapLineY, setSnapLineY] = useState<{ pageNumber: number; y: number } | null>(null);
   const dragRef = useRef<{
     pageNumber: number;
     elementId: string;
@@ -1162,11 +1164,36 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
         const drag = dragRef.current;
         const dx = ((event.clientX - drag.startX) / drag.width) * 100;
         const dy = ((event.clientY - drag.startY) / drag.height) * 100;
-        updateElement(drag.pageNumber, drag.elementId, (element) => ({
-          ...element,
-          x: clamp(drag.originX + dx, -10, 100 - Math.min(element.w, 90)),
-          y: clamp(drag.originY + dy, -10, 100 - Math.min(element.h, 90)),
-        }));
+        
+        updateElement(drag.pageNumber, drag.elementId, (element) => {
+          let newX = drag.originX + dx;
+          let newY = drag.originY + dy;
+          
+          // Center Snap checks (50% center of the page)
+          const elementCenterX = newX + element.w / 2;
+          const elementCenterY = newY + element.h / 2;
+          
+          let snappedX = false;
+          let snappedY = false;
+          
+          if (Math.abs(elementCenterX - 50) < 2.0) {
+            newX = 50 - element.w / 2;
+            snappedX = true;
+          }
+          if (Math.abs(elementCenterY - 50) < 2.0) {
+            newY = 50 - element.h / 2;
+            snappedY = true;
+          }
+          
+          setSnapLineX(snappedX ? { pageNumber: drag.pageNumber, x: 50 } : null);
+          setSnapLineY(snappedY ? { pageNumber: drag.pageNumber, y: 50 } : null);
+          
+          return {
+            ...element,
+            x: clamp(newX, -10, 100 - Math.min(element.w, 90)),
+            y: clamp(newY, -10, 100 - Math.min(element.h, 90)),
+          };
+        });
       } else if (resizeRef.current) {
         const resize = resizeRef.current;
         const dx = ((event.clientX - resize.startX) / resize.width) * 100;
@@ -1197,9 +1224,10 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
     function onUp() {
       dragRef.current = null;
       resizeRef.current = null;
+      setSnapLineX(null);
+      setSnapLineY(null);
     }
 
-    window.addEventListener("pointermove", onMove);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     return () => {
@@ -1207,6 +1235,42 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
       window.removeEventListener("pointerup", onUp);
     };
   }, [updateElement]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!editMode || !selectedElementId || selectedPageNumber === null) return;
+
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.getAttribute("contenteditable") === "true")) {
+        return;
+      }
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        deleteSelectedElement();
+      } else if (event.key.startsWith("Arrow")) {
+        event.preventDefault();
+        const step = event.shiftKey ? 5 : 1;
+        let percentageDx = 0;
+        let percentageDy = 0;
+        if (event.key === "ArrowUp") percentageDy = -step;
+        else if (event.key === "ArrowDown") percentageDy = step;
+        else if (event.key === "ArrowLeft") percentageDx = -step;
+        else if (event.key === "ArrowRight") percentageDx = step;
+
+        updateElement(selectedPageNumber, selectedElementId, (el) => ({
+          ...el,
+          x: clamp(el.x + percentageDx, -10, 100 - Math.min(el.w, 90)),
+          y: clamp(el.y + percentageDy, -10, 100 - Math.min(el.h, 90))
+        }));
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [editMode, selectedElementId, selectedPageNumber, updateElement]);
 
   const canPrev = spreadIndex > 0;
   const canNext = spreadIndex < spreadStarts.length - 1;
@@ -1394,6 +1458,8 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                         setBookOpened(true);
                         setSpreadIndex(0);
                       }}
+                      snapLineX={snapLineX}
+                      snapLineY={snapLineY}
                     />
                   ) : (
                   <motion.div
@@ -1473,6 +1539,8 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                           onDeletePage={() => deletePage(page)}
                           onMediaClick={setMediaModal}
                           onUpdateElement={(el) => updateElement(page.page_number, el.id, () => el)}
+                          snapLineX={snapLineX}
+                          snapLineY={snapLineY}
                         />
                       ))}
 
@@ -1899,6 +1967,8 @@ function ClosedBookCover({
   bindingStyle,
   onUpdateElement,
   theme,
+  snapLineX,
+  snapLineY,
 }: {
   page: AlbumPage;
   isMobile: boolean;
@@ -1915,6 +1985,8 @@ function ClosedBookCover({
   onMediaClick?: (media: {url: string, type: "image"|"video"}) => void;
   onUpdateElement?: (element: AlbumElement) => void;
   theme: any;
+  snapLineX?: { pageNumber: number; x: number } | null;
+  snapLineY?: { pageNumber: number; y: number } | null;
 }) {
   return (
     <motion.div
@@ -1966,6 +2038,8 @@ function ClosedBookCover({
         onDeletePage={() => undefined}
         onMediaClick={onMediaClick}
         onUpdateElement={onUpdateElement}
+        snapLineX={snapLineX}
+        snapLineY={snapLineY}
       />
       <button onClick={onOpen} className="absolute bottom-8 left-12 right-8 z-30 flex items-center justify-between group hover:opacity-80 transition-opacity">
         <span className={`text-[10px] font-black uppercase tracking-[0.28em] ${theme.text} opacity-50 group-hover:opacity-100 transition-opacity`}>Abrir Álbum</span>
@@ -1992,6 +2066,8 @@ function AlbumPageView({
   onMediaClick,
   onUpdateElement,
   theme,
+  snapLineX,
+  snapLineY,
 }: {
   page: AlbumPage;
   isMobile: boolean;
@@ -2007,6 +2083,8 @@ function AlbumPageView({
   onMediaClick?: (media: {url: string, type: "image"|"video"}) => void;
   onUpdateElement?: (element: AlbumElement) => void;
   theme: any;
+  snapLineX?: { pageNumber: number; x: number } | null;
+  snapLineY?: { pageNumber: number; y: number } | null;
 }) {
   const pageDate = page.memory_id && page.content_json.find((element) => element.id.includes("date"))?.text;
 
@@ -2087,6 +2165,19 @@ function AlbumPageView({
           theme={theme}
         />
       ))}
+      {/* Snap Lines */}
+      {snapLineX && snapLineX.pageNumber === page.page_number && (
+        <div 
+          className="absolute inset-y-0 w-0.5 border-l border-dashed border-red-500 z-50 pointer-events-none"
+          style={{ left: `${snapLineX.x}%` }}
+        />
+      )}
+      {snapLineY && snapLineY.pageNumber === page.page_number && (
+        <div 
+          className="absolute inset-x-0 h-0.5 border-t border-dashed border-red-500 z-50 pointer-events-none"
+          style={{ top: `${snapLineY.y}%` }}
+        />
+      )}
     </div>
   );
 }

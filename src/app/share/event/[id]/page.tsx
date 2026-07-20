@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  UploadCloud, Loader2, CheckCircle, Download, Film, Image as ImageIcon, Sparkles, ChevronLeft, X
+  UploadCloud, Loader2, CheckCircle, Download, Film, Image as ImageIcon, Sparkles, ChevronLeft, X, ChevronRight
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -312,6 +312,35 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     }
   }
 
+  const showNextPreview = () => {
+    if (!previewItem) return;
+    const idx = mediaList.findIndex((item) => item.id === previewItem.id);
+    if (idx !== -1 && idx < mediaList.length - 1) {
+      setPreviewItem(mediaList[idx + 1]);
+    }
+  };
+
+  const showPrevPreview = () => {
+    if (!previewItem) return;
+    const idx = mediaList.findIndex((item) => item.id === previewItem.id);
+    if (idx > 0) {
+      setPreviewItem(mediaList[idx - 1]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!previewItem) return;
+      if (e.key === "ArrowRight") {
+        showNextPreview();
+      } else if (e.key === "ArrowLeft") {
+        showPrevPreview();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewItem, mediaList]);
+
   // Compresión rápida de imagen en Canvas
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve) => {
@@ -365,8 +394,8 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    if (files.length > 10) {
-      alert("Solo puedes subir un máximo de 10 archivos a la vez.");
+    if (files.length > 30) {
+      alert("Solo puedes subir un máximo de 30 archivos a la vez.");
       return;
     }
 
@@ -380,62 +409,110 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     setUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append("eventId", eventId);
-
+      // 1. Comprimir imágenes antes de subirlas
+      const processedFiles: File[] = [];
       for (const file of selectedFiles) {
         if (file.type.startsWith("image/")) {
           const compressed = await compressImage(file);
-          formData.append("files", compressed);
+          processedFiles.push(compressed);
         } else {
-          formData.append("files", file);
+          processedFiles.push(file);
         }
       }
 
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/media/event-upload");
+      // Preparar el seguimiento de bytes para el progreso global
+      const fileSizes = processedFiles.map(f => f.size);
+      const totalBytes = fileSizes.reduce((a, b) => a + b, 0);
+      const loadedBytesArray = new Array(processedFiles.length).fill(0);
 
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(percent);
-        }
-      });
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const response = JSON.parse(xhr.responseText);
-          if (response.success) {
-            const newMedia = response.uploaded.map((u: any) => ({
-              id: Math.random().toString(),
-              url: u.url,
-              type: u.type,
-              created_at: new Date().toISOString()
-            }));
-            setMediaList([...newMedia, ...mediaList]);
-            setSelectedFiles([]);
-            setShowThankYou(true);
-          } else {
-            alert("Error al subir: " + (response.error || "Intenta de nuevo"));
-          }
-        } else {
-          alert("Error de red o archivo muy pesado.");
-        }
-        setUploading(false);
-        setUploadProgress(0);
+      const updateGlobalProgress = () => {
+        const currentLoaded = loadedBytesArray.reduce((a, b) => a + b, 0);
+        const percent = Math.round((currentLoaded / totalBytes) * 100);
+        setUploadProgress(Math.min(100, percent));
       };
 
-      xhr.onerror = () => {
-        alert("Ocurrió un error al intentar conectarse al servidor.");
-        setUploading(false);
-        setUploadProgress(0);
-      };
+      const uploadedResults: any[] = [];
 
-      xhr.send(formData);
-    } catch (err) {
+      // 2. Subir secuencialmente cada archivo directamente a Cloudflare R2
+      for (let i = 0; i < processedFiles.length; i++) {
+        const file = processedFiles[i];
+
+        // A. Obtener URL firmada
+        const presignRes = await fetch("/api/media/event-upload/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId,
+            contentType: file.type,
+            filename: file.name
+          })
+        });
+
+        if (!presignRes.ok) {
+          const errData = await presignRes.json();
+          throw new Error(errData.error || `Error al obtener firma para ${file.name}`);
+        }
+
+        const { uploadUrl, publicUrl } = await presignRes.json();
+
+        // B. Subir físicamente a R2
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", uploadUrl);
+          xhr.setRequestHeader("Content-Type", file.type);
+
+          xhr.upload.addEventListener("progress", (event) => {
+            if (event.lengthComputable) {
+              loadedBytesArray[i] = event.loaded;
+              updateGlobalProgress();
+            }
+          });
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              loadedBytesArray[i] = file.size; // Asegurar que sume completo
+              updateGlobalProgress();
+              resolve();
+            } else {
+              reject(new Error(`Error al subir archivo a R2: ${xhr.statusText}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error("Error de red al subir a R2."));
+          xhr.send(file);
+        });
+
+        // C. Registrar en base de datos
+        const mediaType = file.type.startsWith("video") ? "video" : "image";
+        const registerRes = await fetch("/api/media/event-upload/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId,
+            url: publicUrl,
+            mediaType
+          })
+        });
+
+        if (!registerRes.ok) {
+          const errData = await registerRes.json();
+          throw new Error(errData.error || `Error al registrar ${file.name} en BD`);
+        }
+
+        const registerData = await registerRes.json();
+        uploadedResults.push(registerData.media);
+      }
+
+      // D. Finalizar subida exitosa
+      setMediaList([...uploadedResults, ...mediaList]);
+      setSelectedFiles([]);
+      setShowThankYou(true);
+    } catch (err: any) {
       console.error(err);
-      alert("Error al procesar archivos.");
+      alert("Error al subir archivos: " + (err.message || err));
+    } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   }
 
@@ -711,7 +788,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                         : "Selecciona fotos o videos"}
                     </p>
                     <p className="text-[8px] text-stone-400 uppercase tracking-widest">
-                      Máximo 10 archivos a la vez
+                      Máximo 30 archivos a la vez
                     </p>
                   </div>
                 </div>
@@ -909,32 +986,71 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       {/* Modal de Previsualización y Descarga */}
       <AnimatePresence>
         {previewItem && (
-          <div className="fixed inset-0 z-[2200] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+          <div
+            className="fixed inset-0 z-[2200] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md"
+            onClick={() => setPreviewItem(null)}
+          >
             <button
               onClick={() => setPreviewItem(null)}
-              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50 cursor-pointer"
             >
               <X size={20} />
             </button>
 
-            <div className="max-w-2xl w-full max-h-[75vh] flex items-center justify-center p-2">
-              {previewItem.type === "video" ? (
-                <video
-                  src={previewItem.url}
-                  className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl"
-                  controls
-                  autoPlay
-                />
-              ) : (
-                <img
-                  src={previewItem.url}
-                  className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl"
-                  alt="Vista previa"
-                />
-              )}
+            {/* Contenedor principal con flechas */}
+            <div className="relative w-full max-w-4xl flex items-center justify-center gap-4" onClick={(e) => e.stopPropagation()}>
+              {/* Flecha Izquierda */}
+              {(() => {
+                const idx = mediaList.findIndex(item => item.id === previewItem.id);
+                return idx > 0 ? (
+                  <button
+                    onClick={showPrevPreview}
+                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0"
+                    title="Anterior"
+                  >
+                    <ChevronLeft size={24} strokeWidth={2.5} />
+                  </button>
+                ) : (
+                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
+                );
+              })()}
+
+              {/* Contenedor del video/imagen */}
+              <div className="max-w-2xl w-full max-h-[75vh] flex items-center justify-center p-2 flex-1">
+                {previewItem.type === "video" ? (
+                  <video
+                    src={previewItem.url}
+                    className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl"
+                    controls
+                    autoPlay
+                  />
+                ) : (
+                  <img
+                    src={previewItem.url}
+                    className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl"
+                    alt="Vista previa"
+                  />
+                )}
+              </div>
+
+              {/* Flecha Derecha */}
+              {(() => {
+                const idx = mediaList.findIndex(item => item.id === previewItem.id);
+                return idx !== -1 && idx < mediaList.length - 1 ? (
+                  <button
+                    onClick={showNextPreview}
+                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0"
+                    title="Siguiente"
+                  >
+                    <ChevronRight size={24} strokeWidth={2.5} />
+                  </button>
+                ) : (
+                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
+                );
+              })()}
             </div>
 
-            <div className="mt-6 flex flex-col items-center gap-2">
+            <div className="mt-6 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <a
                 href={`/api/download?url=${encodeURIComponent(previewItem.url)}`}
                 download
