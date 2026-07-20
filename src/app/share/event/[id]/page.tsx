@@ -267,6 +267,44 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [sharingMediaId, setSharingMediaId] = useState<string | null>(null);
+
+  const handleDownload = async (url: string, type: string, id: string) => {
+    const ext = url.split('.').pop()?.split('?')[0] || (type === 'video' ? 'mp4' : 'jpeg');
+    const filename = `TinyWorld_${type === 'video' ? 'Video' : 'Foto'}_${id.slice(0, 8)}.${ext}`;
+    const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${filename}`;
+
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobileDevice && navigator.share) {
+      setSharingMediaId(id);
+      try {
+        const response = await fetch(downloadUrl);
+        const blob = await response.blob();
+        const file = new File([blob], filename, { type: blob.type });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'TinyWorld Recuerdo',
+          });
+          setSharingMediaId(null);
+          return;
+        }
+      } catch (err) {
+        console.error("Error using Web Share API:", err);
+      }
+      setSharingMediaId(null);
+    }
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   useEffect(() => {
     loadEventData();
@@ -928,17 +966,18 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       </div>
                       <div className="flex items-center justify-between text-[8px] font-bold text-stone-400 uppercase">
                         <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                        <a
-                          href={`/api/download?url=${encodeURIComponent(item.url)}&filename=TinyWorld_${item.type === 'video' ? 'Video' : 'Foto'}_${item.id.slice(0, 8)}.${item.url.split('.').pop()?.split('?')[0] || (item.type === 'video' ? 'mp4' : 'jpeg')}`}
-                          download
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 hover:bg-stone-50 rounded-lg text-stone-500 hover:text-sage transition-all"
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDownload(item.url, item.type, item.id); }}
+                          disabled={sharingMediaId === item.id}
+                          className="p-1.5 hover:bg-stone-50 rounded-lg text-stone-500 hover:text-sage transition-all disabled:opacity-55 cursor-pointer"
                           title="Descargar"
-                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Download size={14} />
-                        </a>
+                          {sharingMediaId === item.id ? (
+                            <div className="w-3.5 h-3.5 border-2 border-sage border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Download size={14} />
+                          )}
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1051,16 +1090,23 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
             </div>
 
             <div className="mt-6 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <a
-                href={`/api/download?url=${encodeURIComponent(previewItem.url)}&filename=TinyWorld_${previewItem.type === 'video' ? 'Video' : 'Foto'}_${previewItem.id.slice(0, 8)}.${previewItem.url.split('.').pop()?.split('?')[0] || (previewItem.type === 'video' ? 'mp4' : 'jpeg')}`}
-                download
-                target="_blank"
-                rel="noreferrer"
-                className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg"
+              <button
+                onClick={() => handleDownload(previewItem.url, previewItem.type, previewItem.id)}
+                disabled={sharingMediaId === previewItem.id}
+                className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-all disabled:opacity-60"
               >
-                <Download size={14} />
-                Descargar Archivo
-              </a>
+                {sharingMediaId === previewItem.id ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
+                    Preparando descarga...
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} />
+                    Descargar Archivo
+                  </>
+                )}
+              </button>
               <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
                 Subido el {new Date(previewItem.created_at).toLocaleString()}
               </span>
