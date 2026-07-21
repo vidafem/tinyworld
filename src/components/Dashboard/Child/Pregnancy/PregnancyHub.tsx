@@ -18,6 +18,7 @@ import PregnancyGallery from "./PregnancyGallery";
 import FutureNames from "./FutureNames";
 import HowIsBabyCard from "../../../Preview/HowIsBabyCard";
 import PregnancyEvents from "./PregnancyEvents";
+import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 
 const PregnancyCalendar = dynamic(() => import("./PregnancyCalendar"), {
   loading: () => (
@@ -103,6 +104,18 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
   const [galleryTriggerUpload, setGalleryTriggerUpload] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
+
+  useEffect(() => {
+    const disabled = localStorage.getItem("tinyworld_ai_disabled");
+    setAiEnabled(disabled !== "true");
+    const handleToggle = () => {
+      const d = localStorage.getItem("tinyworld_ai_disabled");
+      setAiEnabled(d !== "true");
+    };
+    window.addEventListener("tinyworld_ai_toggle", handleToggle);
+    return () => window.removeEventListener("tinyworld_ai_toggle", handleToggle);
+  }, []);
   const shouldShowLogo = !['calendar-edit', 'memory-form', 'album'].includes(currentView);
 
   useEffect(() => {
@@ -307,6 +320,27 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                           <div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`} style={{ color: theme.hex }}><User size={18}/></div>
                           <span className="font-black uppercase tracking-widest text-[10px]">Mi Perfil</span>
                        </button>
+
+                       <div className={`w-full p-3.5 hover:${theme.bgLight} rounded-2xl flex items-center justify-between ${theme.text} transition-colors`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 ${theme.bgLight} rounded-xl`} style={{ color: theme.hex }}><Sparkles size={18}/></div>
+                            <span className="font-black uppercase tracking-widest text-[10px]">Asistente IA</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = !aiEnabled;
+                              setAiEnabled(next);
+                              localStorage.setItem("tinyworld_ai_disabled", next ? "false" : "true");
+                              window.dispatchEvent(new CustomEvent("tinyworld_ai_toggle"));
+                            }}
+                            className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${aiEnabled ? "bg-purple-600" : "bg-stone-300"}`}
+                          >
+                            <div className={`w-5 h-5 rounded-full bg-white shadow transform transition-transform ${aiEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                          </button>
+                        </div>
+                       
                        <div className={`h-px ${theme.borderAccent} opacity-50 my-1 mx-4`} />
                        <button onClick={handleLogout} className="w-full p-4 hover:bg-red-50 rounded-2xl flex items-center gap-4 text-red-500 transition-colors group">
                           <div className="p-2 bg-red-50 rounded-xl group-hover:bg-red-500 group-hover:text-white transition-colors"><LogOut size={18}/></div>
@@ -779,6 +813,8 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
           </div>
         )}
       </AnimatePresence>
+
+      <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} />
     </div>
   );
 }

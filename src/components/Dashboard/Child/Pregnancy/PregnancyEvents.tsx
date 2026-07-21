@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Trash2, Loader2, QrCode, Settings, Copy, Check,
-  ExternalLink, FileDown, CheckSquare, Square, X, ImageIcon, Video, FolderOpen, ChevronLeft
+  ExternalLink, FileDown, CheckSquare, Square, X, ImageIcon, Video, FolderOpen, ChevronLeft, Printer
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
@@ -1367,6 +1367,44 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                 >
                   {copiedLink ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                   {copiedLink ? "¡Copiado!" : "Copiar Enlace"}
+                </button>
+                <button
+                  onClick={() => {
+                    const shareUrl = getShareUrl(activeEvent.id);
+                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}`;
+                    const win = window.open("", "_blank");
+                    if (win) {
+                      win.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                          <head>
+                            <title>Invitación - ${activeEvent.title}</title>
+                            <style>
+                              body { font-family: system-ui, sans-serif; text-align: center; padding: 40px; background: #FFFDF8; }
+                              .card { max-width: 420px; margin: 0 auto; padding: 36px; border: 3px solid #E5D5C5; border-radius: 32px; background: #ffffff; box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
+                              h1 { color: #4A4238; font-size: 26px; margin-bottom: 12px; font-weight: 900; }
+                              p { color: #8C8275; font-size: 13px; margin-bottom: 24px; line-height: 1.5; font-weight: 600; }
+                              img { width: 220px; height: 220px; margin-bottom: 24px; border-radius: 16px; border: 1px solid #eee; }
+                              .footer { font-size: 11px; color: #B5A898; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; }
+                            </style>
+                          </head>
+                          <body>
+                            <div class="card">
+                              <h1>✨ ${activeEvent.title} ✨</h1>
+                              <p>${activeEvent.greeting_message || '¡Escanea este código QR para compartir tus fotos y deseos de voz con nosotros!'}</p>
+                              <img src="${qrUrl}" alt="QR" />
+                              <div class="footer">TinyWorld • Recuerdos Inolvidables</div>
+                            </div>
+                            <script>setTimeout(() => window.print(), 500);</script>
+                          </body>
+                        </html>
+                      `);
+                    }
+                  }}
+                  className="w-full py-3.5 bg-stone-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-transform hover:scale-[1.02] cursor-pointer"
+                >
+                  <Printer size={14} />
+                  Imprimir Tarjeta de Invitación
                 </button>
                 <a
                   href={getShareUrl(activeEvent.id)}

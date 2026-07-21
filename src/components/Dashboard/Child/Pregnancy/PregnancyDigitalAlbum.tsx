@@ -43,6 +43,10 @@ import {
   Video,
   Volume2,
   X,
+  Lock,
+  Unlock,
+  Printer,
+  FileDown,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -116,6 +120,8 @@ interface AlbumElement {
   isBold?: boolean;
   isItalic?: boolean;
   isUnderline?: boolean;
+  isLocked?: boolean;
+  filterStyle?: "none" | "vintage" | "sepia" | "mono" | "warm" | "cool";
 }
 
 interface AlbumPage {
@@ -241,25 +247,18 @@ const COLLAGE_PRESETS: Record<number, Partial<AlbumElement>[]> = {
 function getProxiedUrl(url?: string | null) {
   if (!url) return "";
   
-  // Si la URL ya está envuelta en el proxy local, extraemos la URL real para evitar fallos del proxy del servidor
-  if (url.includes("/api/download?url=")) {
-    try {
-      const urlObj = new URL(url, typeof window !== "undefined" ? window.location.origin : "http://localhost");
-      const realUrl = urlObj.searchParams.get("url");
-      if (realUrl) {
-        return realUrl;
-      }
-    } catch (e) {
-      const parts = url.split("url=");
-      if (parts.length > 1) {
-        return decodeURIComponent(parts[1]);
-      }
-    }
-  }
-
   if (url.startsWith("data:") || url.startsWith("/") || url.includes("localhost") || url.includes("127.0.0.1")) {
     return url;
   }
+
+  if (url.includes("/api/download?url=")) {
+    return url;
+  }
+
+  if (url.includes("cloudflarestorage.com") || url.includes("r2.dev")) {
+    return `/api/download?url=${encodeURIComponent(url)}&inline=true`;
+  }
+
   return url;
 }
 
@@ -514,6 +513,39 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
   const [editMode, setEditMode] = useState(false);
   const [selectedPageNumber, setSelectedPageNumber] = useState<number | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const exportAlbumToPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      const pdf = new jsPDF("landscape", "mm", "a4");
+      const pageElements = document.querySelectorAll(".album-page-exportable");
+
+      if (pageElements.length === 0) {
+        alert("Abre el álbum para poder exportarlo a PDF.");
+        setIsExportingPdf(false);
+        return;
+      }
+
+      for (let i = 0; i < pageElements.length; i++) {
+        const el = pageElements[i] as HTMLElement;
+        const canvas = await html2canvas(el, { scale: 3, useCORS: true, logging: false });
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, 0, 297, 210);
+      }
+
+      pdf.save(`TinyWorld_Album_Digital_${child?.name || "Bebe"}.pdf`);
+    } catch (err) {
+      console.error("Error al exportar PDF:", err);
+      alert("Hubo un problema al generar el PDF de alta resolución.");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
   const [deletedPageNumbers, setDeletedPageNumbers] = useState<number[]>([]);
   const [pageSequence, setPageSequence] = useState<number[]>([]);
   const [bindingStyle, setBindingStyle] = useState<"none" | "spiral" | "stitch" | "leather">("none");
@@ -1317,6 +1349,15 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
           {!readOnly && (
             <div className="flex items-center gap-2">
               <button
+                onClick={exportAlbumToPdf}
+                disabled={isExportingPdf}
+                className={`px-3 md:px-5 py-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm flex items-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer`}
+                title="Exportar Álbum completo a PDF 300 DPI"
+              >
+                {isExportingPdf ? <Loader2 className="animate-spin" size={15} /> : <FileDown size={15} />}
+                {isExportingPdf ? "Generando..." : "Exportar PDF"}
+              </button>
+              <button
                 onClick={() => {
                   setEditMode((value) => {
                     const next = !value;
@@ -1698,9 +1739,54 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
             </div>
           )}
 
-          {/* IMAGE SPECIFIC - PHOTO PICKER */}
+          {/* LAYER & LOCK CONTROLS (GLOBAL FOR ALL TYPES) */}
+          <div className="flex items-center gap-1 border-r pr-2 mr-1" style={{ borderColor: `${theme.hex}1f` }}>
+            <button 
+              onClick={() => updateSelectedElement({ isLocked: !selectedElement.isLocked })}
+              className="p-1.5 rounded transition-all cursor-pointer border"
+              style={{ 
+                backgroundColor: selectedElement.isLocked ? `${theme.hex}26` : 'transparent',
+                borderColor: `${theme.hex}26`,
+                color: selectedElement.isLocked ? theme.hex : `${theme.hex}80` 
+              }}
+              title={selectedElement.isLocked ? "Desbloquear Elemento" : "Bloquear Elemento"}
+            >
+              {selectedElement.isLocked ? <Lock size={13} /> : <Unlock size={13} />}
+            </button>
+            <button 
+              onClick={() => updateSelectedElement({ z: (selectedElement.z || 1) + 1 })}
+              className="p-1.5 rounded transition-all cursor-pointer border"
+              style={{ backgroundColor: `${theme.hex}0d`, borderColor: `${theme.hex}26`, color: theme.hex }}
+              title="Traer al frente"
+            >
+              <BringToFront size={13} />
+            </button>
+            <button 
+              onClick={() => updateSelectedElement({ z: Math.max(0, (selectedElement.z || 1) - 1) })}
+              className="p-1.5 rounded transition-all cursor-pointer border"
+              style={{ backgroundColor: `${theme.hex}0d`, borderColor: `${theme.hex}26`, color: theme.hex }}
+              title="Enviar al fondo"
+            >
+              <SendToBack size={13} />
+            </button>
+          </div>
+
+          {/* IMAGE SPECIFIC - PHOTO PICKER & FILTERS */}
           {selectedElement.type === "image" && (
             <div className="flex items-center gap-2 border-r pr-2 mr-1" style={{ borderColor: `${theme.hex}1f` }}>
+              <select
+                value={selectedElement.filterStyle || "none"}
+                onChange={(e) => updateSelectedElement({ filterStyle: e.target.value as any })}
+                className="px-2 py-1 rounded outline-none font-bold text-[10px] border cursor-pointer"
+                style={{ backgroundColor: `${theme.hex}0d`, borderColor: `${theme.hex}26`, color: theme.hex }}
+              >
+                <option value="none">Sin Filtro</option>
+                <option value="vintage">Vintage</option>
+                <option value="sepia">Sepia</option>
+                <option value="mono">Blanco y Negro</option>
+                <option value="warm">Cálido</option>
+                <option value="cool">Frío</option>
+              </select>
               <button 
                 onClick={() => updateSelectedElement({ flipX: !selectedElement.flipX })} 
                 className="p-1 rounded transition-colors hover:opacity-85" 
@@ -2095,7 +2181,7 @@ function AlbumPageView({
         onSelectPage();
         onSelectElement(null);
       }}
-      className={`relative ${isMobile ? "w-full h-full" : "w-1/2 h-full"} overflow-hidden bg-[#FFFDF8] ${isLeft ? "shadow-[inset_-18px_0_28px_rgba(0,0,0,0.055)]" : "shadow-[inset_18px_0_28px_rgba(0,0,0,0.045)]"} ${editMode && selectedPageNumber === page.page_number ? "z-10" : ""}`}
+      className={`album-page-exportable relative ${isMobile ? "w-full h-full" : "w-1/2 h-full"} overflow-hidden bg-[#FFFDF8] ${isLeft ? "shadow-[inset_-18px_0_28px_rgba(0,0,0,0.055)]" : "shadow-[inset_18px_0_28px_rgba(0,0,0,0.045)]"} ${editMode && selectedPageNumber === page.page_number ? "z-10" : ""}`}
       style={{
         backgroundColor: page.background_color || "#FFFDF8",
         ...(editMode && selectedPageNumber === page.page_number ? { outline: `4px solid ${theme.hex}59`, outlineOffset: "-4px" } : {})
@@ -2208,6 +2294,12 @@ function AlbumElementView({
   let extraStyles: React.CSSProperties = {};
 
   if (element.type === "image" || element.type === "video") {
+    if (element.filterStyle === "vintage") extraStyles.filter = "sepia(0.4) contrast(1.1) brightness(0.95)";
+    if (element.filterStyle === "sepia") extraStyles.filter = "sepia(0.85)";
+    if (element.filterStyle === "mono") extraStyles.filter = "grayscale(1) contrast(1.2)";
+    if (element.filterStyle === "warm") extraStyles.filter = "sepia(0.2) saturate(1.4) hue-rotate(-10deg)";
+    if (element.filterStyle === "cool") extraStyles.filter = "saturate(1.2) hue-rotate(15deg)";
+
     if (element.shape === "circle") extraStyles.borderRadius = "50%";
     if (element.shape === "heart") extraStyles.clipPath = "path('M 50 25 C 25 -10, -10 25, 50 90 C 110 25, 75 -10, 50 25 Z')"; 
     if (element.shape === "star") extraStyles.clipPath = "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)"; 
@@ -2276,10 +2368,20 @@ function AlbumElementView({
       }}
     >
       {/* DRAG HANDLE OVERLAY */}
-      <div className={`absolute inset-0 z-10 ${editMode ? 'cursor-move' : ''}`} onPointerDown={(e) => onStartDrag(pageNumber, element, e)} />
+      <div 
+        className={`absolute inset-0 z-10 ${editMode && !element.isLocked ? 'cursor-move' : ''}`} 
+        onPointerDown={(e) => !element.isLocked && onStartDrag(pageNumber, element, e)} 
+      />
       
+      {/* LOCK BADGE INDICATOR */}
+      {element.isLocked && editMode && (
+        <div className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full z-[9992] shadow">
+          <Lock size={12} />
+        </div>
+      )}
+
       {/* RESIZE HANDLES */}
-      {selected && editMode && (
+      {selected && editMode && !element.isLocked && (
         <>
           <div onPointerDown={(e) => { e.stopPropagation(); onStartResize(pageNumber, element, 'nw', e); }} className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full z-[9991] cursor-nwse-resize border-[3px] border-white shadow-md" style={{ backgroundColor: theme.hex }} />
           <div onPointerDown={(e) => { e.stopPropagation(); onStartResize(pageNumber, element, 'ne', e); }} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full z-[9991] cursor-nesw-resize border-[3px] border-white shadow-md" style={{ backgroundColor: theme.hex }} />

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Ruler, Info, Sparkles, Box, Heart, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PREGNANCY_ADVICE } from "@/lib/pregnancyAdvice";
+import Tilt3DCard from "@/components/Common/Tilt3DCard";
 
 const calculateExactWeeks = (fumStr: string) => {
   const fum = new Date(fumStr + "T12:00:00");
@@ -166,36 +167,38 @@ export default function HowIsBabyCard({ fum, theme, initialOpen }: HowIsBabyCard
   return (
     <>
       {/* COLLAPSED PREVIEW CARD (Dashboard Card) */}
-      <motion.button 
-        onClick={() => setIsModalOpen(true)}
-        whileHover={{ y: -5 }}
-        whileTap={{ scale: 0.98 }}
-        className={`
-          bg-white/60 hover:bg-white p-3 md:p-6 rounded-[2.5rem] md:rounded-[3rem] 
-          shadow-sm hover:shadow-xl transition-all border border-white/50 
-          flex flex-row md:flex-col items-center gap-4 md:gap-5 group w-full text-left md:text-center
-          backdrop-blur-md
-        `}
-      >
-        <div className={`
-          w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full ${theme.bg} 
-          flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner
-          border-4 border-white
-        `}>
-          <div className={theme.text}>
-            <Sparkles size={24} className="animate-pulse" />
+      <Tilt3DCard className="w-full">
+        <motion.button 
+          onClick={() => setIsModalOpen(true)}
+          whileHover={{ y: -5 }}
+          whileTap={{ scale: 0.98 }}
+          className={`
+            bg-white/60 hover:bg-white p-3 md:p-6 rounded-[2.5rem] md:rounded-[3rem] 
+            shadow-sm hover:shadow-xl transition-all border border-white/50 
+            flex flex-row md:flex-col items-center gap-4 md:gap-5 group w-full text-left md:text-center
+            backdrop-blur-md
+          `}
+        >
+          <div className={`
+            w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full ${theme.bg} 
+            flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner
+            border-4 border-white
+          `}>
+            <div className={theme.text}>
+              <Sparkles size={24} className="animate-pulse" />
+            </div>
           </div>
-        </div>
-        <div className="flex-1 md:w-full">
-          <h2 className={`text-base md:text-xl font-black ${theme.text} leading-tight tracking-tighter`}>
-            ¿Cómo está el bebé?
-          </h2>
-          <p className={`${theme.text} opacity-40 text-[9px] md:text-xs font-bold uppercase tracking-widest mt-1`}>
-            Experiencia Inmersiva • {formattedCalculatedWeek}
-          </p>
-        </div>
-        <div className="md:hidden opacity-20"><ChevronRight size={18} /></div>
-      </motion.button>
+          <div className="flex-1 md:w-full">
+            <h2 className={`text-base md:text-xl font-black ${theme.text} leading-tight tracking-tighter`}>
+              ¿Cómo está el bebé?
+            </h2>
+            <p className={`${theme.text} opacity-40 text-[9px] md:text-xs font-bold uppercase tracking-widest mt-1`}>
+              Experiencia Inmersiva • {formattedCalculatedWeek}
+            </p>
+          </div>
+          <div className="md:hidden opacity-20"><ChevronRight size={18} /></div>
+        </motion.button>
+      </Tilt3DCard>
 
       {/* IMMERSIVE 3D VISUALIZER FULL SCREEN OVERLAY */}
       {isModalOpen && (

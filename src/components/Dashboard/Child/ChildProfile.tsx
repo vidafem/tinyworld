@@ -22,6 +22,18 @@ export default function ChildProfile({ childId }: { childId: string }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [confirmName, setConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
+
+  useEffect(() => {
+    const disabled = localStorage.getItem("tinyworld_ai_disabled");
+    setAiEnabled(disabled !== "true");
+    const handleToggle = () => {
+      const d = localStorage.getItem("tinyworld_ai_disabled");
+      setAiEnabled(d !== "true");
+    };
+    window.addEventListener("tinyworld_ai_toggle", handleToggle);
+    return () => window.removeEventListener("tinyworld_ai_toggle", handleToggle);
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -666,6 +678,53 @@ export default function ChildProfile({ childId }: { childId: string }) {
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : "Guardar Compartibilidad"}
             </button>
+          </div>
+        </motion.div>
+
+        {/* Sección Especial: Configuración de Asistente IA (TinyAI) */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`bg-white/95 backdrop-blur-xl rounded-[2rem] p-6 md:p-8 shadow-xl border ${theme.borderAccent} mt-6`}
+        >
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3.5 rounded-2xl bg-purple-100 text-purple-700 shadow-sm">
+                <Sparkles size={24} />
+              </div>
+              <div>
+                <h3 className={`font-outfit font-black text-xl ${theme.text}`}>Asistente de IA (TinyAI)</h3>
+                <p className={`text-xs ${theme.text} opacity-60 font-bold tracking-wide mt-0.5`}>
+                  Activa o desactiva la burbuja del chatbot para consultas 24/7 y cartas emotivas
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-stone-100 px-5 py-3 rounded-2xl border border-stone-200 w-full md:w-auto justify-between md:justify-start">
+              <span className={`text-xs font-black uppercase tracking-widest ${aiEnabled ? 'text-purple-700' : 'text-stone-400'}`}>
+                {aiEnabled ? "IA Activada (ON)" : "IA Apagada (OFF)"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !aiEnabled;
+                  setAiEnabled(next);
+                  localStorage.setItem("tinyworld_ai_disabled", next ? "false" : "true");
+                  window.dispatchEvent(new CustomEvent("tinyworld_ai_toggle"));
+                  setToastMessage(next ? "¡Asistente de IA Activado!" : "Asistente de IA Desactivado");
+                  setTimeout(() => setToastMessage(""), 3000);
+                }}
+                className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 ease-in-out cursor-pointer ${
+                  aiEnabled ? "bg-purple-600" : "bg-stone-300"
+                }`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full bg-white shadow-md transform transition-transform duration-300 ease-in-out ${
+                    aiEnabled ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </motion.div>
 

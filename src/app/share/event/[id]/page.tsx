@@ -3,7 +3,8 @@
 import { useEffect, useState, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  UploadCloud, Loader2, CheckCircle, Download, Film, Image as ImageIcon, Sparkles, ChevronLeft, X, ChevronRight
+  UploadCloud, Loader2, CheckCircle, Download, Film, Image as ImageIcon, Sparkles, ChevronLeft, X, ChevronRight,
+  Mic, Square, Tv, Play, Pause, Volume2, Radio
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -29,7 +30,7 @@ interface PregnancyEvent {
 interface EventMedia {
   id: string;
   url: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio";
   created_at: string;
 }
 
@@ -268,6 +269,116 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
   const [showThankYou, setShowThankYou] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [sharingMediaId, setSharingMediaId] = useState<string | null>(null);
+
+  // Grabadora de Deseos de Voz
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useState<any>(null)[0];
+  const audioChunksRef = useState<Blob[]>([]);
+  const [voiceTimer, setVoiceTimer] = useState<any>(null);
+
+  // Modo Presentación Live TV
+  const [showLiveTvMode, setShowLiveTvMode] = useState(false);
+  const [liveSlideIndex, setLiveSlideIndex] = useState(0);
+
+  const startRecordingVoiceWish = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      (window as any)._mediaRecorder = mediaRecorder;
+      const chunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        setAudioBlob(blob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      const interval = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+      setVoiceTimer(interval);
+    } catch (err) {
+      console.error("Error al acceder al micrófono:", err);
+      alert("No se pudo acceder al micrófono para grabar la nota de voz.");
+    }
+  };
+
+  const stopRecordingVoiceWish = () => {
+    if ((window as any)._mediaRecorder && isRecording) {
+      (window as any)._mediaRecorder.stop();
+      setIsRecording(false);
+      if (voiceTimer) clearInterval(voiceTimer);
+    }
+  };
+
+  const uploadVoiceWish = async () => {
+    if (!audioBlob) return;
+    setUploading(true);
+    try {
+      const file = new File([audioBlob], `Deseo_Voz_${Date.now()}.webm`, { type: "audio/webm" });
+      const presignRes = await fetch("/api/media/event-upload/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          contentType: file.type,
+          filename: file.name
+        })
+      });
+
+      const presignData = await presignRes.json();
+      if (!presignRes.ok || !presignData.uploadUrl) {
+        throw new Error(presignData.error || "Error al presignar audio");
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", presignData.uploadUrl, true);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.onload = () => (xhr.status === 200 ? resolve() : reject(new Error("Error PUT R2")));
+        xhr.onerror = () => reject(new Error("Error red PUT"));
+        xhr.send(file);
+      });
+
+      await fetch("/api/media/event-upload/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          key: presignData.key,
+          mediaType: "audio"
+        })
+      });
+
+      setAudioBlob(null);
+      setRecordingTime(0);
+      setShowThankYou(true);
+      loadEventData();
+    } catch (err) {
+      console.error("Error al subir voz:", err);
+      alert("Hubo un problema al guardar tu nota de voz.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showLiveTvMode || mediaList.length === 0) return;
+    const interval = setInterval(() => {
+      setLiveSlideIndex((prev) => (prev + 1) % mediaList.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [showLiveTvMode, mediaList.length]);
 
   const handleDownload = async (url: string, type: string, id: string) => {
     const ext = url.split('.').pop()?.split('?')[0] || (type === 'video' ? 'mp4' : 'jpeg');
@@ -831,6 +942,46 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                   </div>
                 </div>
 
+                {/* Grabadora de Notas de Voz de Felicitación */}
+                <div className="pt-2 border-t border-stone-200/50">
+                  {!audioBlob ? (
+                    <button
+                      onClick={isRecording ? stopRecordingVoiceWish : startRecordingVoiceWish}
+                      type="button"
+                      className={`w-full py-3.5 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md ${
+                        isRecording 
+                          ? "bg-rose-500 text-white animate-pulse" 
+                          : "bg-white text-stone-800 border border-stone-200 hover:bg-stone-50"
+                      }`}
+                    >
+                      {isRecording ? (
+                        <>
+                          <Square size={14} className="fill-current" />
+                          Detener Grabación ({recordingTime}s)
+                        </>
+                      ) : (
+                        <>
+                          <Mic size={14} className="text-rose-500" />
+                          Grabar Deseo de Voz 🎙️
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="bg-rose-50/80 p-3 rounded-2xl border border-rose-200/60 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Radio size={16} className="text-rose-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-stone-800 uppercase tracking-wider">Nota de voz lista ({recordingTime}s)</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => setAudioBlob(null)} className="p-2 text-stone-400 hover:text-stone-700 text-[9px] font-bold">Descartar</button>
+                        <button onClick={uploadVoiceWish} disabled={uploading} className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow">
+                          {uploading ? <Loader2 className="animate-spin" size={12} /> : "Enviar Voz"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {selectedFiles.length > 0 && (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     <p className="text-[8px] font-black uppercase tracking-widest text-stone-400">
@@ -849,41 +1000,44 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                   </div>
                 )}
 
-                {selectedFiles.length > 0 && !uploading && (
-                  <button
-                    onClick={handleUpload}
-                    className="w-full py-4 bg-sage text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-md hover:bg-sage/90 transition-transform active:scale-[0.99]"
-                  >
-                    Comenzar Carga
-                  </button>
-                )}
+                <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading || selectedFiles.length === 0}
+                  className="w-full py-4 bg-stone-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-black transition-all cursor-pointer"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={16} />
+                      Subiendo ({uploadProgress}%)...
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={16} />
+                      Subir Recuerdos
+                    </>
+                  )}
+                </button>
 
-                {uploading && (
-                  <div className="space-y-2.5">
-                    <div className="w-full h-2.5 bg-stone-200/50 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-sage transition-all duration-300 rounded-full"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-stone-500">
-                      <span>Subiendo archivos...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                  </div>
-                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowGuestGallery(true)}
+                    className="flex-1 py-3 bg-white/90 text-stone-800 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm border border-stone-200 flex items-center justify-center gap-2 hover:bg-white transition-all cursor-pointer"
+                  >
+                    <Film size={14} />
+                    Ver Galería ({mediaList.length})
+                  </button>
+                  <button
+                    onClick={() => setShowLiveTvMode(true)}
+                    className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-md flex items-center justify-center gap-2 hover:opacity-90 transition-all cursor-pointer"
+                  >
+                    <Tv size={14} />
+                    Live TV 📺
+                  </button>
+                </div>
+              </div>
               </div>
             </div>
-
-            {/* BOTÓN PARA ABRIR LA GALERÍA COMPLETA */}
-            <button
-              onClick={() => setShowGuestGallery(true)}
-              className="w-full py-5 text-stone-800 rounded-[2rem] border border-white/40 shadow-xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] backdrop-blur-md relative"
-              style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
-            >
-              <ImageIcon size={16} />
-              Ver Galería del Evento ({mediaList.length})
-            </button>
           </motion.div>
         ) : (
           // PANTALLA DE GALERÍA: LISTADO COMPLETO RESPONSIVO CON PESTAÑAS
@@ -914,17 +1068,17 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
             <div className="bg-white/70 backdrop-blur-md p-6 rounded-[2.5rem] shadow-xl border border-white/40 space-y-5">
               {/* Pestañas / Categorías */}
               <div className="flex gap-2 p-1 bg-stone-200/30 rounded-2xl">
-                {(["all", "image", "video"] as const).map(tab => (
+                {(["all", "image", "video", "audio"] as const).map(tab => (
                   <button
                     key={tab}
-                    onClick={() => setGalleryTab(tab)}
+                    onClick={() => setGalleryTab(tab as any)}
                     className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
                       galleryTab === tab
                         ? "bg-stone-800 text-white shadow-md"
                         : "text-stone-500 hover:text-stone-800"
                     }`}
                   >
-                    {tab === "all" ? "Todo" : tab === "image" ? "Fotos" : "Videos"}
+                    {tab === "all" ? "Todos" : tab === "image" ? "Fotos" : tab === "video" ? "Videos" : "Audios"}
                   </button>
                 ))}
               </div>
@@ -942,18 +1096,21 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       onClick={() => setPreviewItem(item)}
                       className="bg-white p-3 rounded-2xl shadow-sm border border-stone-150 flex flex-col space-y-2 cursor-pointer hover:scale-[1.02] transition-transform"
                     >
-                      <div className="aspect-square w-full rounded-lg overflow-hidden relative bg-stone-50 border border-stone-100 flex items-center justify-center">
-                        {item.type === "video" ? (
-                          <div className="w-full h-full relative flex items-center justify-center bg-black">
-                            <video
-                              src={item.url}
-                              className="w-full h-full object-cover"
-                              muted
-                              playsInline
-                            />
-                            <div className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full text-white">
-                              <Film size={10} />
+                      <div className={`aspect-square bg-stone-100 rounded-2xl overflow-hidden mb-2 relative group-hover:scale-[1.02] transition-transform shadow-inner flex items-center justify-center`}>
+                        {item.type === 'video' ? (
+                          <div className="w-full h-full relative">
+                            <video src={item.url} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white">
+                              <Film size={24} />
                             </div>
+                          </div>
+                        ) : item.type === 'audio' ? (
+                          <div className="w-full h-full bg-gradient-to-br from-rose-100 to-amber-100 flex flex-col items-center justify-center p-3 text-stone-800 gap-2">
+                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md animate-pulse">
+                              <Mic size={24} className="text-rose-500" />
+                            </div>
+                            <span className="text-[8px] font-black uppercase tracking-wider text-rose-700">Audio Deseo</span>
+                            <audio src={item.url} controls className="w-full h-8 scale-90" />
                           </div>
                         ) : (
                           <img
@@ -1110,6 +1267,69 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
               <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
                 Subido el {new Date(previewItem.created_at).toLocaleString()}
               </span>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* LIVE TV SLIDESHOW OVERLAY */}
+      <AnimatePresence>
+        {showLiveTvMode && (
+          <div className="fixed inset-0 z-[5000] bg-black flex flex-col items-center justify-between p-6 overflow-hidden select-none">
+            <button
+              onClick={() => setShowLiveTvMode(false)}
+              className="absolute top-6 right-6 z-50 text-white/70 hover:text-white p-3 bg-white/10 backdrop-blur-md rounded-full shadow-2xl transition-all hover:scale-110"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Banner Header Live TV */}
+            <div className="z-40 text-center pt-4">
+              <span className="px-4 py-1.5 bg-red-600 text-white font-black text-[10px] uppercase tracking-[0.3em] rounded-full shadow-lg animate-pulse inline-flex items-center gap-2">
+                <span className="w-2 h-2 bg-white rounded-full animate-ping" /> LIVE TV SHOW • {event?.title}
+              </span>
+            </div>
+
+            {/* Content Slide Display */}
+            {mediaList.length > 0 ? (
+              <div className="relative w-full max-w-5xl h-[70vh] flex items-center justify-center my-auto">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={mediaList[liveSlideIndex]?.id || liveSlideIndex}
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 1.05, y: -20 }}
+                    transition={{ duration: 0.8 }}
+                    className="w-full h-full flex items-center justify-center relative rounded-[3rem] overflow-hidden border-4 border-white/20 shadow-[0_30px_90px_rgba(0,0,0,0.8)]"
+                  >
+                    {mediaList[liveSlideIndex]?.type === 'video' ? (
+                      <video src={mediaList[liveSlideIndex].url} autoPlay controls className="w-full h-full object-contain bg-black" />
+                    ) : mediaList[liveSlideIndex]?.type === 'audio' ? (
+                      <div className="w-full h-full bg-gradient-to-br from-rose-950 via-neutral-900 to-amber-950 flex flex-col items-center justify-center p-10 gap-6 text-white text-center">
+                        <div className="w-28 h-28 bg-rose-500/20 border-2 border-rose-500 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
+                          <Mic size={56} className="text-rose-400" />
+                        </div>
+                        <h3 className="text-2xl md:text-4xl font-black italic tracking-tight">Deseo de Voz de Felicitación 🎙️</h3>
+                        <audio src={mediaList[liveSlideIndex].url} autoPlay controls className="w-full max-w-md" />
+                      </div>
+                    ) : (
+                      <img src={mediaList[liveSlideIndex]?.url} className="w-full h-full object-contain bg-black/40" />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            ) : (
+              <div className="text-white/60 font-bold text-center my-auto">Esperando recuerdos de los invitados...</div>
+            )}
+
+            {/* Bottom Slideshow Controls */}
+            <div className="z-40 flex items-center gap-4 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
+              <button onClick={() => setLiveSlideIndex((prev) => (prev > 0 ? prev - 1 : mediaList.length - 1))} className="text-white p-2 hover:scale-110 transition-transform">
+                <ChevronLeft size={20} />
+              </button>
+              <span className="text-white text-xs font-black tracking-widest">{liveSlideIndex + 1} / {mediaList.length}</span>
+              <button onClick={() => setLiveSlideIndex((prev) => (prev + 1) % mediaList.length)} className="text-white p-2 hover:scale-110 transition-transform">
+                <ChevronRight size={20} />
+              </button>
             </div>
           </div>
         )}
