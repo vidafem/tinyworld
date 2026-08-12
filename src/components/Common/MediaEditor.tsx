@@ -34,7 +34,6 @@ export default function MediaEditor({ file, onClose, onComplete }: MediaEditorPr
   const MAX_SECONDS = 15;
 
   async function loadFFmpeg() {
-    const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
     const ffmpeg = ffmpegRef.current;
     
     // Escuchar logs para depuración interna si fuera necesario
@@ -42,10 +41,24 @@ export default function MediaEditor({ file, onClose, onComplete }: MediaEditorPr
       console.log(message);
     });
 
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
+    try {
+      // Intentar cargar archivos locales de FFmpeg desde el directorio public
+      const coreBlob = await toBlobURL(`${window.location.origin}/ffmpeg/ffmpeg-core.js`, 'text/javascript');
+      const wasmBlob = await toBlobURL(`${window.location.origin}/ffmpeg/ffmpeg-core.wasm`, 'application/wasm');
+      
+      await ffmpeg.load({
+        coreURL: coreBlob,
+        wasmURL: wasmBlob,
+      });
+    } catch (localError) {
+      console.warn("Fallo la carga de FFmpeg local, reintentando con la CDN pública:", localError);
+      
+      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
+    }
     setLoaded(true);
   }
 

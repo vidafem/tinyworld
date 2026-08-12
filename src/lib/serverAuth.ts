@@ -36,8 +36,8 @@ export async function requireAdmin(req: NextRequest) {
 
   if (error || !user) return null;
 
-  const ownerEmail = process.env.ADMIN_EMAIL || "canonedu17@gmail.com";
-  if (user.email === ownerEmail) {
+  const ownerEmail = process.env.ADMIN_EMAIL;
+  if (ownerEmail && user.email === ownerEmail) {
     return { user, supabaseAdmin };
   }
 

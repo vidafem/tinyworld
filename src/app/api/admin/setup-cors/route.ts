@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutBucketCorsCommand } from "@aws-sdk/client-s3";
+import { requireAdmin } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
   try {
     const bucket = process.env.R2_BUCKET_NAME;
     const accountId = process.env.R2_ACCOUNT_ID;

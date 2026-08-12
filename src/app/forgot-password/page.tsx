@@ -1,17 +1,37 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+
+      if (error) {
+        setErrorMsg("Error al enviar el correo. Por favor verifica la dirección ingresada.");
+      } else {
+        setSent(true);
+      }
+    } catch (err: any) {
+      setErrorMsg("Ocurrió un error al procesar tu solicitud. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -35,23 +55,30 @@ export default function ForgotPassword() {
             <p className="text-taupe/60 text-sm mb-8 leading-relaxed">
               No te preocupes, dinos tu correo y te enviaremos una llave mágica para entrar de nuevo.
             </p>
+            {errorMsg && (
+              <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs font-medium rounded-xl border border-red-100">
+                {errorMsg}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-taupe/30 ml-2">Email</label>
                 <input 
                   type="email" 
                   required
+                  disabled={loading}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="ejemplo@correo.com"
-                  className="w-full bg-beige/5 border border-taupe/10 p-4 rounded-2xl outline-none focus:border-gold transition-all"
+                  className="w-full bg-beige/5 border border-taupe/10 p-4 rounded-2xl outline-none focus:border-gold transition-all disabled:opacity-50"
                 />
               </div>
               <button 
                 type="submit"
-                className="w-full py-4 bg-sage text-white rounded-2xl font-bold shadow-lg shadow-sage/20 hover:bg-sage/90 transition-all"
+                disabled={loading}
+                className="w-full py-4 bg-sage text-white rounded-2xl font-bold shadow-lg shadow-sage/20 hover:bg-sage/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Enviar llave de acceso
+                {loading ? <Loader2 className="animate-spin" size={20} /> : "Enviar llave de acceso"}
               </button>
             </form>
           </>
@@ -76,3 +103,4 @@ export default function ForgotPassword() {
     </div>
   );
 }
+

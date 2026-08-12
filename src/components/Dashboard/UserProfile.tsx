@@ -88,31 +88,26 @@ export default function UserProfile({ onBack }: UserProfileProps) {
     if (!file) return;
 
     setUploading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `user_assets/${user.id}/${fileName}`;
-
     try {
-      const { error: uploadError } = await supabase.storage
-        .from('assets')
-        .upload(filePath, file);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sesión no encontrada.");
 
-      if (uploadError) throw uploadError;
+      const formData = new FormData();
+      formData.append("files", file);
+      formData.append("type", type);
 
-      const { data } = supabase.storage
-        .from('assets')
-        .getPublicUrl(filePath);
-      
-      const publicUrl = data.publicUrl;
+      const response = await fetch("/api/user/assets", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: formData,
+      });
 
-      const { error: insertError } = await supabase.from('assets').insert([{
-        type: type,
-        url: publicUrl,
-        user_id: user.id,
-        name: file.name
-      }]);
-
-      if (insertError) throw insertError;
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error || "Error al subir archivo.");
+      }
 
       fetchMyAssets();
     } catch (err: any) {
@@ -126,13 +121,27 @@ export default function UserProfile({ onBack }: UserProfileProps) {
   const handleDeleteAsset = async (id: string, url: string) => {
     if (!confirm("¿Eliminar este elemento de tu librería?")) return;
     
-    const path = url.split('/assets/').pop();
-    if (path) {
-      await supabase.storage.from('assets').remove([path]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sesión no encontrada.");
+
+      const response = await fetch(`/api/user/assets?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error || "Error al borrar archivo.");
+      }
+
+      fetchMyAssets();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error al borrar: ${err.message}`);
     }
-    
-    await supabase.from('assets').delete().eq('id', id);
-    fetchMyAssets();
   };
 
   const filteredAssets = myAssets.filter(a => {
