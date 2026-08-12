@@ -31,6 +31,10 @@ interface PregnancyEvent {
     rightStickerUrl?: string;
     cardColor?: string;
     cardOpacity?: number;
+    enableLiveTv?: boolean;
+    enableAudio?: boolean;
+    polaroidText?: string;
+    polaroidFont?: string;
   };
   created_at: string;
 }
