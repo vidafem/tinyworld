@@ -1686,6 +1686,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
             </div>
           </div>
         )}
+      </AnimatePresence>
       {/* Modal Vista Previa Polaroid */}
       <AnimatePresence>
         {showPolaroidPreview && polaroidImgUrl && (
