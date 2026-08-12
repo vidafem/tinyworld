@@ -89,6 +89,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
   const [availableStickers, setAvailableStickers] = useState<string[]>([]);
   const [leftSticker, setLeftSticker] = useState("");
   const [rightSticker, setRightSticker] = useState("");
+  const [enableLiveTv, setEnableLiveTv] = useState(true);
+  const [enableAudio, setEnableAudio] = useState(true);
 
   useEffect(() => {
     loadEvents();
@@ -249,7 +251,9 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
             leftStickerUrl: leftSticker,
             rightStickerUrl: rightSticker,
             cardColor: cardColor,
-            cardOpacity: cardOpacity
+            cardOpacity: cardOpacity,
+            enableLiveTv,
+            enableAudio
           }
         })
         .select()
@@ -300,7 +304,9 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
             leftStickerUrl: leftSticker,
             rightStickerUrl: rightSticker,
             cardColor: cardColor,
-            cardOpacity: cardOpacity
+            cardOpacity: cardOpacity,
+            enableLiveTv,
+            enableAudio
           }
         })
         .eq("id", activeEvent.id)
@@ -438,6 +444,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setRightSticker("");
     setCardColor("#ffffff");
     setCardOpacity(0.7);
+    setEnableLiveTv(true);
+    setEnableAudio(true);
   }
 
   function openSettings(ev: PregnancyEvent) {
@@ -468,6 +476,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setRightSticker(style.rightStickerUrl || "");
     setCardColor(style.cardColor || "#ffffff");
     setCardOpacity(style.cardOpacity !== undefined ? style.cardOpacity : 0.7);
+    setEnableLiveTv(style.enableLiveTv !== undefined ? style.enableLiveTv : true);
+    setEnableAudio(style.enableAudio !== undefined ? style.enableAudio : true);
 
     setShowSettingsModal(true);
   }
@@ -983,17 +993,43 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 py-2 border-t border-black/5">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={isActive}
-                  onChange={e => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-sage focus:ring-0"
-                />
-                <label htmlFor="isActive" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
-                  Habilitar enlace de inmediato
-                </label>
+              <div className="flex flex-col gap-3 py-2 border-t border-black/5">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={isActive}
+                    onChange={e => setIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-sage focus:ring-0"
+                  />
+                  <label htmlFor="isActive" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
+                    Habilitar enlace de inmediato
+                  </label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="enableLiveTv"
+                    checked={enableLiveTv}
+                    onChange={e => setEnableLiveTv(e.target.checked)}
+                    className="w-4 h-4 rounded text-sage focus:ring-0"
+                  />
+                  <label htmlFor="enableLiveTv" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
+                    Habilitar Live TV 📺
+                  </label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="enableAudio"
+                    checked={enableAudio}
+                    onChange={e => setEnableAudio(e.target.checked)}
+                    className="w-4 h-4 rounded text-sage focus:ring-0"
+                  />
+                  <label htmlFor="enableAudio" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
+                    Habilitar Notas de Voz 🎙️
+                  </label>
+                </div>
               </div>
 
                 <button
@@ -1251,17 +1287,43 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 py-2 border-t border-black/5">
-                  <input
-                    type="checkbox"
-                    id="isActiveUpdate"
-                    checked={isActive}
-                    onChange={e => setIsActive(e.target.checked)}
-                    className="w-4 h-4 rounded text-sage focus:ring-0"
-                  />
-                  <label htmlFor="isActiveUpdate" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
-                    Habilitar enlace
-                  </label>
+                <div className="flex flex-col gap-3 py-2 border-t border-black/5">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isActiveUpdate"
+                      checked={isActive}
+                      onChange={e => setIsActive(e.target.checked)}
+                      className="w-4 h-4 rounded text-sage focus:ring-0"
+                    />
+                    <label htmlFor="isActiveUpdate" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
+                      Habilitar enlace
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="enableLiveTvUpdate"
+                      checked={enableLiveTv}
+                      onChange={e => setEnableLiveTv(e.target.checked)}
+                      className="w-4 h-4 rounded text-sage focus:ring-0"
+                    />
+                    <label htmlFor="enableLiveTvUpdate" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
+                      Habilitar Live TV 📺
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="enableAudioUpdate"
+                      checked={enableAudio}
+                      onChange={e => setEnableAudio(e.target.checked)}
+                      className="w-4 h-4 rounded text-sage focus:ring-0"
+                    />
+                    <label htmlFor="enableAudioUpdate" className={`text-xs font-bold uppercase tracking-wider ${theme.text} cursor-pointer`}>
+                      Habilitar Notas de Voz 🎙️
+                    </label>
+                  </div>
                 </div>
 
                 <button

@@ -703,7 +703,9 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       leftStickerUrl: style.leftStickerUrl || "",
       rightStickerUrl: style.rightStickerUrl || "",
       cardColor: style.cardColor || "#ffffff",
-      cardOpacity: style.cardOpacity !== undefined ? style.cardOpacity : 0.7
+      cardOpacity: style.cardOpacity !== undefined ? style.cardOpacity : 0.7,
+      enableLiveTv: style.enableLiveTv !== false,
+      enableAudio: style.enableAudio !== false
     };
   };
 
@@ -943,44 +945,46 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                 </div>
 
                 {/* Grabadora de Notas de Voz de Felicitación */}
-                <div className="pt-2 border-t border-stone-200/50">
-                  {!audioBlob ? (
-                    <button
-                      onClick={isRecording ? stopRecordingVoiceWish : startRecordingVoiceWish}
-                      type="button"
-                      className={`w-full py-3.5 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md ${
-                        isRecording 
-                          ? "bg-rose-500 text-white animate-pulse" 
-                          : "bg-white text-stone-800 border border-stone-200 hover:bg-stone-50"
-                      }`}
-                    >
-                      {isRecording ? (
-                        <>
-                          <Square size={14} className="fill-current" />
-                          Detener Grabación ({recordingTime}s)
-                        </>
-                      ) : (
-                        <>
-                          <Mic size={14} className="text-rose-500" />
-                          Grabar Deseo de Voz 🎙️
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <div className="bg-rose-50/80 p-3 rounded-2xl border border-rose-200/60 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Radio size={16} className="text-rose-500 animate-pulse" />
-                        <span className="text-[10px] font-bold text-stone-800 uppercase tracking-wider">Nota de voz lista ({recordingTime}s)</span>
+                {parsedStyle.enableAudio && (
+                  <div className="pt-2 border-t border-stone-200/50">
+                    {!audioBlob ? (
+                      <button
+                        onClick={isRecording ? stopRecordingVoiceWish : startRecordingVoiceWish}
+                        type="button"
+                        className={`w-full py-3.5 px-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md ${
+                          isRecording 
+                            ? "bg-rose-500 text-white animate-pulse" 
+                            : "bg-white text-stone-800 border border-stone-200 hover:bg-stone-50"
+                        }`}
+                      >
+                        {isRecording ? (
+                          <>
+                            <Square size={14} className="fill-current" />
+                            Detener Grabación ({recordingTime}s)
+                          </>
+                        ) : (
+                          <>
+                            <Mic size={14} className="text-rose-500" />
+                            Grabar Deseo de Voz 🎙️
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="bg-rose-50/80 p-3 rounded-2xl border border-rose-200/60 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Radio size={16} className="text-rose-500 animate-pulse" />
+                          <span className="text-[10px] font-bold text-stone-800 uppercase tracking-wider">Nota de voz lista ({recordingTime}s)</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => setAudioBlob(null)} className="p-2 text-stone-400 hover:text-stone-700 text-[9px] font-bold">Descartar</button>
+                          <button onClick={uploadVoiceWish} disabled={uploading} className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow">
+                            {uploading ? <Loader2 className="animate-spin" size={12} /> : "Enviar Voz"}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => setAudioBlob(null)} className="p-2 text-stone-400 hover:text-stone-700 text-[9px] font-bold">Descartar</button>
-                        <button onClick={uploadVoiceWish} disabled={uploading} className="px-3 py-1.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow">
-                          {uploading ? <Loader2 className="animate-spin" size={12} /> : "Enviar Voz"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
 
                 {selectedFiles.length > 0 && (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -1027,13 +1031,15 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                     <Film size={14} />
                     Ver Galería ({mediaList.length})
                   </button>
-                  <button
-                    onClick={() => setShowLiveTvMode(true)}
-                    className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-md flex items-center justify-center gap-2 hover:opacity-90 transition-all cursor-pointer"
-                  >
-                    <Tv size={14} />
-                    Live TV 📺
-                  </button>
+                  {parsedStyle.enableLiveTv && (
+                    <button
+                      onClick={() => setShowLiveTvMode(true)}
+                      className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-md flex items-center justify-center gap-2 hover:opacity-90 transition-all cursor-pointer"
+                    >
+                      <Tv size={14} />
+                      Live TV 📺
+                    </button>
+                  )}
                 </div>
               </div>
               </div>
@@ -1068,7 +1074,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
             <div className="bg-white/70 backdrop-blur-md p-6 rounded-[2.5rem] shadow-xl border border-white/40 space-y-5">
               {/* Pestañas / Categorías */}
               <div className="flex gap-2 p-1 bg-stone-200/30 rounded-2xl">
-                {(["all", "image", "video", "audio"] as const).map(tab => (
+                {(["all", "image", "video", ...(parsedStyle.enableAudio ? ["audio"] : [])] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setGalleryTab(tab as any)}
