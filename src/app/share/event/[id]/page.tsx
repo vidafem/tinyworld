@@ -1370,6 +1370,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
               </div>
               </div>
             </div>
+            )}
           </motion.div>
         ) : (
           // PANTALLA DE GALERÍA: LISTADO COMPLETO RESPONSIVO CON PESTAÑAS

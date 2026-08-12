@@ -1001,6 +1001,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                     />
                   </div>
                 </div>
+              </div>
               <div className="space-y-3 pt-2 border-t border-black/5">
                 <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
                   Estilo de Firma Polaroid (Cámara / Descargas)
@@ -1325,6 +1326,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                     </div>
                   </div>
                 </div>
+              </div>
 
                 <div className="space-y-3 pt-2 border-t border-black/5">
                   <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
