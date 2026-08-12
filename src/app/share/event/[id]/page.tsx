@@ -903,7 +903,11 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       leftStickerUrl: "",
       rightStickerUrl: "",
       cardColor: "#ffffff",
-      cardOpacity: 0.7
+      cardOpacity: 0.7,
+      enableLiveTv: true,
+      enableAudio: true,
+      polaroidText: "",
+      polaroidFont: "Great Vibes"
     };
 
     if (!event) return defaults;
@@ -934,7 +938,9 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       cardColor: style.cardColor || "#ffffff",
       cardOpacity: style.cardOpacity !== undefined ? style.cardOpacity : 0.7,
       enableLiveTv: style.enableLiveTv !== false,
-      enableAudio: style.enableAudio !== false
+      enableAudio: style.enableAudio !== false,
+      polaroidText: style.polaroidText || "",
+      polaroidFont: style.polaroidFont || "Great Vibes"
     };
   };
 
