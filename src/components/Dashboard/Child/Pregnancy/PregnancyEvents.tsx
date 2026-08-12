@@ -91,6 +91,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
   const [rightSticker, setRightSticker] = useState("");
   const [enableLiveTv, setEnableLiveTv] = useState(true);
   const [enableAudio, setEnableAudio] = useState(true);
+  const [polaroidText, setPolaroidText] = useState("");
+  const [polaroidFont, setPolaroidFont] = useState("Great Vibes");
 
   useEffect(() => {
     loadEvents();
@@ -253,7 +255,9 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
             cardColor: cardColor,
             cardOpacity: cardOpacity,
             enableLiveTv,
-            enableAudio
+            enableAudio,
+            polaroidText: polaroidText.trim(),
+            polaroidFont
           }
         })
         .select()
@@ -306,7 +310,9 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
             cardColor: cardColor,
             cardOpacity: cardOpacity,
             enableLiveTv,
-            enableAudio
+            enableAudio,
+            polaroidText: polaroidText.trim(),
+            polaroidFont
           }
         })
         .eq("id", activeEvent.id)
@@ -446,6 +452,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setCardOpacity(0.7);
     setEnableLiveTv(true);
     setEnableAudio(true);
+    setPolaroidText("");
+    setPolaroidFont("Great Vibes");
   }
 
   function openSettings(ev: PregnancyEvent) {
@@ -478,6 +486,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setCardOpacity(style.cardOpacity !== undefined ? style.cardOpacity : 0.7);
     setEnableLiveTv(style.enableLiveTv !== undefined ? style.enableLiveTv : true);
     setEnableAudio(style.enableAudio !== undefined ? style.enableAudio : true);
+    setPolaroidText(style.polaroidText !== undefined ? style.polaroidText : ev.title);
+    setPolaroidFont(style.polaroidFont || "Great Vibes");
 
     setShowSettingsModal(true);
   }
@@ -991,6 +1001,35 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                     />
                   </div>
                 </div>
+              <div className="space-y-3 pt-2 border-t border-black/5">
+                <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                  Estilo de Firma Polaroid (Cámara / Descargas)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Texto de Firma</span>
+                    <input
+                      type="text"
+                      placeholder="Nombre del evento..."
+                      value={polaroidText}
+                      onChange={e => setPolaroidText(e.target.value)}
+                      className="w-full p-2.5 bg-black/5 focus:bg-white border border-transparent focus:border-sage rounded-xl outline-none text-xs transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Tipografía</span>
+                    <select
+                      value={polaroidFont}
+                      onChange={e => setPolaroidFont(e.target.value)}
+                      className="w-full p-2.5 bg-black/5 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-sage"
+                    >
+                      <option value="Great Vibes">Great Vibes (Cursiva)</option>
+                      <option value="Sacramento">Sacramento (Fina)</option>
+                      <option value="Caveat">Caveat (Manuscrita)</option>
+                      <option value="Playfair Display">Playfair (Clásica)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-col gap-3 py-2 border-t border-black/5">
@@ -1283,6 +1322,37 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                         onChange={e => setCardOpacity(parseFloat(e.target.value))}
                         className="w-full accent-sage cursor-pointer mt-2"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t border-black/5">
+                  <label className={`text-[9px] font-black uppercase tracking-widest ${theme.text} opacity-50 block`}>
+                    Estilo de Firma Polaroid (Cámara / Descargas)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Texto de Firma</span>
+                      <input
+                        type="text"
+                        placeholder="Nombre del evento..."
+                        value={polaroidText}
+                        onChange={e => setPolaroidText(e.target.value)}
+                        className="w-full p-2.5 bg-black/5 focus:bg-white border border-transparent focus:border-sage rounded-xl outline-none text-xs transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Tipografía</span>
+                      <select
+                        value={polaroidFont}
+                        onChange={e => setPolaroidFont(e.target.value)}
+                        className="w-full p-2.5 bg-black/5 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-sage"
+                      >
+                        <option value="Great Vibes">Great Vibes (Cursiva)</option>
+                        <option value="Sacramento">Sacramento (Fina)</option>
+                        <option value="Caveat">Caveat (Manuscrita)</option>
+                        <option value="Playfair Display">Playfair (Clásica)</option>
+                      </select>
                     </div>
                   </div>
                 </div>

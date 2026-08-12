@@ -270,6 +270,231 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [sharingMediaId, setSharingMediaId] = useState<string | null>(null);
 
+  const [showPolaroidPreview, setShowPolaroidPreview] = useState(false);
+  const [polaroidImgUrl, setPolaroidImgUrl] = useState("");
+  const [polaroidBlob, setPolaroidBlob] = useState<Blob | null>(null);
+  const [processingPolaroid, setProcessingPolaroid] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadTarget, setDownloadTarget] = useState<EventMedia | null>(null);
+  const [downloadingFormat, setDownloadingFormat] = useState(false);
+  const [showNormalUploader, setShowNormalUploader] = useState(false);
+
+  useEffect(() => {
+    // Cargar Google Fonts para las firmas Polaroid
+    const link = document.createElement("link");
+    link.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Great+Vibes&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Sacramento&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
+
+  const generatePolaroidCanvas = (imageSrc: string, eventTitle: string, fontName: string): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = imageSrc;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas context is null"));
+
+        // Polaroid standard size
+        const w = 1200;
+        const h = 1440;
+        canvas.width = w;
+        canvas.height = h;
+
+        // Base white background
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+
+        // Photo bounds
+        const photoX = 70;
+        const photoY = 70;
+        const photoW = w - 140; // 1060px
+        const photoH = photoW; // Square crop
+
+        // Fit / Crop photo square
+        const imgRatio = img.width / img.height;
+        let srcX = 0, srcY = 0, srcW = img.width, srcH = img.height;
+        if (imgRatio > 1) {
+          srcW = img.height;
+          srcX = (img.width - srcW) / 2;
+        } else {
+          srcH = img.width;
+          srcY = (img.height - srcH) / 2;
+        }
+
+        ctx.drawImage(img, srcX, srcY, srcW, srcH, photoX, photoY, photoW, photoH);
+
+        // Border outline for photo definition
+        ctx.strokeStyle = "rgba(0,0,0,0.06)";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(photoX, photoY, photoW, photoH);
+
+        // Title text drawing
+        ctx.fillStyle = "#2D2621";
+        ctx.textAlign = "center";
+        
+        // Font size adjusts dynamically
+        ctx.font = `65px '${fontName}', cursive, serif`;
+        ctx.fillText(eventTitle, w / 2, h - 170);
+
+        // Date drawing
+        const dateStr = new Date().toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        });
+        ctx.font = "30px sans-serif";
+        ctx.fillStyle = "#A89685";
+        ctx.fillText(dateStr, w / 2, h - 90);
+
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Blob is null"));
+        }, "image/jpeg", 0.9);
+      };
+      img.onerror = () => reject(new Error("Image load failed"));
+    });
+  };
+
+  const handlePolaroidCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setProcessingPolaroid(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async (eventReader) => {
+      const src = eventReader.target?.result as string;
+      try {
+        const styleSettings = event?.style_settings || {};
+        const font = styleSettings.polaroidFont || "Great Vibes";
+        const titleText = styleSettings.polaroidText || event?.title || "Mi Recuerdo";
+        
+        const blob = await generatePolaroidCanvas(src, titleText, font);
+        const previewUrl = URL.createObjectURL(blob);
+        setPolaroidImgUrl(previewUrl);
+        setPolaroidBlob(blob);
+        setShowPolaroidPreview(true);
+      } catch (err) {
+        console.error("Error generating Polaroid:", err);
+        alert("No se pudo procesar el marco de la foto. Intenta de nuevo.");
+      } finally {
+        setProcessingPolaroid(false);
+      }
+    };
+  };
+
+  const handleUploadPolaroid = async () => {
+    if (!polaroidBlob) return;
+    setUploading(true);
+    setShowPolaroidPreview(false);
+    try {
+      const file = new File([polaroidBlob], `Polaroid_${Date.now()}.jpg`, { type: "image/jpeg" });
+      
+      const presignRes = await fetch("/api/media/event-upload/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          contentType: file.type,
+          filename: file.name
+        })
+      });
+
+      const { uploadUrl, publicUrl } = await presignRes.json();
+      if (!uploadUrl) throw new Error("Fallo al firmar URL");
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject());
+        xhr.onerror = () => reject();
+        xhr.send(file);
+      });
+
+      const registerRes = await fetch("/api/media/event-upload/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          url: publicUrl,
+          mediaType: "image"
+        })
+      });
+
+      if (!registerRes.ok) throw new Error("Error registering media");
+
+      const registerData = await registerRes.json();
+      setMediaList([registerData.media, ...mediaList]);
+      setShowThankYou(true);
+      
+      // Cleanup preview URL
+      URL.revokeObjectURL(polaroidImgUrl);
+      setPolaroidImgUrl("");
+      setPolaroidBlob(null);
+    } catch (err) {
+      console.error(err);
+      alert("Error al subir foto Polaroid.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const triggerDownload = (item: EventMedia) => {
+    if (item.type !== "image") {
+      handleDownload(item.url, item.type, item.id);
+      return;
+    }
+    setDownloadTarget(item);
+    setShowDownloadModal(true);
+  };
+
+  const handleDownloadOption = async (format: "original" | "polaroid") => {
+    if (!downloadTarget) return;
+    setShowDownloadModal(false);
+    
+    if (format === "original") {
+      handleDownload(downloadTarget.url, downloadTarget.type, downloadTarget.id);
+      setDownloadTarget(null);
+      return;
+    }
+
+    setDownloadingFormat(true);
+    try {
+      const styleSettings = event?.style_settings || {};
+      const font = styleSettings.polaroidFont || "Great Vibes";
+      const titleText = styleSettings.polaroidText || event?.title || "Mi Recuerdo";
+      
+      const proxyUrl = `/api/download?url=${encodeURIComponent(downloadTarget.url)}`;
+      const blob = await generatePolaroidCanvas(proxyUrl, titleText, font);
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const ext = downloadTarget.url.split('.').pop()?.split('?')[0] || 'jpg';
+      link.download = `Polaroid_${downloadTarget.id.slice(0, 8)}.${ext}`;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Error generating download polaroid:", err);
+      alert("No se pudo generar la descarga con marco. Descargando la original...");
+      handleDownload(downloadTarget.url, downloadTarget.type, downloadTarget.id);
+    } finally {
+      setDownloadingFormat(false);
+      setDownloadTarget(null);
+    }
+  };
+
   // Grabadora de Deseos de Voz
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -904,23 +1129,124 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
             </div>
           </div>
 
-            {/* Cargador translúcido con aura */}
-            <div
-              className="w-full relative rounded-[2.5rem] glow-card-border animate-pulse-glow shadow-xl"
-              style={{
-                '--glow-color-1': primaryGlowColor,
-                '--glow-color-2': primaryGlowColor,
-                '--glow-shadow-1': glowShadow1,
-                '--glow-shadow-2': glowShadow2,
-              } as React.CSSProperties}
-            >
+            {/* Opciones de Acciones Clave (3 Iconos) */}
+            {!showNormalUploader ? (
               <div
-                className="backdrop-blur-md p-6 rounded-[2.4rem] space-y-4 relative overflow-hidden"
-                style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
+                className="w-full relative rounded-[2.5rem] glow-card-border animate-pulse-glow shadow-xl"
+                style={{
+                  '--glow-color-1': primaryGlowColor,
+                  '--glow-color-2': primaryGlowColor,
+                  '--glow-shadow-1': glowShadow1,
+                  '--glow-shadow-2': glowShadow2,
+                } as React.CSSProperties}
               >
-                <h2 className="text-[10px] font-black uppercase tracking-widest text-stone-500">
-                  Subir Fotos y Videos
-                </h2>
+                <div
+                  className="backdrop-blur-md p-6 rounded-[2.4rem] space-y-6 relative overflow-hidden"
+                  style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
+                >
+                  <h2 className="text-[10px] font-black uppercase tracking-widest text-stone-500 text-center">
+                    Elige una opción
+                  </h2>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Botón 1: Cámara Polaroid */}
+                    <button
+                      onClick={() => document.getElementById("polaroid-camera-file-input")?.click()}
+                      disabled={processingPolaroid || uploading}
+                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all hover:scale-105 active:scale-95 text-center group cursor-pointer"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                        {processingPolaroid ? (
+                          <Loader2 className="animate-spin text-amber-500" size={24} />
+                        ) : (
+                          <svg viewBox="0 0 24 24" className="w-6 h-6 text-amber-500 fill-none stroke-current" strokeWidth="2.5">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-stone-700 leading-tight">Cámara</span>
+                      <span className="text-[7px] text-stone-400 font-bold uppercase mt-0.5">Polaroid</span>
+                    </button>
+                    <input
+                      type="file"
+                      id="polaroid-camera-file-input"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handlePolaroidCameraCapture}
+                      className="hidden"
+                    />
+
+                    {/* Botón 2: Subir Archivos */}
+                    <button
+                      onClick={() => setShowNormalUploader(true)}
+                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all hover:scale-105 active:scale-95 text-center group cursor-pointer"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                        <svg viewBox="0 0 24 24" className="w-6 h-6 text-blue-500 fill-none stroke-current" strokeWidth="2.5">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                        </svg>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-stone-700 leading-tight">Subir</span>
+                      <span className="text-[7px] text-stone-400 font-bold uppercase mt-0.5">Fotos/Video</span>
+                    </button>
+
+                    {/* Botón 3: Ver Álbum */}
+                    <button
+                      onClick={() => setShowGuestGallery(true)}
+                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all hover:scale-105 active:scale-95 text-center group cursor-pointer"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                        <svg viewBox="0 0 24 24" className="w-6 h-6 text-emerald-500 fill-none stroke-current" strokeWidth="2.5">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-stone-700 leading-tight">Ver</span>
+                      <span className="text-[7px] text-stone-400 font-bold uppercase mt-0.5">Álbum ({mediaList.length})</span>
+                    </button>
+                  </div>
+
+                  {parsedStyle.enableLiveTv && (
+                    <div className="pt-4 border-t border-stone-200/40">
+                      <button
+                        onClick={() => setShowLiveTvMode(true)}
+                        className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-md flex items-center justify-center gap-2 hover:opacity-90 transition-all cursor-pointer"
+                      >
+                        <Tv size={14} />
+                        Live TV 📺
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Cargador translúcido con aura
+              <div
+                className="w-full relative rounded-[2.5rem] glow-card-border animate-pulse-glow shadow-xl"
+                style={{
+                  '--glow-color-1': primaryGlowColor,
+                  '--glow-color-2': primaryGlowColor,
+                  '--glow-shadow-1': glowShadow1,
+                  '--glow-shadow-2': glowShadow2,
+                } as React.CSSProperties}
+              >
+                <div
+                  className="backdrop-blur-md p-6 rounded-[2.4rem] space-y-4 relative overflow-hidden"
+                  style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
+                >
+                  <div className="flex justify-between items-center pb-2 border-b border-stone-200/30">
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-stone-500">
+                      Subir Fotos y Videos
+                    </h2>
+                    <button
+                      onClick={() => setShowNormalUploader(false)}
+                      className="px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 text-[8px] font-black uppercase tracking-widest rounded-xl transition-colors cursor-pointer"
+                    >
+                      Volver
+                    </button>
+                  </div>
 
                 <div className="relative border-2 border-dashed border-stone-300 hover:border-sage rounded-2xl p-6 text-center cursor-pointer transition-colors group">
                   <input
@@ -1100,9 +1426,13 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                     <div
                       key={item.id}
                       onClick={() => setPreviewItem(item)}
-                      className="bg-white p-3 rounded-2xl shadow-sm border border-stone-150 flex flex-col space-y-2 cursor-pointer hover:scale-[1.02] transition-transform"
+                      className={`bg-white border border-stone-200/50 flex flex-col cursor-pointer hover:scale-[1.02] hover:-rotate-1 active:scale-95 transition-all duration-300 ${
+                        item.type === 'image' 
+                          ? "p-3 pb-4 rounded-xl shadow-[0_12px_28px_-8px_rgba(0,0,0,0.12),0_4px_10px_-4px_rgba(0,0,0,0.06)]"
+                          : "p-3 rounded-2xl shadow-sm border border-stone-150 space-y-2"
+                      }`}
                     >
-                      <div className={`aspect-square bg-stone-100 rounded-2xl overflow-hidden mb-2 relative group-hover:scale-[1.02] transition-transform shadow-inner flex items-center justify-center`}>
+                      <div className="aspect-square bg-stone-100 rounded-lg overflow-hidden mb-2 relative shadow-inner flex items-center justify-center">
                         {item.type === 'video' ? (
                           <div className="w-full h-full relative">
                             <video src={item.url} className="w-full h-full object-cover" />
@@ -1127,10 +1457,26 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                           />
                         )}
                       </div>
-                      <div className="flex items-center justify-between text-[8px] font-bold text-stone-400 uppercase">
+                      
+                      {item.type === 'image' && (
+                        <div className="py-2 text-center overflow-hidden shrink-0 select-none">
+                          <span 
+                            className="text-stone-800 truncate block font-medium"
+                            style={{ 
+                              fontFamily: `'${event?.style_settings?.polaroidFont || "Great Vibes"}', cursive, serif`,
+                              fontSize: '20px',
+                              lineHeight: '1.2'
+                            }}
+                          >
+                            {event?.style_settings?.polaroidText || event?.title || "Recuerdo"}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between text-[8px] font-bold text-stone-400 uppercase pt-1.5 border-t border-stone-100/50">
                         <span>{new Date(item.created_at).toLocaleDateString()}</span>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDownload(item.url, item.type, item.id); }}
+                          onClick={(e) => { e.stopPropagation(); triggerDownload(item); }}
                           disabled={sharingMediaId === item.id}
                           className="p-1.5 hover:bg-stone-50 rounded-lg text-stone-500 hover:text-sage transition-all disabled:opacity-55 cursor-pointer"
                           title="Descargar"
@@ -1254,11 +1600,11 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
 
             <div className="mt-6 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button
-                onClick={() => handleDownload(previewItem.url, previewItem.type, previewItem.id)}
-                disabled={sharingMediaId === previewItem.id}
+                onClick={() => triggerDownload(previewItem)}
+                disabled={sharingMediaId === previewItem.id || downloadingFormat}
                 className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-all disabled:opacity-60"
               >
-                {sharingMediaId === previewItem.id ? (
+                {sharingMediaId === previewItem.id || downloadingFormat ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
                     Preparando descarga...
@@ -1339,8 +1685,95 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
             </div>
           </div>
         )}
+      {/* Modal Vista Previa Polaroid */}
+      <AnimatePresence>
+        {showPolaroidPreview && polaroidImgUrl && (
+          <div className="fixed inset-0 z-[2300] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-[2.5rem] p-6 max-w-sm w-full shadow-2xl text-center space-y-5 border border-white"
+            >
+              <h3 className="text-base font-black italic tracking-tighter text-stone-850">
+                ¡Tu Polaroid está lista! 📸✨
+              </h3>
+              
+              <div className="bg-stone-50 p-4 rounded-3xl border border-stone-200/50 shadow-inner">
+                <div className="bg-white p-3 rounded-2xl shadow-md border border-stone-150 flex flex-col space-y-3">
+                  <div className="aspect-square bg-stone-100 rounded-xl overflow-hidden relative shadow-inner">
+                    <img src={polaroidImgUrl} className="w-full h-full object-contain" alt="Polaroid preview" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    URL.revokeObjectURL(polaroidImgUrl);
+                    setPolaroidImgUrl("");
+                    setPolaroidBlob(null);
+                    setShowPolaroidPreview(false);
+                  }}
+                  className="flex-1 py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  Descartar
+                </button>
+                <button
+                  onClick={handleUploadPolaroid}
+                  disabled={uploading}
+                  className="flex-1 py-3.5 bg-stone-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-colors shadow-md disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  {uploading ? <Loader2 className="animate-spin" size={14} /> : "Subir Foto"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
-    </div>
+
+      {/* Modal de Descarga Polaroid o Original */}
+      <AnimatePresence>
+        {showDownloadModal && downloadTarget && (
+          <div className="fixed inset-0 z-[2300] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-[2.5rem] p-6 max-w-sm w-full shadow-2xl text-center space-y-5 border border-stone-100"
+            >
+              <div className="flex justify-between items-center pb-2 border-b border-stone-100">
+                <h4 className="text-sm font-black italic tracking-tighter text-stone-800">Opciones de Descarga</h4>
+                <button onClick={() => setShowDownloadModal(false)} className="p-1 hover:bg-black/5 rounded-full">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-[10px] uppercase tracking-wider text-stone-500 leading-relaxed">
+                ¿Cómo deseas guardar este recuerdo en tu dispositivo?
+              </p>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => handleDownloadOption("polaroid")}
+                  className="w-full py-4 bg-stone-900 hover:bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download size={14} />
+                  Con Marco Polaroid 📸
+                </button>
+                <button
+                  onClick={() => handleDownloadOption("original")}
+                  className="w-full py-4 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-colors border border-stone-200 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Download size={14} />
+                  Foto Original Sin Marco
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      </div>
   );
 }
 // Forzar recarga de Next.js HMR
