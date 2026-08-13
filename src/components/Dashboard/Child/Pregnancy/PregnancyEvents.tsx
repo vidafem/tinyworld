@@ -35,6 +35,7 @@ interface PregnancyEvent {
     enableAudio?: boolean;
     polaroidText?: string;
     polaroidFont?: string;
+    polaroidDate?: string;
   };
   created_at: string;
 }
@@ -97,6 +98,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
   const [enableAudio, setEnableAudio] = useState(true);
   const [polaroidText, setPolaroidText] = useState("");
   const [polaroidFont, setPolaroidFont] = useState("Great Vibes");
+  const [polaroidDate, setPolaroidDate] = useState("");
 
   useEffect(() => {
     loadEvents();
@@ -261,7 +263,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
             enableLiveTv,
             enableAudio,
             polaroidText: polaroidText.trim(),
-            polaroidFont
+            polaroidFont,
+            polaroidDate: polaroidDate.trim()
           }
         })
         .select()
@@ -316,7 +319,8 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
             enableLiveTv,
             enableAudio,
             polaroidText: polaroidText.trim(),
-            polaroidFont
+            polaroidFont,
+            polaroidDate: polaroidDate.trim()
           }
         })
         .eq("id", activeEvent.id)
@@ -458,6 +462,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setEnableAudio(true);
     setPolaroidText("");
     setPolaroidFont("Great Vibes");
+    setPolaroidDate("");
   }
 
   function openSettings(ev: PregnancyEvent) {
@@ -492,6 +497,7 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     setEnableAudio(style.enableAudio !== undefined ? style.enableAudio : true);
     setPolaroidText(style.polaroidText !== undefined ? style.polaroidText : ev.title);
     setPolaroidFont(style.polaroidFont || "Great Vibes");
+    setPolaroidDate(style.polaroidDate || "");
 
     setShowSettingsModal(true);
   }
@@ -1034,6 +1040,16 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                       <option value="Playfair Display">Playfair (Clásica)</option>
                     </select>
                   </div>
+                  <div className="col-span-2 space-y-1 pt-1">
+                    <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Fecha del Evento (en la foto)</span>
+                    <input
+                      type="text"
+                      placeholder="Ej. 12 de Agosto de 2500 (Dejar vacío para fecha del día)"
+                      value={polaroidDate}
+                      onChange={e => setPolaroidDate(e.target.value)}
+                      className="w-full p-2.5 bg-black/5 focus:bg-white border border-transparent focus:border-sage rounded-xl outline-none text-xs transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1358,6 +1374,16 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                         <option value="Caveat">Caveat (Manuscrita)</option>
                         <option value="Playfair Display">Playfair (Clásica)</option>
                       </select>
+                    </div>
+                    <div className="col-span-2 space-y-1 pt-1">
+                      <span className="text-[8px] font-bold text-stone-400 uppercase tracking-widest block mb-1">Fecha del Evento (en la foto)</span>
+                      <input
+                        type="text"
+                        placeholder="Ej. 12 de Agosto de 2500 (Dejar vacío para fecha del día)"
+                        value={polaroidDate}
+                        onChange={e => setPolaroidDate(e.target.value)}
+                        className="w-full p-2.5 bg-black/5 focus:bg-white border border-transparent focus:border-sage rounded-xl outline-none text-xs transition-all"
+                      />
                     </div>
                   </div>
                 </div>

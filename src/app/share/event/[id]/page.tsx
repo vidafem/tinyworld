@@ -28,6 +28,7 @@ interface PregnancyEvent {
     enableAudio?: boolean;
     polaroidText?: string;
     polaroidFont?: string;
+    polaroidDate?: string;
   };
 }
 
@@ -274,9 +275,8 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [sharingMediaId, setSharingMediaId] = useState<string | null>(null);
 
-  const [showPolaroidPreview, setShowPolaroidPreview] = useState(false);
-  const [polaroidImgUrl, setPolaroidImgUrl] = useState("");
-  const [polaroidBlob, setPolaroidBlob] = useState<Blob | null>(null);
+  const [capturedPolaroids, setCapturedPolaroids] = useState<{ id: string; originalUrl: string; previewUrl: string; blob: Blob; originalBlob: Blob; usePolaroidFrame: boolean }[]>([]);
+  const [showBoothModal, setShowBoothModal] = useState(false);
   const [processingPolaroid, setProcessingPolaroid] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadTarget, setDownloadTarget] = useState<EventMedia | null>(null);
@@ -294,7 +294,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     };
   }, []);
 
-  const generatePolaroidCanvas = (imageSrc: string, eventTitle: string, fontName: string): Promise<Blob> => {
+  const generatePolaroidCanvas = (imageSrc: string, eventTitle: string, fontName: string, eventDate?: string): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -333,9 +333,9 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
 
         ctx.drawImage(img, srcX, srcY, srcW, srcH, photoX, photoY, photoW, photoH);
 
-        // Border outline for photo definition
-        ctx.strokeStyle = "rgba(0,0,0,0.06)";
-        ctx.lineWidth = 4;
+        // Subtle thin dark border around the photo to separate it from the white background
+        ctx.strokeStyle = "rgba(0,0,0,0.15)";
+        ctx.lineWidth = 3;
         ctx.strokeRect(photoX, photoY, photoW, photoH);
 
         // Title text drawing
@@ -347,7 +347,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
         ctx.fillText(eventTitle, w / 2, h - 170);
 
         // Date drawing
-        const dateStr = new Date().toLocaleDateString("es-ES", {
+        const dateStr = eventDate && eventDate.trim() !== "" ? eventDate : new Date().toLocaleDateString("es-ES", {
           day: "numeric",
           month: "long",
           year: "numeric"
@@ -378,12 +378,23 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
         const styleSettings = event?.style_settings || {};
         const font = styleSettings.polaroidFont || "Great Vibes";
         const titleText = styleSettings.polaroidText || event?.title || "Mi Recuerdo";
+        const customDate = styleSettings.polaroidDate || "";
         
-        const blob = await generatePolaroidCanvas(src, titleText, font);
+        const blob = await generatePolaroidCanvas(src, titleText, font, customDate);
         const previewUrl = URL.createObjectURL(blob);
-        setPolaroidImgUrl(previewUrl);
-        setPolaroidBlob(blob);
-        setShowPolaroidPreview(true);
+        const originalUrl = URL.createObjectURL(file);
+        
+        const newItem = {
+          id: Math.random().toString(36).substr(2, 9),
+          originalUrl,
+          previewUrl,
+          blob,
+          originalBlob: file,
+          usePolaroidFrame: true
+        };
+        
+        setCapturedPolaroids(prev => [...prev, newItem]);
+        setShowBoothModal(true);
       } catch (err) {
         console.error("Error generating Polaroid:", err);
         alert("No se pudo procesar el marco de la foto. Intenta de nuevo.");
@@ -393,60 +404,77 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     };
   };
 
-  const handleUploadPolaroid = async () => {
-    if (!polaroidBlob) return;
+  const handleUploadBoothBatch = async () => {
+    if (capturedPolaroids.length === 0) return;
     setUploading(true);
-    setShowPolaroidPreview(false);
+    setShowBoothModal(false);
+    
+    let uploadedCount = 0;
+    const newMediaItems: EventMedia[] = [];
+    
     try {
-      const file = new File([polaroidBlob], `Polaroid_${Date.now()}.jpg`, { type: "image/jpeg" });
-      
-      const presignRes = await fetch("/api/media/event-upload/presign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          contentType: file.type,
-          filename: file.name
-        })
-      });
+      for (const item of capturedPolaroids) {
+        const blobToUpload = item.usePolaroidFrame ? item.blob : item.originalBlob;
+        const fileType = item.usePolaroidFrame ? "image/jpeg" : item.originalBlob.type;
+        const fileName = item.usePolaroidFrame ? `Polaroid_${Date.now()}_${item.id}.jpg` : item.originalBlob.name;
+        
+        const file = new File([blobToUpload], fileName, { type: fileType });
+        
+        const presignRes = await fetch("/api/media/event-upload/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId,
+            contentType: file.type,
+            filename: file.name
+          })
+        });
 
-      const { uploadUrl, publicUrl } = await presignRes.json();
-      if (!uploadUrl) throw new Error("Fallo al firmar URL");
+        const { uploadUrl, publicUrl } = await presignRes.json();
+        if (!uploadUrl) throw new Error("Fallo al firmar URL");
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", uploadUrl);
-        xhr.setRequestHeader("Content-Type", file.type);
-        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject());
-        xhr.onerror = () => reject();
-        xhr.send(file);
-      });
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", uploadUrl);
+          xhr.setRequestHeader("Content-Type", file.type);
+          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject());
+          xhr.onerror = () => reject();
+          xhr.send(file);
+        });
 
-      const registerRes = await fetch("/api/media/event-upload/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId,
-          url: publicUrl,
-          mediaType: "image"
-        })
-      });
+        const registerRes = await fetch("/api/media/event-upload/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId,
+            url: publicUrl,
+            mediaType: "image"
+          })
+        });
 
-      if (!registerRes.ok) throw new Error("Error registering media");
+        if (!registerRes.ok) throw new Error("Error registering media");
 
-      const registerData = await registerRes.json();
-      setMediaList([registerData.media, ...mediaList]);
+        const registerData = await registerRes.json();
+        newMediaItems.push(registerData.media);
+        uploadedCount++;
+        setUploadProgress(Math.round((uploadedCount / capturedPolaroids.length) * 100));
+      }
+
+      setMediaList(prev => [...newMediaItems, ...prev]);
       setShowThankYou(true);
       
-      // Cleanup preview URL
-      URL.revokeObjectURL(polaroidImgUrl);
-      setPolaroidImgUrl("");
-      setPolaroidBlob(null);
+      // Cleanup URLs
+      capturedPolaroids.forEach(item => {
+        URL.revokeObjectURL(item.previewUrl);
+        URL.revokeObjectURL(item.originalUrl);
+      });
+      setCapturedPolaroids([]);
     } catch (err) {
       console.error(err);
-      alert("Error al subir foto Polaroid.");
+      alert("Ocurrió un error al subir tus fotos de cabina.");
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -475,8 +503,9 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       const font = styleSettings.polaroidFont || "Great Vibes";
       const titleText = styleSettings.polaroidText || event?.title || "Mi Recuerdo";
       
+      const customDate = styleSettings.polaroidDate || "";
       const proxyUrl = `/api/download?url=${encodeURIComponent(downloadTarget.url)}`;
-      const blob = await generatePolaroidCanvas(proxyUrl, titleText, font);
+      const blob = await generatePolaroidCanvas(proxyUrl, titleText, font, customDate);
       const blobUrl = URL.createObjectURL(blob);
       
       const link = document.createElement("a");
@@ -894,6 +923,16 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     }
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05
+      }
+    }
+  };
+
   const getParsedStyle = () => {
     const defaults = {
       bgType: "default",
@@ -907,7 +946,8 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       enableLiveTv: true,
       enableAudio: true,
       polaroidText: "",
-      polaroidFont: "Great Vibes"
+      polaroidFont: "Great Vibes",
+      polaroidDate: ""
     };
 
     if (!event) return defaults;
@@ -940,7 +980,8 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       enableLiveTv: style.enableLiveTv !== false,
       enableAudio: style.enableAudio !== false,
       polaroidText: style.polaroidText || "",
-      polaroidFont: style.polaroidFont || "Great Vibes"
+      polaroidFont: style.polaroidFont || "Great Vibes",
+      polaroidDate: style.polaroidDate || ""
     };
   };
 
@@ -1160,10 +1201,12 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
 
                   <div className="grid grid-cols-3 gap-3">
                     {/* Botón 1: Cámara Polaroid */}
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.08, y: -4, rotate: -2 }}
+                      whileTap={{ scale: 0.94 }}
                       onClick={() => document.getElementById("polaroid-camera-file-input")?.click()}
                       disabled={processingPolaroid || uploading}
-                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all hover:scale-105 active:scale-95 text-center group cursor-pointer"
+                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all text-center group cursor-pointer"
                     >
                       <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                         {processingPolaroid ? (
@@ -1177,7 +1220,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       </div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-stone-700 leading-tight">Cámara</span>
                       <span className="text-[7px] text-stone-400 font-bold uppercase mt-0.5">Polaroid</span>
-                    </button>
+                    </motion.button>
                     <input
                       type="file"
                       id="polaroid-camera-file-input"
@@ -1188,9 +1231,11 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                     />
 
                     {/* Botón 2: Subir Archivos */}
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.08, y: -4, rotate: 0 }}
+                      whileTap={{ scale: 0.94 }}
                       onClick={() => setShowNormalUploader(true)}
-                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all hover:scale-105 active:scale-95 text-center group cursor-pointer"
+                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all text-center group cursor-pointer"
                     >
                       <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                         <svg viewBox="0 0 24 24" className="w-6 h-6 text-blue-500 fill-none stroke-current" strokeWidth="2.5">
@@ -1199,12 +1244,14 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       </div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-stone-700 leading-tight">Subir</span>
                       <span className="text-[7px] text-stone-400 font-bold uppercase mt-0.5">Fotos/Video</span>
-                    </button>
+                    </motion.button>
 
                     {/* Botón 3: Ver Álbum */}
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.08, y: -4, rotate: 2 }}
+                      whileTap={{ scale: 0.94 }}
                       onClick={() => setShowGuestGallery(true)}
-                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all hover:scale-105 active:scale-95 text-center group cursor-pointer"
+                      className="flex flex-col items-center justify-center p-4 bg-white/70 hover:bg-white rounded-2xl shadow-sm border border-stone-200/50 transition-all text-center group cursor-pointer"
                     >
                       <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                         <svg viewBox="0 0 24 24" className="w-6 h-6 text-emerald-500 fill-none stroke-current" strokeWidth="2.5">
@@ -1215,7 +1262,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       </div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-stone-700 leading-tight">Ver</span>
                       <span className="text-[7px] text-stone-400 font-bold uppercase mt-0.5">Álbum ({mediaList.length})</span>
-                    </button>
+                    </motion.button>
                   </div>
 
                   {parsedStyle.enableLiveTv && (
@@ -1432,21 +1479,30 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                   <p className="text-xs uppercase tracking-widest font-black">No hay archivos en esta pestaña</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {filteredMedia.map(item => (
-                    <div
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+                >
+                  {filteredMedia.map((item, idx) => (
+                    <motion.div
                       key={item.id}
                       onClick={() => setPreviewItem(item)}
-                      className={`bg-white border border-stone-200/50 flex flex-col cursor-pointer hover:scale-[1.02] hover:-rotate-1 active:scale-95 transition-all duration-300 ${
+                      initial={{ opacity: 0, scale: 0.9, y: 15, rotate: (idx % 3 === 0 ? 1.8 : idx % 3 === 1 ? -1.8 : 0.8) }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      whileHover={{ scale: 1.06, rotate: 0, zIndex: 30 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                      className={`bg-white border border-stone-200/50 flex flex-col cursor-pointer transition-shadow duration-300 ${
                         item.type === 'image' 
-                          ? "p-3 pb-4 rounded-xl shadow-[0_12px_28px_-8px_rgba(0,0,0,0.12),0_4px_10px_-4px_rgba(0,0,0,0.06)]"
-                          : "p-3 rounded-2xl shadow-sm border border-stone-150 space-y-2"
+                          ? "p-3 pb-4 rounded-xl shadow-[0_10px_25px_-8px_rgba(0,0,0,0.1),0_4px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_45px_-10px_rgba(0,0,0,0.18)]"
+                          : "p-3 rounded-2xl shadow-sm border border-stone-150 space-y-2 hover:shadow-md"
                       }`}
                     >
                       <div className="aspect-square bg-stone-100 rounded-lg overflow-hidden mb-2 relative shadow-inner flex items-center justify-center">
                         {item.type === 'video' ? (
                           <div className="w-full h-full relative">
-                            <video src={item.url} className="w-full h-full object-cover" />
+                            <video src={item.url} className="w-full h-full object-cover border border-black/10" />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white">
                               <Film size={24} />
                             </div>
@@ -1463,7 +1519,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                           <img
                             src={item.url}
                             alt="Recuerdo"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover border border-black/10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]"
                             loading="lazy"
                           />
                         )}
@@ -1484,7 +1540,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between text-[8px] font-bold text-stone-400 uppercase pt-1.5 border-t border-stone-100/50">
+                      <div className="flex items-center justify-between text-[8px] font-bold text-stone-400 uppercase pt-1.5 border-t border-stone-100/50 mt-auto">
                         <span>{new Date(item.created_at).toLocaleDateString()}</span>
                         <button
                           onClick={(e) => { e.stopPropagation(); triggerDownload(item); }}
@@ -1499,9 +1555,9 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                           )}
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </div>
           </motion.div>
@@ -1697,47 +1753,114 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
           </div>
         )}
       </AnimatePresence>
-      {/* Modal Vista Previa Polaroid */}
+
+      {/* Modal Cabina de Fotos Multicaptura */}
       <AnimatePresence>
-        {showPolaroidPreview && polaroidImgUrl && (
+        {showBoothModal && capturedPolaroids.length > 0 && (
           <div className="fixed inset-0 z-[2300] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[2.5rem] p-6 max-w-sm w-full shadow-2xl text-center space-y-5 border border-white"
+              className="bg-white rounded-[2.5rem] p-6 max-w-md w-full shadow-2xl space-y-5 border border-white flex flex-col max-h-[85vh]"
             >
-              <h3 className="text-base font-black italic tracking-tighter text-stone-850">
-                ¡Tu Polaroid está lista! 📸✨
-              </h3>
-              
-              <div className="bg-stone-50 p-4 rounded-3xl border border-stone-200/50 shadow-inner">
-                <div className="bg-white p-3 rounded-2xl shadow-md border border-stone-150 flex flex-col space-y-3">
-                  <div className="aspect-square bg-stone-100 rounded-xl overflow-hidden relative shadow-inner">
-                    <img src={polaroidImgUrl} className="w-full h-full object-contain" alt="Polaroid preview" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
+              <div className="flex justify-between items-center pb-2 border-b border-stone-150 shrink-0">
+                <h3 className="text-base font-black italic tracking-tighter text-stone-850">
+                  Cabina Polaroid 📸 ({capturedPolaroids.length} {capturedPolaroids.length === 1 ? "foto" : "fotos"})
+                </h3>
                 <button
                   onClick={() => {
-                    URL.revokeObjectURL(polaroidImgUrl);
-                    setPolaroidImgUrl("");
-                    setPolaroidBlob(null);
-                    setShowPolaroidPreview(false);
+                    capturedPolaroids.forEach(p => {
+                      URL.revokeObjectURL(p.previewUrl);
+                      URL.revokeObjectURL(p.originalUrl);
+                    });
+                    setCapturedPolaroids([]);
+                    setShowBoothModal(false);
                   }}
-                  className="flex-1 py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-colors cursor-pointer"
+                  className="p-1.5 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-700 transition-colors"
                 >
-                  Descartar
+                  <X size={18} />
                 </button>
-                <button
-                  onClick={handleUploadPolaroid}
-                  disabled={uploading}
-                  className="flex-1 py-3.5 bg-stone-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-colors shadow-md disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  {uploading ? <Loader2 className="animate-spin" size={14} /> : "Subir Foto"}
-                </button>
+              </div>
+
+              {/* Grid de fotos en la cola */}
+              <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 gap-4 py-2 pr-1">
+                {capturedPolaroids.map((item) => (
+                  <div key={item.id} className="relative bg-stone-50 p-2.5 rounded-2xl border border-stone-200/50 shadow-sm flex flex-col space-y-2">
+                    {/* Delete button */}
+                    <button
+                      onClick={() => {
+                        URL.revokeObjectURL(item.previewUrl);
+                        URL.revokeObjectURL(item.originalUrl);
+                        setCapturedPolaroids(prev => prev.filter(p => p.id !== item.id));
+                        if (capturedPolaroids.length <= 1) {
+                          setShowBoothModal(false);
+                        }
+                      }}
+                      className="absolute top-2.5 right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-colors cursor-pointer"
+                      title="Eliminar foto"
+                    >
+                      <X size={12} strokeWidth={2.5} />
+                    </button>
+
+                    {/* Image Preview Container */}
+                    <div className="aspect-square bg-white rounded-xl overflow-hidden shadow-inner relative flex items-center justify-center border border-black/5">
+                      <img
+                        src={item.usePolaroidFrame ? item.previewUrl : item.originalUrl}
+                        className="w-full h-full object-contain"
+                        alt="Preview"
+                      />
+                    </div>
+
+                    {/* Frame toggle checkbox */}
+                    <label className="flex items-center justify-center gap-1.5 cursor-pointer py-1 bg-white rounded-xl border border-stone-200/40 text-[9px] font-black uppercase tracking-wider text-stone-600 select-none hover:bg-stone-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={item.usePolaroidFrame}
+                        onChange={() => {
+                          setCapturedPolaroids(prev =>
+                            prev.map(p => p.id === item.id ? { ...p, usePolaroidFrame: !p.usePolaroidFrame } : p)
+                          );
+                        }}
+                        className="w-3.5 h-3.5 rounded text-sage border-stone-300 focus:ring-0"
+                      />
+                      <span>Usar Polaroid</span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex flex-col gap-2 shrink-0 pt-2 border-t border-stone-150">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => document.getElementById("polaroid-camera-file-input")?.click()}
+                    className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 text-stone-600 fill-none stroke-current" strokeWidth="2.5">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    Tomar Otra
+                  </button>
+                  <button
+                    onClick={handleUploadBoothBatch}
+                    disabled={uploading}
+                    className="flex-1 py-3 bg-stone-900 hover:bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-colors shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={14} />
+                        Subiendo...
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud size={14} />
+                        Subir Todas ({capturedPolaroids.length})
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
