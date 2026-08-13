@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UploadCloud, Loader2, CheckCircle, Download, Film, Image as ImageIcon, Sparkles, ChevronLeft, X, ChevronRight,
@@ -934,6 +934,11 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     }
   };
 
+  const randomPreviews = useMemo(() => {
+    const validMedia = mediaList.filter(item => item.type === 'image' || item.type === 'video');
+    return [...validMedia].sort(() => 0.5 - Math.random()).slice(0, 10);
+  }, [mediaList]);
+
   const getParsedStyle = () => {
     const defaults = {
       bgType: "default",
@@ -1182,8 +1187,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
           </div>
 
             {!showNormalUploader ? (
-              <>
-                <div
+              <div
                 className="w-full relative rounded-[2.5rem] glow-card-border animate-pulse-glow shadow-xl"
                 style={{
                   '--glow-color-1': primaryGlowColor,
@@ -1279,85 +1283,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                   )}
                 </div>
               </div>
-
-              {/* Sneak Peek Horizontal Carousel of Album */}
-              {mediaList.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={() => setShowGuestGallery(true)}
-                  className="w-full relative rounded-[2.5rem] glow-card-border shadow-md cursor-pointer hover:scale-[1.02] transition-transform duration-300 mt-5"
-                  style={{
-                    '--glow-color-1': primaryGlowColor,
-                    '--glow-color-2': primaryGlowColor,
-                    '--glow-shadow-1': glowShadow1,
-                    '--glow-shadow-2': glowShadow2,
-                  } as React.CSSProperties}
-                >
-                  <div
-                    className="backdrop-blur-md p-4 rounded-[2.4rem] space-y-3 relative overflow-hidden flex flex-col items-center"
-                    style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
-                  >
-                    <div className="flex justify-between items-center w-full px-2">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-stone-500 flex items-center gap-1">
-                        <Sparkles size={10} className="text-amber-500 animate-pulse" /> Vista Previa del Álbum
-                      </span>
-                      <span className="text-[8px] font-bold text-stone-400 uppercase hover:text-stone-600 transition-colors">
-                        Ver todo →
-                      </span>
-                    </div>
-
-                    {/* Horizontal Scroll Area */}
-                    <div className="w-full flex gap-3 overflow-x-auto py-2 px-1 no-scrollbar scroll-smooth snap-x">
-                      {mediaList.slice(0, 8).map((item, idx) => (
-                        <div
-                          key={item.id}
-                          style={{
-                            transform: `rotate(${(idx % 2 === 0 ? 2 : -2) * 0.8}deg)`
-                          }}
-                          className="w-[76px] h-[92px] shrink-0 bg-white border border-stone-200/50 p-1.5 pb-2.5 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.08)] flex flex-col justify-between snap-center"
-                        >
-                          <div className="aspect-square w-full rounded overflow-hidden bg-stone-50 border border-black/5 relative flex items-center justify-center">
-                            {item.type === 'video' ? (
-                              <div className="w-full h-full relative">
-                                <video src={item.url} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/10 text-white">
-                                  <Film size={12} />
-                                </div>
-                              </div>
-                            ) : item.type === 'audio' ? (
-                              <div className="w-full h-full bg-gradient-to-br from-rose-50 to-amber-50 flex items-center justify-center">
-                                <Mic size={14} className="text-rose-400" />
-                              </div>
-                            ) : (
-                              <img src={item.url} className="w-full h-full object-cover border border-black/5" alt="preview" />
-                            )}
-                          </div>
-                          {item.type === 'image' ? (
-                            <div className="text-center overflow-hidden shrink-0 select-none">
-                              <span
-                                className="text-stone-850 truncate block leading-none font-bold"
-                                style={{
-                                  fontFamily: `'${event?.style_settings?.polaroidFont || "Great Vibes"}', cursive, serif`,
-                                  fontSize: '10px'
-                                }}
-                              >
-                                {event?.style_settings?.polaroidText || "Foto"}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-[6px] text-stone-400 font-bold uppercase text-center block leading-none tracking-wider">
-                              {item.type}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </>
-          ) : (
+            ) : (
               // Cargador translúcido con aura
               <div
                 className="w-full relative rounded-[2.5rem] glow-card-border animate-pulse-glow shadow-xl"
@@ -1506,6 +1432,83 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
               </div>
               </div>
             </div>
+            )}
+
+            {/* Sneak Peek Horizontal Carousel of Album */}
+            {randomPreviews.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={() => setShowGuestGallery(true)}
+                className="w-full relative rounded-[2.5rem] glow-card-border shadow-md cursor-pointer hover:scale-[1.02] transition-transform duration-300 mt-5"
+                style={{
+                  '--glow-color-1': primaryGlowColor,
+                  '--glow-color-2': primaryGlowColor,
+                  '--glow-shadow-1': glowShadow1,
+                  '--glow-shadow-2': glowShadow2,
+                } as React.CSSProperties}
+              >
+                <div
+                  className="backdrop-blur-md p-4 rounded-[2.4rem] space-y-3 relative overflow-hidden flex flex-col items-center"
+                  style={{ backgroundColor: `rgba(${hexToRgb(parsedStyle.cardColor)}, ${parsedStyle.cardOpacity})` }}
+                >
+                  <div className="flex justify-between items-center w-full px-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-stone-500 flex items-center gap-1">
+                      <Sparkles size={10} className="text-amber-500 animate-pulse" /> Vista Previa del Álbum
+                    </span>
+                    <span className="text-[8px] font-bold text-stone-400 uppercase hover:text-stone-600 transition-colors">
+                      Ver todo →
+                    </span>
+                  </div>
+
+                  {/* Horizontal Scroll Area */}
+                  <div className="w-full flex gap-3 overflow-x-auto py-2 px-1 no-scrollbar scroll-smooth snap-x">
+                    {randomPreviews.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          transform: `rotate(${(idx % 2 === 0 ? 2 : -2) * 0.8}deg)`
+                        }}
+                        className="w-[76px] h-[92px] shrink-0 bg-white border border-stone-200/50 p-1.5 pb-2.5 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.08)] flex flex-col justify-between snap-center"
+                      >
+                        <div className="aspect-square w-full rounded overflow-hidden bg-stone-50 border border-black/5 relative flex items-center justify-center">
+                          {item.type === 'video' ? (
+                            <div className="w-full h-full relative">
+                              <video src={item.url} className="w-full h-full object-cover animate-pulse" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/10 text-white">
+                                <Film size={12} />
+                              </div>
+                            </div>
+                          ) : item.type === 'audio' ? (
+                            <div className="w-full h-full bg-gradient-to-br from-rose-50 to-amber-50 flex items-center justify-center">
+                              <Mic size={14} className="text-rose-400" />
+                            </div>
+                          ) : (
+                            <img src={item.url} className="w-full h-full object-cover border border-black/5" alt="preview" />
+                          )}
+                        </div>
+                        {item.type === 'image' ? (
+                          <div className="text-center overflow-hidden shrink-0 select-none">
+                            <span
+                              className="text-stone-850 truncate block leading-none font-bold"
+                              style={{
+                                fontFamily: `'${event?.style_settings?.polaroidFont || "Great Vibes"}', cursive, serif`,
+                                fontSize: '10px'
+                              }}
+                            >
+                              {event?.style_settings?.polaroidText || "Foto"}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[6px] text-stone-400 font-bold uppercase text-center block leading-none tracking-wider">
+                            {item.type}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
             )}
           </motion.div>
         ) : (
