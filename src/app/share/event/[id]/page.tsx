@@ -275,7 +275,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [sharingMediaId, setSharingMediaId] = useState<string | null>(null);
 
-  const [capturedPolaroids, setCapturedPolaroids] = useState<{ id: string; originalUrl: string; previewUrl: string; blob: Blob; originalBlob: Blob; usePolaroidFrame: boolean }[]>([]);
+  const [capturedPolaroids, setCapturedPolaroids] = useState<{ id: string; originalUrl: string; previewUrl: string; blob: Blob; originalBlob: File; usePolaroidFrame: boolean }[]>([]);
   const [showBoothModal, setShowBoothModal] = useState(false);
   const [processingPolaroid, setProcessingPolaroid] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
