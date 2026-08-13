@@ -276,6 +276,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
   const [sharingMediaId, setSharingMediaId] = useState<string | null>(null);
 
   const [capturedPolaroids, setCapturedPolaroids] = useState<{ id: string; originalUrl: string; previewUrl: string; blob: Blob; originalBlob: File; usePolaroidFrame: boolean }[]>([]);
+  const [globalUsePolaroid, setGlobalUsePolaroid] = useState(true);
   const [showBoothModal, setShowBoothModal] = useState(false);
   const [processingPolaroid, setProcessingPolaroid] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -414,9 +415,9 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
     
     try {
       for (const item of capturedPolaroids) {
-        const blobToUpload = item.usePolaroidFrame ? item.blob : item.originalBlob;
-        const fileType = item.usePolaroidFrame ? "image/jpeg" : item.originalBlob.type;
-        const fileName = item.usePolaroidFrame ? `Polaroid_${Date.now()}_${item.id}.jpg` : item.originalBlob.name;
+        const blobToUpload = globalUsePolaroid ? item.blob : item.originalBlob;
+        const fileType = globalUsePolaroid ? "image/jpeg" : item.originalBlob.type;
+        const fileName = globalUsePolaroid ? `Polaroid_${Date.now()}_${item.id}.jpg` : item.originalBlob.name;
         
         const file = new File([blobToUpload], fileName, { type: fileType });
         
@@ -1806,28 +1807,26 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                     {/* Image Preview Container */}
                     <div className="aspect-square bg-white rounded-xl overflow-hidden shadow-inner relative flex items-center justify-center border border-black/5">
                       <img
-                        src={item.usePolaroidFrame ? item.previewUrl : item.originalUrl}
+                        src={globalUsePolaroid ? item.previewUrl : item.originalUrl}
                         className="w-full h-full object-contain"
                         alt="Preview"
                       />
                     </div>
-
-                    {/* Frame toggle checkbox */}
-                    <label className="flex items-center justify-center gap-1.5 cursor-pointer py-1 bg-white rounded-xl border border-stone-200/40 text-[9px] font-black uppercase tracking-wider text-stone-600 select-none hover:bg-stone-50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={item.usePolaroidFrame}
-                        onChange={() => {
-                          setCapturedPolaroids(prev =>
-                            prev.map(p => p.id === item.id ? { ...p, usePolaroidFrame: !p.usePolaroidFrame } : p)
-                          );
-                        }}
-                        className="w-3.5 h-3.5 rounded text-sage border-stone-300 focus:ring-0"
-                      />
-                      <span>Usar Polaroid</span>
-                    </label>
                   </div>
                 ))}
+              </div>
+
+              {/* Selector Global Polaroid / Original */}
+              <div className="shrink-0 pt-2 pb-1">
+                <label className="flex items-center justify-center gap-2.5 cursor-pointer py-3 bg-stone-50 rounded-2xl border border-stone-200/50 text-[10px] font-black uppercase tracking-widest text-stone-700 select-none hover:bg-stone-100 transition-colors w-full">
+                  <input
+                    type="checkbox"
+                    checked={globalUsePolaroid}
+                    onChange={() => setGlobalUsePolaroid(!globalUsePolaroid)}
+                    className="w-4 h-4 rounded text-sage border-stone-300 focus:ring-0 cursor-pointer"
+                  />
+                  <span>Aplicar marco Polaroid a todas</span>
+                </label>
               </div>
 
               {/* Botones de acción */}
