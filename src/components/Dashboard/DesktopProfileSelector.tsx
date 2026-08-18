@@ -30,26 +30,21 @@ export default function DesktopProfileSelector({ onOpenProfile }: DesktopProfile
 
   async function fetchChildren() {
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setLoading(false);
+      return;
+    }
 
-    // Traer todos los bebés de la base de datos
     const { data, error } = await supabase
       .from("children")
       .select("*")
+      .eq("parent_id", session.user.id)
       .order("created_at", { ascending: true });
 
     if (error) {
       console.error("Error fetching children:", error);
     } else {
-      const list = data || [];
-      if (session?.user?.id) {
-        const unlinked = list.filter(c => !c.parent_id);
-        if (unlinked.length > 0) {
-          for (const c of unlinked) {
-            await supabase.from("children").update({ parent_id: session.user.id }).eq("id", c.id);
-          }
-        }
-      }
-      setChildren(list);
+      setChildren(data || []);
     }
     setLoading(false);
   }
