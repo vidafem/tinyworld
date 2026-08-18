@@ -687,47 +687,75 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
 
   const autoPages = useMemo(() => {
     const savedByNumber = new Map(savedPages.map((page) => [page.page_number, page]));
-    const pages: AlbumPage[] = [];
-    let pageNumber = 1;
+    const allBasePages: AlbumPage[] = [];
 
-    // Only memories generate pages
-    const sortedMemories = [...memories].sort((a, b) => {
-      const dateA = a.memory_date ? new Date(a.memory_date).getTime() : 0;
-      const dateB = b.memory_date ? new Date(b.memory_date).getTime() : 0;
-      return dateA - dateB;
-    });
+    // Siempre buscamos o creamos la portada (página 0)
+    const coverPage = savedPages.find(p => p.page_number === 0) || 
+      createPage(0, "cover", "single", "cover_soft", null, sectionTitle || "Mi Album de Embarazo", child?.name || "", memories.find((memory) => firstMedia(memory)) || memories[0]);
+    allBasePages.push(coverPage);
 
-    sortedMemories.forEach((memory, index) => {
-      const firstTemplate: TemplateId = memory.media_urls && memory.media_urls.length >= 3 ? "collage_three" : index % 2 === 0 ? "photo_story" : "scrapbook_notes";
-      pages.push(createPage(pageNumber++, "memory", getSide(pageNumber), firstTemplate, memory.id, memory.title, memory.description || "", memory));
-    });
+    // Si ya existen páginas guardadas en la base de datos (más allá de la portada)
+    if (savedPages.length > 1) {
+      // 1. Cargamos todas las páginas guardadas del álbum
+      savedPages.forEach(p => {
+        if (p.page_number !== 0) {
+          allBasePages.push({
+            ...p,
+            template_id: p.template_id as TemplateId,
+            content_json: Array.isArray(p.content_json) ? p.content_json : [],
+            background_style: p.layout_json?.background_style || p.background_style || "solid",
+            background_opacity: p.layout_json?.background_opacity ?? p.background_opacity ?? 1,
+          });
+        }
+      });
 
-    const allBasePages = [
-      createPage(0, "cover", "single", "cover_soft", null, sectionTitle || "Mi Album de Embarazo", child?.name || "", memories.find((memory) => firstMedia(memory)) || memories[0]),
-      ...pages,
-      ...manualPages
-    ];
+      // 2. Agregamos las páginas manuales locales creadas en esta sesión que no se hayan guardado aún
+      manualPages.forEach(p => {
+        if (!savedByNumber.has(p.page_number)) {
+          allBasePages.push(p);
+        }
+      });
 
-    const basePageNumbers = new Set(allBasePages.map(p => p.page_number));
-    savedPages.forEach(saved => {
-      if (!basePageNumbers.has(saved.page_number)) {
-        allBasePages.push(saved as AlbumPage);
+      // 3. Verificamos si hay recuerdos nuevos creados en el diario que no tengan página en la base de datos
+      const savedMemoryIds = new Set(savedPages.map(p => p.memory_id).filter(Boolean));
+      const unsavedMemories = memories.filter(m => !savedMemoryIds.has(m.id));
+
+      if (unsavedMemories.length > 0) {
+        let maxPageNum = Math.max(...allBasePages.map(p => p.page_number), 0);
+        unsavedMemories.forEach((memory, index) => {
+          maxPageNum++;
+          const template: TemplateId = memory.media_urls && memory.media_urls.length >= 3 ? "collage_three" : index % 2 === 0 ? "photo_story" : "scrapbook_notes";
+          allBasePages.push(createPage(maxPageNum, "memory", getSide(maxPageNum), template, memory.id, memory.title, memory.description || "", memory));
+        });
       }
-    });
+    } else {
+      // Si el álbum es nuevo (primera vez que se abre), generamos las páginas basadas en los recuerdos
+      const pages: AlbumPage[] = [];
+      let pageNumber = 1;
+      
+      const sortedMemories = [...memories].sort((a, b) => {
+        const dateA = a.memory_date ? new Date(a.memory_date).getTime() : 0;
+        const dateB = b.memory_date ? new Date(b.memory_date).getTime() : 0;
+        return dateA - dateB;
+      });
 
-    return allBasePages.map((page) => {
-      const saved = savedByNumber.get(page.page_number);
-      if (!saved) return page;
-      return {
-        ...page,
-        ...saved,
-        template_id: saved.template_id as TemplateId,
-        content_json: Array.isArray(saved.content_json) ? saved.content_json : page.content_json,
-        background_style: saved.layout_json?.background_style || saved.background_style || page.background_style || "solid",
-        background_opacity: saved.layout_json?.background_opacity ?? saved.background_opacity ?? page.background_opacity ?? 1,
-      };
-    }).filter((page) => !deletedPageNumbers.includes(page.page_number));
-  }, [child?.name, child?.nickname, childId, deletedPageNumbers, manualPages, memories, savedPages, dbTemplates]);
+      sortedMemories.forEach((memory, index) => {
+        const firstTemplate: TemplateId = memory.media_urls && memory.media_urls.length >= 3 ? "collage_three" : index % 2 === 0 ? "photo_story" : "scrapbook_notes";
+        pages.push(createPage(pageNumber++, "memory", getSide(pageNumber), firstTemplate, memory.id, memory.title, memory.description || "", memory));
+      });
+
+      allBasePages.push(...pages);
+
+      // Agregamos las páginas manuales locales
+      manualPages.forEach(p => {
+        if (!savedByNumber.has(p.page_number)) {
+          allBasePages.push(p);
+        }
+      });
+    }
+
+    return allBasePages.filter((page) => !deletedPageNumbers.includes(page.page_number));
+  }, [child?.name, child?.nickname, childId, deletedPageNumbers, manualPages, memories, savedPages, dbTemplates, sectionTitle]);
 
   const allTemplates = useMemo(() => {
     return [
@@ -1537,7 +1565,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
 
           <section className="h-[calc(100vh-65px)] min-h-0 flex flex-col">
             <div className="flex-1 min-h-0 flex items-center justify-center p-2 md:p-4 overflow-auto">
-              <div className="relative w-full h-full flex items-center justify-center">
+              <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: "1500px" }}>
                 {bookOpened && (
                 <button
                   onClick={handlePrevSpread}
@@ -1578,10 +1606,10 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                   ) : (
                   <motion.div
                     key={`${spreadIndex}-${isMobile ? "m" : "d"}`}
-                    initial={{ opacity: 0, rotateY: turnDirection === "forward" ? 22 : -22, scale: 0.98 }}
+                    initial={{ opacity: 0.8, rotateY: turnDirection === "forward" ? 45 : -45, scale: 0.96 }}
                     animate={{ opacity: 1, rotateY: 0, scale: 1 }}
-                    exit={{ opacity: 0, rotateY: turnDirection === "forward" ? -22 : 22, scale: 0.98 }}
-                    transition={{ duration: 0.45, ease: [0.25, 1, 0.5, 1] }}
+                    exit={{ opacity: 0.8, rotateY: turnDirection === "forward" ? -45 : 45, scale: 0.96 }}
+                    transition={{ duration: 0.65, ease: [0.25, 1, 0.5, 1] }}
                     className={`relative origin-center ${isMobile ? "w-[min(86vw,430px)] aspect-[3/4]" : "h-[min(78vh,calc((100vw-72px)*0.5))] max-w-[calc(100vw-72px)] aspect-[3/2]"}`}
                     style={{ transform: `scale(${zoom})`, transformStyle: "preserve-3d" }}
                     onDragOver={(event) => {
