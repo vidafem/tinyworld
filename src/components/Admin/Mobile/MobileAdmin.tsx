@@ -87,7 +87,7 @@ export default function MobileAdmin() {
 
       {/* CONTENT */}
       <div className="p-4 flex-1 overflow-y-auto">
-        {activeTab === "usuarios" ? <UsersTab /> : activeTab === "assets" ? <AssetsTab /> : activeTab === "templates" ? <TemplateEditor /> : <UserAssetsTab />}
+        {activeTab === "usuarios" ? <UsersTab /> : activeTab === "assets" ? <AssetsTab /> : activeTab === "templates" ? <TemplateEditor onBack={() => setActiveTab("usuarios")} /> : <UserAssetsTab />}
       </div>
     </div>
   );

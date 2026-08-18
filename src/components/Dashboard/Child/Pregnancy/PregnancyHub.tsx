@@ -569,7 +569,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                         
                         const getProxiedUrl = (u: string) => {
                           if (!u) return '';
-                          if (u.includes('pub-4a2749c0c0864d419453a629df18fd63.r2.dev')) {
+                          if (u.includes('.r2.dev') || u.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && u.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
                             return `/api/download?url=${encodeURIComponent(u)}`;
                           }
                           return u;

@@ -117,7 +117,7 @@ export default function PregnancyGallery({
 
   const getProxiedUrl = (url: string) => {
     if (!url) return '';
-    if (url.includes('pub-4a2749c0c0864d419453a629df18fd63.r2.dev')) {
+    if (url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && url.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
       return `/api/download?url=${encodeURIComponent(url)}`;
     }
     return url;

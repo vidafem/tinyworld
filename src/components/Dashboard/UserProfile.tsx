@@ -43,7 +43,7 @@ export default function UserProfile({ onBack }: UserProfileProps) {
       .single();
     
     if (profile) {
-      setDisplayName(profile.display_name || session.user.email?.split('@')[0] || "");
+      setDisplayName(profile.full_name || (profile as any).display_name || session.user.email?.split('@')[0] || "");
     }
     setLoading(false);
   }
@@ -67,8 +67,7 @@ export default function UserProfile({ onBack }: UserProfileProps) {
     
     const updates = {
       id: user.id,
-      display_name: displayName,
-      updated_at: new Date().toISOString(),
+      full_name: displayName,
     };
 
     const { error } = await supabase.from("profiles").upsert(updates);

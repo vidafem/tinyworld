@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, Bot, Send, X, Loader2, Heart, MessageSquare, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 interface TinyAIAssistantModalProps {
   theme: any;
@@ -23,17 +24,16 @@ export default function TinyAIAssistantModal({ theme, childName = "el Bebé" }: 
   ]);
 
   useEffect(() => {
-    const checkState = () => {
-      const disabledState = localStorage.getItem("tinyworld_ai_disabled");
-      setIsDisabled(disabledState === "true");
+    const disabledState = localStorage.getItem("tinyworld_ai_disabled");
+    setIsDisabled(disabledState === "true");
+
+    const handleToggle = () => {
+      const state = localStorage.getItem("tinyworld_ai_disabled");
+      setIsDisabled(state === "true");
     };
-    checkState();
-    window.addEventListener("storage", checkState);
-    window.addEventListener("tinyworld_ai_toggle", checkState);
-    return () => {
-      window.removeEventListener("storage", checkState);
-      window.removeEventListener("tinyworld_ai_toggle", checkState);
-    };
+
+    window.addEventListener("tinyworld_ai_toggle", handleToggle);
+    return () => window.removeEventListener("tinyworld_ai_toggle", handleToggle);
   }, []);
 
   const toggleAi = (enable: boolean) => {
@@ -62,9 +62,15 @@ export default function TinyAIAssistantModal({ theme, childName = "el Bebé" }: 
     setLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ prompt: userText, mode }),
       });
 

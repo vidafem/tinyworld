@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Lock, Gift } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -13,27 +13,44 @@ interface CapsuleItem {
   createdDate: string;
 }
 
+const DEFAULT_CAPSULES: CapsuleItem[] = [
+  {
+    id: "cap-1",
+    title: "Carta para cuando cumplas 18 años",
+    message: "Querido hijo, hoy cumples 18 años. Te escribimos esto cuando tenías apenas 3 meses...",
+    unlockDate: "2042-07-21",
+    author: "Mamá y Papá",
+    createdDate: "2026-07-21",
+  },
+];
+
 interface TimeCapsuleProps {
   theme: any;
   childName?: string;
 }
 
 export default function TimeCapsule({ theme, childName = "el Bebé" }: TimeCapsuleProps) {
-  const [capsules, setCapsules] = useState<CapsuleItem[]>([
-    {
-      id: "cap-1",
-      title: "Carta para cuando cumplas 18 años",
-      message: "Querido hijo, hoy cumples 18 años. Te escribimos esto cuando tenías apenas 3 meses...",
-      unlockDate: "2042-07-21",
-      author: "Mamá y Papá",
-      createdDate: "2026-07-21",
-    },
-  ]);
-
+  const [capsules, setCapsules] = useState<CapsuleItem[]>(DEFAULT_CAPSULES);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [unlockYear, setUnlockYear] = useState(18);
+
+  const storageKey = `tinyworld_capsules_${childName.toLowerCase().replace(/\s+/g, '_')}`;
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCapsules(parsed);
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }, [storageKey]);
 
   const createCapsule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +67,13 @@ export default function TimeCapsule({ theme, childName = "el Bebé" }: TimeCapsu
       createdDate: new Date().toISOString().split("T")[0],
     };
 
-    setCapsules([newCap, ...capsules]);
+    const updated = [newCap, ...capsules];
+    setCapsules(updated);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch (err) {
+      console.warn("Error guardando capsulas en localStorage:", err);
+    }
     setTitle("");
     setMessage("");
     setShowCreateModal(false);

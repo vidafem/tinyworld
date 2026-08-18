@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TrendingUp, Scale, Ruler } from "lucide-react";
 
 interface Measurement {
@@ -10,7 +10,13 @@ interface Measurement {
   date: string;
 }
 
-const WHO_WEIGHT_P50 = [3.3, 4.5, 5.6, 6.4, 7.0, 7.5, 7.9, 8.3, 8.6, 8.9, 9.2, 9.4, 9.6, 9.9, 10.1, 10.4, 10.6, 10.9, 11.1, 11.3, 11.5, 11.8, 12.0, 12.2, 12.5];
+const DEFAULT_MEASUREMENTS: Measurement[] = [
+  { month: 0, weightKg: 3.4, heightCm: 50, date: "Nacimiento" },
+  { month: 1, weightKg: 4.6, heightCm: 54, date: "Mes 1" },
+  { month: 2, weightKg: 5.7, heightCm: 58, date: "Mes 2" },
+  { month: 3, weightKg: 6.5, heightCm: 61, date: "Mes 3" },
+  { month: 6, weightKg: 7.8, heightCm: 67, date: "Mes 6" },
+];
 
 interface WhoGrowthChartProps {
   theme: any;
@@ -19,18 +25,27 @@ interface WhoGrowthChartProps {
 
 export default function WhoGrowthChart({ theme, childName = "el Bebé" }: WhoGrowthChartProps) {
   const [activeTab, setActiveTab] = useState<"weight" | "height">("weight");
-  
-  const [measurements, setMeasurements] = useState<Measurement[]>([
-    { month: 0, weightKg: 3.4, heightCm: 50, date: "Nacimiento" },
-    { month: 1, weightKg: 4.6, heightCm: 54, date: "Mes 1" },
-    { month: 2, weightKg: 5.7, heightCm: 58, date: "Mes 2" },
-    { month: 3, weightKg: 6.5, heightCm: 61, date: "Mes 3" },
-    { month: 6, weightKg: 7.8, heightCm: 67, date: "Mes 6" },
-  ]);
+  const [measurements, setMeasurements] = useState<Measurement[]>(DEFAULT_MEASUREMENTS);
 
   const [newMonth, setNewMonth] = useState("");
   const [newWeight, setNewWeight] = useState("");
   const [newHeight, setNewHeight] = useState("");
+
+  const storageKey = `tinyworld_growth_${childName.toLowerCase().replace(/\s+/g, '_')}`;
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMeasurements(parsed);
+        }
+      }
+    } catch {
+      // fallback to defaults
+    }
+  }, [storageKey]);
 
   const addMeasurement = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +56,11 @@ export default function WhoGrowthChart({ theme, childName = "el Bebé" }: WhoGro
 
     const updated = [...measurements.filter((it) => it.month !== m), { month: m, weightKg: w, heightCm: h, date: `Mes ${m}` }].sort((a, b) => a.month - b.month);
     setMeasurements(updated);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch (err) {
+      console.warn("Error guardando mediciones en localStorage:", err);
+    }
     setNewMonth("");
     setNewWeight("");
     setNewHeight("");
@@ -85,42 +105,84 @@ export default function WhoGrowthChart({ theme, childName = "el Bebé" }: WhoGro
 
       <div className="relative w-full h-64 bg-stone-900 rounded-[2rem] p-4 overflow-hidden shadow-inner flex items-center justify-center">
         <svg className="w-full h-full overflow-visible" viewBox="0 0 300 150">
-          <path
-            d="M 10 130 Q 150 70 290 30"
-            fill="none"
-            stroke="rgba(239, 68, 68, 0.4)"
-            strokeWidth="2"
-            strokeDasharray="4 4"
-          />
-          <path
-            d="M 10 135 Q 150 90 290 55"
-            fill="none"
-            stroke="rgba(34, 197, 94, 0.8)"
-            strokeWidth="3"
-          />
-          <path
-            d="M 10 140 Q 150 110 290 85"
-            fill="none"
-            stroke="rgba(239, 68, 68, 0.4)"
-            strokeWidth="2"
-            strokeDasharray="4 4"
-          />
+          {activeTab === "weight" ? (
+            <>
+              {/* Curvas de Peso OMS (Percentil 97, 50, 3) */}
+              <path
+                d="M 10 130 Q 150 70 290 30"
+                fill="none"
+                stroke="rgba(239, 68, 68, 0.4)"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+              />
+              <path
+                d="M 10 135 Q 150 90 290 55"
+                fill="none"
+                stroke="rgba(34, 197, 94, 0.8)"
+                strokeWidth="3"
+              />
+              <path
+                d="M 10 140 Q 150 110 290 85"
+                fill="none"
+                stroke="rgba(239, 68, 68, 0.4)"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+              />
 
-          {measurements.map((m, idx) => {
-            const x = 10 + (m.month / 24) * 280;
-            const y = 140 - (m.weightKg / 16) * 120;
-            return (
-              <g key={idx}>
-                <circle cx={x} cy={y} r="5" fill="#3B82F6" stroke="#FFFFFF" strokeWidth="2" />
-                <text x={x} y={y - 10} fill="#FFFFFF" fontSize="8" fontWeight="bold" textAnchor="middle">
-                  {m.weightKg}kg
-                </text>
-              </g>
-            );
-          })}
+              {measurements.map((m, idx) => {
+                const x = 10 + (m.month / 24) * 280;
+                const y = Math.max(10, Math.min(140, 140 - (m.weightKg / 16) * 120));
+                return (
+                  <g key={idx}>
+                    <circle cx={x} cy={y} r="5" fill="#3B82F6" stroke="#FFFFFF" strokeWidth="2" />
+                    <text x={x} y={y - 10} fill="#FFFFFF" fontSize="8" fontWeight="bold" textAnchor="middle">
+                      {m.weightKg}kg
+                    </text>
+                  </g>
+                );
+              })}
+            </>
+          ) : (
+            <>
+              {/* Curvas de Talla OMS (Percentil 97, 50, 3) */}
+              <path
+                d="M 10 120 Q 150 65 290 25"
+                fill="none"
+                stroke="rgba(239, 68, 68, 0.4)"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+              />
+              <path
+                d="M 10 128 Q 150 78 290 38"
+                fill="none"
+                stroke="rgba(34, 197, 94, 0.8)"
+                strokeWidth="3"
+              />
+              <path
+                d="M 10 136 Q 150 90 290 52"
+                fill="none"
+                stroke="rgba(239, 68, 68, 0.4)"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+              />
+
+              {measurements.map((m, idx) => {
+                const x = 10 + (m.month / 24) * 280;
+                const y = Math.max(10, Math.min(140, 140 - ((m.heightCm - 45) / 50) * 120));
+                return (
+                  <g key={idx}>
+                    <circle cx={x} cy={y} r="5" fill="#EC4899" stroke="#FFFFFF" strokeWidth="2" />
+                    <text x={x} y={y - 10} fill="#FFFFFF" fontSize="8" fontWeight="bold" textAnchor="middle">
+                      {m.heightCm}cm
+                    </text>
+                  </g>
+                );
+              })}
+            </>
+          )}
         </svg>
         <div className="absolute top-3 left-4 text-[9px] font-black uppercase tracking-widest text-emerald-400">
-          Verde: Percentil 50 OMS (Promedio Oficial)
+          Verde: Percentil 50 OMS ({activeTab === "weight" ? "Peso" : "Talla"})
         </div>
       </div>
 

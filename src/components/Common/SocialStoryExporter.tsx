@@ -70,7 +70,12 @@ export default function SocialStoryExporter({
           <div className="my-auto space-y-4 max-w-sm">
             {imageUrl && (
               <div className="w-56 h-56 mx-auto rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl bg-white p-2">
-                <img src={imageUrl} className="w-full h-full object-cover rounded-[2rem]" alt="" />
+                <img 
+                  src={imageUrl.startsWith('http') ? `/api/download?url=${encodeURIComponent(imageUrl)}` : imageUrl} 
+                  crossOrigin="anonymous"
+                  className="w-full h-full object-cover rounded-[2rem]" 
+                  alt="" 
+                />
               </div>
             )}
             <h2 className="text-3xl font-black italic tracking-tight leading-tight text-stone-900">{title}</h2>

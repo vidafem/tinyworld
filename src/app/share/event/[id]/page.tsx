@@ -614,7 +614,7 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventId,
-          key: presignData.key,
+          url: presignData.publicUrl,
           mediaType: "audio"
         })
       });

@@ -9,7 +9,7 @@ import {
   BringToFront, SendToBack,
   AlignLeft, AlignCenter, AlignRight,
   PanelLeftClose, PanelLeft, Video, Mic, Smile, GripHorizontal, MousePointer2, CalendarDays,
-  LayoutGrid, PlayCircle, Maximize2
+  LayoutGrid, PlayCircle, Maximize2, ChevronLeft
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -327,7 +327,7 @@ export default function TemplateEditor({ onBack }: TemplateEditorProps) {
 
   const getProxiedUrl = (url: string) => {
     if (!url) return '';
-    if (url.includes('pub-4a2749c0c0864d419453a629df18fd63.r2.dev')) {
+    if (url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && url.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
       return `/api/download?url=${encodeURIComponent(url)}`;
     }
     return url;
@@ -514,6 +514,16 @@ export default function TemplateEditor({ onBack }: TemplateEditorProps) {
         
         {/* TOP TOOLBAR */}
         <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 shrink-0 z-20 shadow-sm" onClick={e => e.stopPropagation()}>
+          {onBack && (
+            <button 
+              onClick={onBack} 
+              className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors mr-3 text-xs font-bold"
+              title="Volver al Panel"
+            >
+              <ChevronLeft size={16} /> Volver
+            </button>
+          )}
+
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors mr-3" title="Ocultar/Mostrar Menú Lateral">
             {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeft size={18} />}
           </button>

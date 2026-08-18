@@ -42,6 +42,7 @@ import {
   Type,
   Video,
   Volume2,
+  VolumeX,
   X,
   Lock,
   Unlock,
@@ -51,6 +52,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { playPageTurnSound, playBookOpenSound, isAudioMuted, toggleAudioMuted } from "@/lib/pageSound";
 
 type TemplateId =
   | "cover_soft"
@@ -554,6 +556,34 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
   const [draggedMemoryId, setDraggedMemoryId] = useState<string | null>(null);
   const [dropPreview, setDropPreview] = useState<"left" | "right" | "spread" | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [turnDirection, setTurnDirection] = useState<"forward" | "backward">("forward");
+
+  useEffect(() => {
+    setIsMuted(isAudioMuted());
+  }, []);
+
+  const handleToggleMute = () => {
+    const next = toggleAudioMuted();
+    setIsMuted(next);
+  };
+
+  const handleNextSpread = () => {
+    if (spreadIndex >= spreadStarts.length - 1) return;
+    setTurnDirection("forward");
+    playPageTurnSound("forward");
+    setSpreadIndex((prev) => prev + 1);
+    setSelectedElementId(null);
+  };
+
+  const handlePrevSpread = () => {
+    if (spreadIndex <= 0) return;
+    setTurnDirection("backward");
+    playPageTurnSound("backward");
+    setSpreadIndex((prev) => prev - 1);
+    setSelectedElementId(null);
+  };
+
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [photoPickerOpen, setPhotoPickerOpen] = useState(false);
   const [photoPickerTarget, setPhotoPickerTarget] = useState<string | null>(null);
@@ -1045,23 +1075,40 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
 
   function addBlankPage(templateId: TemplateId = "blank_photo") {
     const pageNumber = getNextPageNumber();
-    const page = createPage(pageNumber, "custom", getSide(pageNumber), templateId, null, "Nueva hoja", "Hoja editable", null);
+    const page = createPage(pageNumber, "custom", "single", templateId, null, "Nueva hoja", "Hoja editable", null);
     setManualPages((prev) => [...prev, page]);
     setBookOpened(true);
-    setSpreadIndex(Math.floor((pages.length + manualPages.length) / (isMobile ? 1 : 2)));
+    playPageTurnSound("forward");
+    
+    // Update sequence array synchronously so layout doesn't jump
+    setPageSequence((prev) => [...prev.filter((id) => id !== pageNumber), pageNumber]);
+    
+    // Accurate target spread index (lands on the newly added page)
+    const newTotalPages = orderedPages.length + 1;
+    const targetSpread = Math.max(0, Math.floor((newTotalPages - 1) / (isMobile ? 1 : 2)));
+    setSpreadIndex(targetSpread);
+    setSelectedPageNumber(pageNumber);
   }
 
   function addSeparatorPage() {
     const pageNumber = getNextPageNumber();
-    const page = createPage(pageNumber, "month_divider", getSide(pageNumber), "month_divider", null, "Nuevo separador", "Etapa editable", null);
+    const page = createPage(pageNumber, "month_divider", "single", "month_divider", null, "Nuevo separador", "Etapa editable", null);
     setManualPages((prev) => [...prev, page]);
     setBookOpened(true);
+    playPageTurnSound("forward");
+    
+    setPageSequence((prev) => [...prev.filter((id) => id !== pageNumber), pageNumber]);
+    const newTotalPages = orderedPages.length + 1;
+    const targetSpread = Math.max(0, Math.floor((newTotalPages - 1) / (isMobile ? 1 : 2)));
+    setSpreadIndex(targetSpread);
+    setSelectedPageNumber(pageNumber);
   }
 
   async function deletePage(page: AlbumPage) {
     if (page.page_number === 0) return;
     setDeletedPageNumbers((prev) => [...prev, page.page_number]);
     setManualPages((prev) => prev.filter((item) => item.page_number !== page.page_number));
+    setPageSequence((prev) => prev.filter((id) => id !== page.page_number));
     setPageOverrides((prev) => {
       const next = { ...prev };
       delete next[page.page_number];
@@ -1070,6 +1117,9 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
     if (page.id) {
       await supabase.from("pregnancy_album_pages").delete().eq("id", page.id);
     }
+    const remainingCount = orderedPages.filter((p) => p.page_number !== page.page_number).length;
+    const maxSpread = Math.max(0, Math.ceil(remainingCount / (isMobile ? 1 : 2)) - 1);
+    setSpreadIndex((prev) => Math.min(prev, maxSpread));
   }
 
   function applyMemoryToSinglePage(page: AlbumPage, memory: PregnancyMemory, templateId?: TemplateId) {
@@ -1270,12 +1320,23 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (!editMode || !selectedElementId || selectedPageNumber === null) return;
-
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.getAttribute("contenteditable") === "true")) {
         return;
       }
+
+      if (!editMode && bookOpened) {
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          handleNextSpread();
+        } else if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          handlePrevSpread();
+        }
+        return;
+      }
+
+      if (!editMode || !selectedElementId || selectedPageNumber === null) return;
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
@@ -1302,7 +1363,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [editMode, selectedElementId, selectedPageNumber, updateElement]);
+  }, [editMode, bookOpened, selectedElementId, selectedPageNumber, updateElement, handleNextSpread, handlePrevSpread]);
 
   const canPrev = spreadIndex > 0;
   const canNext = spreadIndex < spreadStarts.length - 1;
@@ -1330,20 +1391,30 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
             </div>
           </div>
 
-          <div className={`flex items-center gap-1 md:gap-2 bg-white rounded-2xl px-2 py-1 shadow-sm border ${theme.borderAccent}`}>
-            <ZoomOut size={14} className={`${theme.text} opacity-30`} />
-            <input
-              type="range"
-              min="0.75"
-              max="1.45"
-              step="0.05"
-              value={zoom}
-              onChange={(event) => setZoom(Number(event.target.value))}
-              className="w-14 sm:w-24 md:w-36 cursor-pointer"
-              style={{ accentColor: theme.hex }}
-            />
-            <ZoomIn size={14} className={`${theme.text} opacity-30`} />
-            <span className={`w-10 text-right text-[10px] font-black ${theme.text} opacity-40`}>{Math.round(zoom * 100)}%</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleMute}
+              className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer`}
+              title={isMuted ? "Activar sonido de paso de hoja" : "Silenciar sonido de paso de hoja"}
+            >
+              {isMuted ? <VolumeX size={18} className="opacity-40" /> : <Volume2 size={18} />}
+            </button>
+
+            <div className={`flex items-center gap-1 md:gap-2 bg-white rounded-2xl px-2 py-1 shadow-sm border ${theme.borderAccent}`}>
+              <ZoomOut size={14} className={`${theme.text} opacity-30`} />
+              <input
+                type="range"
+                min="0.75"
+                max="1.45"
+                step="0.05"
+                value={zoom}
+                onChange={(event) => setZoom(Number(event.target.value))}
+                className="w-14 sm:w-24 md:w-36 cursor-pointer"
+                style={{ accentColor: theme.hex }}
+              />
+              <ZoomIn size={14} className={`${theme.text} opacity-30`} />
+              <span className={`w-10 text-right text-[10px] font-black ${theme.text} opacity-40`}>{Math.round(zoom * 100)}%</span>
+            </div>
           </div>
 
           {!readOnly && (
@@ -1469,10 +1540,11 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
               <div className="relative w-full h-full flex items-center justify-center">
                 {bookOpened && (
                 <button
-                  onClick={() => canPrev && setSpreadIndex((value) => value - 1)}
+                  onClick={handlePrevSpread}
                   disabled={!canPrev}
-                  className="absolute left-0 md:-left-2 z-20 p-3 bg-white/90 rounded-full shadow-xl disabled:opacity-20"
+                  className="absolute left-0 md:-left-2 z-20 p-3 bg-white/90 rounded-full shadow-xl disabled:opacity-20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   style={{ color: theme.hex }}
+                  aria-label="Página anterior"
                 >
                   <ChevronLeft size={22} />
                 </button>
@@ -1496,6 +1568,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       onMediaClick={setMediaModal}
                       onUpdateElement={(el) => updateElement(coverPage.page_number, el.id, () => el)}
                       onOpen={() => {
+                        playBookOpenSound();
                         setBookOpened(true);
                         setSpreadIndex(0);
                       }}
@@ -1505,10 +1578,10 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                   ) : (
                   <motion.div
                     key={`${spreadIndex}-${isMobile ? "m" : "d"}`}
-                    initial={{ opacity: 0, rotateY: canPrev ? -38 : 38, y: 10 }}
-                    animate={{ opacity: 1, rotateY: 0, y: 0 }}
-                    exit={{ opacity: 0, rotateY: canNext ? -38 : 38, y: -10 }}
-                    transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+                    initial={{ opacity: 0, rotateY: turnDirection === "forward" ? 22 : -22, scale: 0.98 }}
+                    animate={{ opacity: 1, rotateY: 0, scale: 1 }}
+                    exit={{ opacity: 0, rotateY: turnDirection === "forward" ? -22 : 22, scale: 0.98 }}
+                    transition={{ duration: 0.45, ease: [0.25, 1, 0.5, 1] }}
                     className={`relative origin-center ${isMobile ? "w-[min(86vw,430px)] aspect-[3/4]" : "h-[min(78vh,calc((100vw-72px)*0.5))] max-w-[calc(100vw-72px)] aspect-[3/2]"}`}
                     style={{ transform: `scale(${zoom})`, transformStyle: "preserve-3d" }}
                     onDragOver={(event) => {
@@ -1586,6 +1659,30 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       ))}
 
                       {!isMobile && visiblePages.length === 1 && <div className="w-1/2 h-full bg-[#FBF7F1]" />}
+
+                      {/* CORNER CLICK ZONES FOR TACTILE PAGE FLIPPING IN READING MODE */}
+                      {!editMode && canPrev && (
+                        <div
+                          onClick={handlePrevSpread}
+                          className="absolute bottom-0 left-0 w-16 h-16 z-30 cursor-pointer group flex items-end justify-start p-2.5 select-none"
+                          title="Página anterior (o pulsa ←)"
+                        >
+                          <div className="w-9 h-9 rounded-tr-3xl bg-gradient-to-br from-black/15 via-black/5 to-transparent opacity-30 group-hover:opacity-100 group-hover:scale-110 transition-all flex items-center justify-center text-[10px] font-black text-stone-700 shadow-sm border-t border-r border-white/60">
+                            ←
+                          </div>
+                        </div>
+                      )}
+                      {!editMode && canNext && (
+                        <div
+                          onClick={handleNextSpread}
+                          className="absolute bottom-0 right-0 w-16 h-16 z-30 cursor-pointer group flex items-end justify-end p-2.5 select-none"
+                          title="Página siguiente (o pulsa →)"
+                        >
+                          <div className="w-9 h-9 rounded-tl-3xl bg-gradient-to-bl from-black/15 via-black/5 to-transparent opacity-30 group-hover:opacity-100 group-hover:scale-110 transition-all flex items-center justify-center text-[10px] font-black text-stone-700 shadow-sm border-t border-l border-white/60">
+                            →
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                   )}
@@ -1604,10 +1701,11 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
 
                 {bookOpened && (
                 <button
-                  onClick={() => canNext && setSpreadIndex((value) => value + 1)}
+                  onClick={handleNextSpread}
                   disabled={!canNext}
-                  className="absolute right-0 md:-right-2 z-20 p-3 bg-white/90 rounded-full shadow-xl disabled:opacity-20"
+                  className="absolute right-0 md:-right-2 z-20 p-3 bg-white/90 rounded-full shadow-xl disabled:opacity-20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   style={{ color: theme.hex }}
+                  aria-label="Página siguiente"
                 >
                   <ChevronRight size={22} />
                 </button>
@@ -1619,23 +1717,32 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
             <div className="shrink-0 px-4 md:px-8 pb-3 flex items-center justify-center gap-2">
               <button
                 onClick={() => {
+                  playBookOpenSound();
                   setBookOpened(false);
                   setSpreadIndex(0);
                   setSelectedElementId(null);
                 }}
-                className="w-8 h-8 rounded-full bg-white shadow-sm border flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-white shadow-sm border flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 style={{ color: theme.hex, borderColor: `${theme.hex}1a` }}
                 aria-label="Volver a portada"
+                title="Cerrar libro y volver a portada"
               >
                 <Home size={15} />
               </button>
               {spreadStarts.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => setSpreadIndex(index)}
-                  className={`h-2 rounded-full transition-all ${index === spreadIndex ? "w-8" : "w-2"}`}
+                  onClick={() => {
+                    if (index !== spreadIndex) {
+                      if (index > spreadIndex) playPageTurnSound("forward");
+                      else playPageTurnSound("backward");
+                      setSpreadIndex(index);
+                    }
+                  }}
+                  className={`h-2 rounded-full transition-all cursor-pointer ${index === spreadIndex ? "w-8" : "w-2 hover:w-4"}`}
                   style={{ backgroundColor: index === spreadIndex ? theme.hex : `${theme.hex}33` }}
-                  aria-label={`Ir a pagina ${index + 1}`}
+                  aria-label={`Ir a pliego ${index + 1}`}
+                  title={`Ir a página ${index + 1}`}
                 />
               ))}
             </div>
