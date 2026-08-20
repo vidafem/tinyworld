@@ -10,7 +10,7 @@ import {
   CalendarDays, Images, Sparkles, Settings, Menu,
   MapPin, User, Users, Calendar, ArrowLeft, ArrowRight, Clock, ChevronDown,
   Mic, Music, Download, Folder, FolderHeart, Play, Video, Bookmark,
-  Ruler, Scale, Home
+  Ruler, Scale, Home, ZoomIn, ZoomOut
 } from "lucide-react";
 import { themePalettes } from "@/lib/themes";
 import dynamic from "next/dynamic";
@@ -89,6 +89,13 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
   const [galleryFolder, setGalleryFolder] = useState<{ id: string; name: string; filterMonthKey?: string; isCustom?: boolean } | null>(null);
   const [activeMediaTab, setActiveMediaTab] = useState<'image' | 'video' | 'audio'>('image');
   const [previewMediaItem, setPreviewMediaItem] = useState<any | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const toggleZoom = () => {
+    setZoom(prev => prev === 1 ? 2.5 : 1);
+  };
+  useEffect(() => {
+    setZoom(1);
+  }, [previewMediaItem]);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState("");
@@ -2306,126 +2313,150 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
             </motion.div>
           )}
           </AnimatePresence>
+
+              {/* Unified Media Preview Overlay Modal */}
+      <AnimatePresence>
+        {previewMediaItem && (
+          <div 
+            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-black/98"
+            onClick={() => setPreviewMediaItem(null)}
+          >
+            {/* Cabecera superior: Título, fecha y botón Cerrar al lado */}
+            <div 
+              className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/90 to-transparent flex items-center justify-between px-6 z-[2100]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col text-left max-w-[70%]">
+                <h3 className="text-white text-base md:text-xl font-bold tracking-tight line-clamp-1 italic">
+                  {previewMediaItem.title || "Recuerdo"}
+                </h3>
+                <span className="text-white/50 text-[10px] md:text-xs font-black uppercase tracking-wider mt-0.5">
+                  {new Date(previewMediaItem.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {/* Botón de Zoom */}
+                <button
+                  onClick={toggleZoom}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer hover:scale-110 active:scale-95"
+                  title={zoom > 1 ? "Alejar" : "Acercar"}
+                >
+                  {zoom > 1 ? <ZoomOut size={20} /> : <ZoomIn size={20} />}
+                </button>
+
+                {/* Botón Cerrar */}
+                <button
+                  onClick={() => setPreviewMediaItem(null)}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer hover:scale-110 active:scale-95"
+                  title="Cerrar"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenedor del video/imagen con soporte de scroll cuando hay zoom */}
+            <div 
+              className="w-full h-full flex items-center justify-center overflow-auto p-4 md:p-12"
+              onClick={() => setPreviewMediaItem(null)}
+            >
+              <div 
+                className="relative flex items-center justify-center max-w-full max-h-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {previewMediaItem.type === 'image' ? (
+                  <>
+                    <img 
+                      src={previewMediaItem.url} 
+                      className="max-w-full max-h-[82vh] rounded-lg object-contain shadow-2xl transition-transform duration-300 select-none" 
+                      style={{ transform: `scale(${zoom})`, transformOrigin: "center center", cursor: zoom > 1 ? "zoom-out" : "zoom-in" }}
+                      alt="Vista previa"
+                      onDoubleClick={toggleZoom}
+                    />
+                    {zoom === 1 && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); downloadMedia(previewMediaItem.url, previewMediaItem.title); }}
+                        className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/20 flex items-center justify-center z-45 cursor-pointer backdrop-blur-sm shadow-black/40"
+                        title="Descargar"
+                      >
+                        <Download size={20} strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </>
+                ) : previewMediaItem.type === 'video' ? (
+                  <>
+                    <video 
+                      src={previewMediaItem.url} 
+                      className="max-w-full max-h-[82vh] rounded-lg shadow-2xl transition-transform duration-300" 
+                      style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+                      controls 
+                      autoPlay 
+                    />
+                    {zoom === 1 && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); downloadMedia(previewMediaItem.url, previewMediaItem.title); }}
+                        className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/20 flex items-center justify-center z-45 cursor-pointer backdrop-blur-sm shadow-black/40"
+                        title="Descargar"
+                      >
+                        <Download size={20} strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-[320px] md:w-[480px] p-8 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 rounded-[2.5rem] shadow-2xl relative">
+                    <div className={`w-20 h-20 ${theme.bg} ${theme.text} rounded-full flex items-center justify-center mb-6 shadow-xl`}>
+                      <Music size={40} />
+                    </div>
+                    <audio src={previewMediaItem.url} controls className="w-full" />
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); downloadMedia(previewMediaItem.url, previewMediaItem.title); }}
+                      className="absolute top-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/25 flex items-center justify-center z-20 cursor-pointer backdrop-blur-sm shadow-black/40"
+                      title="Descargar"
+                    >
+                      <Download size={20} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Flechas de navegación flotantes a los lados de la pantalla */}
+            {(() => {
+              const items = getGlobalMediaItems().filter(it => it.type === activeMediaTab);
+              const idx = items.findIndex(it => it.id === previewMediaItem.id);
+              return idx > 0 ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); showPrevPreviewItem(); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3.5 bg-black/50 hover:bg-black/75 rounded-full text-white transition-colors cursor-pointer z-50 hover:scale-110"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={26} strokeWidth={2.5} />
+                </button>
+              ) : null;
+            })()}
+
+            {(() => {
+              const items = getGlobalMediaItems().filter(it => it.type === activeMediaTab);
+              const idx = items.findIndex(it => it.id === previewMediaItem.id);
+              return idx !== -1 && idx < items.length - 1 ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); showNextPreviewItem(); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3.5 bg-black/50 hover:bg-black/75 rounded-full text-white transition-colors cursor-pointer z-50 hover:scale-110"
+                  title="Siguiente"
+                >
+                  <ChevronRight size={26} strokeWidth={2.5} />
+                </button>
+              ) : null;
+            })()}
+          </div>
+        )}
+      </AnimatePresence>
+
           </div>
         </main>
 
       </div>
-
-      {/* Unified Media Preview Overlay Modal */}
-      <AnimatePresence>
-        {previewMediaItem && (
-          <div 
-            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
-            onClick={() => setPreviewMediaItem(null)}
-          >
-            <button 
-              onClick={() => setPreviewMediaItem(null)} 
-              className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-3 bg-white/10 hover:bg-white/20 rounded-full z-[2100] cursor-pointer shadow-lg hover:scale-110"
-            >
-              <X size={22} />
-            </button>
-
-            {/* Contenedor principal con flechas */}
-            <div className="relative w-full max-w-5xl flex items-center justify-center gap-4" onClick={(e) => e.stopPropagation()}>
-              
-              {/* Flecha Izquierda */}
-              {(() => {
-                const items = getGlobalMediaItems().filter(it => it.type === activeMediaTab);
-                const idx = items.findIndex(it => it.id === previewMediaItem.id);
-                return idx > 0 ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); showPrevPreviewItem(); }}
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95"
-                    title="Anterior"
-                  >
-                    <ChevronLeft size={24} strokeWidth={2.5} />
-                  </button>
-                ) : (
-                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
-                );
-              })()}
-
-              {/* Contenedor de la foto/video */}
-              <div className="w-full max-w-4xl max-h-[80vh] flex items-center justify-center p-1 md:p-2 flex-1">
-                <div className="relative group max-w-full max-h-[80vh] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-white/10 bg-neutral-900/40">
-                  {previewMediaItem.type === 'image' ? (
-                    <>
-                      <img 
-                        src={previewMediaItem.url} 
-                        className="max-w-full max-h-[80vh] block object-contain" 
-                      />
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); downloadMedia(previewMediaItem.url, previewMediaItem.title); }}
-                        className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/25 flex items-center justify-center z-20 cursor-pointer backdrop-blur-sm"
-                        title="Descargar"
-                      >
-                        <Download size={20} strokeWidth={2.5} />
-                      </button>
-                    </>
-                  ) : previewMediaItem.type === 'video' ? (
-                    <>
-                      <video 
-                        src={previewMediaItem.url} 
-                        controls 
-                        className="max-w-full max-h-[80vh] block object-contain" 
-                        autoPlay 
-                      />
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); downloadMedia(previewMediaItem.url, previewMediaItem.title); }}
-                        className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/25 flex items-center justify-center z-20 cursor-pointer backdrop-blur-sm"
-                        title="Descargar"
-                      >
-                        <Download size={20} strokeWidth={2.5} />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="w-[320px] md:w-[480px] p-8 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 rounded-[2.5rem] shadow-2xl relative">
-                      <div className={`w-20 h-20 ${theme.bg} ${theme.text} rounded-full flex items-center justify-center mb-6 shadow-xl`}>
-                        <Music size={40} />
-                      </div>
-                      <audio src={previewMediaItem.url} controls className="w-full" />
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); downloadMedia(previewMediaItem.url, previewMediaItem.title); }}
-                        className="absolute top-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/25 flex items-center justify-center z-20 cursor-pointer backdrop-blur-sm"
-                        title="Descargar"
-                      >
-                        <Download size={20} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Flecha Derecha */}
-              {(() => {
-                const items = getGlobalMediaItems().filter(it => it.type === activeMediaTab);
-                const idx = items.findIndex(it => it.id === previewMediaItem.id);
-                return idx !== -1 && idx < items.length - 1 ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); showNextPreviewItem(); }}
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95"
-                    title="Siguiente"
-                  >
-                    <ChevronRight size={24} strokeWidth={2.5} />
-                  </button>
-                ) : (
-                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
-                );
-              })()}
-
-            </div>
-
-            <div className="mt-6 text-center select-none" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-white text-base md:text-2xl font-bold tracking-tight italic drop-shadow-md">
-                {previewMediaItem.title}
-              </h3>
-              <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.25em] mt-1.5 block">
-                {new Date(previewMediaItem.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Calendar Full Screen Overlay Modal */}
       <AnimatePresence>

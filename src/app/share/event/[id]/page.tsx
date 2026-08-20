@@ -4,7 +4,7 @@ import { useEffect, useState, use, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UploadCloud, Loader2, CheckCircle, Download, Film, Image as ImageIcon, Sparkles, ChevronLeft, X, ChevronRight,
-  Mic, Square, Tv, Play, Pause, Volume2, Radio
+  Mic, Square, Tv, Play, Pause, Volume2, Radio, ZoomIn, ZoomOut
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -267,6 +267,13 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
   const [showGuestGallery, setShowGuestGallery] = useState(false);
   const [galleryTab, setGalleryTab] = useState<"all" | "image" | "video">("all");
   const [previewItem, setPreviewItem] = useState<EventMedia | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const toggleZoom = () => {
+    setZoom(prev => prev === 1 ? 2.5 : 1);
+  };
+  useEffect(() => {
+    setZoom(1);
+  }, [previewItem]);
 
   // Subida de Archivos
   const [uploading, setUploading] = useState(false);
@@ -1684,92 +1691,122 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
       <AnimatePresence>
         {previewItem && (
           <div
-            className="fixed inset-0 z-[2200] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md"
+            className="fixed inset-0 z-[2200] flex flex-col items-center justify-center bg-black/98"
             onClick={() => setPreviewItem(null)}
           >
-            <button
-              onClick={() => setPreviewItem(null)}
-              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50 cursor-pointer"
+            {/* Cabecera superior: Título, fecha y botón Cerrar al lado */}
+            <div 
+              className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/90 to-transparent flex items-center justify-between px-6 z-[2600]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X size={20} />
-            </button>
-
-            {/* Contenedor principal con flechas */}
-            <div className="relative w-full max-w-4xl flex items-center justify-center gap-4" onClick={(e) => e.stopPropagation()}>
-              {/* Flecha Izquierda */}
-              {(() => {
-                const idx = mediaList.findIndex(item => item.id === previewItem.id);
-                return idx > 0 ? (
-                  <button
-                    onClick={showPrevPreview}
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0"
-                    title="Anterior"
-                  >
-                    <ChevronLeft size={24} strokeWidth={2.5} />
-                  </button>
-                ) : (
-                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
-                );
-              })()}
-
-              {/* Contenedor del video/imagen */}
-              <div className="w-full max-w-5xl max-h-[80vh] flex items-center justify-center p-1 md:p-4 flex-1">
-                <div className="relative group max-w-full max-h-[80vh] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-white/10 bg-neutral-900/40">
-                  {previewItem.type === "video" ? (
-                    <video
-                      src={previewItem.url}
-                      className="max-w-full max-h-[80vh] block object-contain"
-                      controls
-                      autoPlay
-                    />
-                  ) : (
-                    <img
-                      src={previewItem.url}
-                      className="max-w-full max-h-[80vh] block object-contain"
-                      alt="Vista previa"
-                    />
-                  )}
-                  {/* Botón de descarga elegante superpuesto sobre la foto en la esquina inferior derecha */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); triggerDownload(previewItem); }}
-                    disabled={sharingMediaId === previewItem.id || downloadingFormat}
-                    className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/25 flex items-center justify-center z-20 cursor-pointer backdrop-blur-sm shadow-black/40 disabled:opacity-65"
-                    title="Descargar"
-                  >
-                    {sharingMediaId === previewItem.id || downloadingFormat ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Download size={20} strokeWidth={2.5} />
-                    )}
-                  </button>
-                </div>
+              <div className="flex flex-col text-left max-w-[70%]">
+                <h4 className="text-white text-base md:text-xl font-bold tracking-tight line-clamp-1 italic">
+                  {event?.title || "Recuerdo de Invitado"}
+                </h4>
+                <span className="text-white/50 text-[10px] md:text-xs font-black uppercase tracking-wider mt-0.5">
+                  Subido el {new Date(previewItem.created_at).toLocaleString()}
+                </span>
               </div>
+              
+              <div className="flex items-center gap-3">
+                {/* Botón de Zoom */}
+                <button
+                  onClick={toggleZoom}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer hover:scale-110 active:scale-95"
+                  title={zoom > 1 ? "Alejar" : "Acercar"}
+                >
+                  {zoom > 1 ? <ZoomOut size={20} /> : <ZoomIn size={20} />}
+                </button>
 
-              {/* Flecha Derecha */}
-              {(() => {
-                const idx = mediaList.findIndex(item => item.id === previewItem.id);
-                return idx !== -1 && idx < mediaList.length - 1 ? (
-                  <button
-                    onClick={showNextPreview}
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0"
-                    title="Siguiente"
-                  >
-                    <ChevronRight size={24} strokeWidth={2.5} />
-                  </button>
+                {/* Botón Cerrar */}
+                <button
+                  onClick={() => setPreviewItem(null)}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer hover:scale-110 active:scale-95"
+                  title="Cerrar"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenedor del video/imagen con soporte de scroll cuando hay zoom */}
+            <div 
+              className="w-full h-full flex items-center justify-center overflow-auto p-4 md:p-12"
+              onClick={() => setPreviewItem(null)}
+            >
+              <div 
+                className="relative flex items-center justify-center max-w-full max-h-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {previewItem.type === "video" ? (
+                  <video
+                    src={previewItem.url}
+                    className="max-w-full max-h-[82vh] rounded-lg shadow-2xl transition-transform duration-300"
+                    style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+                    controls
+                    autoPlay
+                  />
                 ) : (
-                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
-                );
-              })()}
+                  <img
+                    src={previewItem.url}
+                    className="max-w-full max-h-[82vh] rounded-lg object-contain shadow-2xl transition-transform duration-300 select-none"
+                    style={{ transform: `scale(${zoom})`, transformOrigin: "center center", cursor: zoom > 1 ? "zoom-out" : "zoom-in" }}
+                    alt="Vista previa"
+                    onDoubleClick={toggleZoom}
+                  />
+                )}
+
+                {/* Botón de descarga elegante superpuesto sobre la foto (oculto durante zoom para limpieza) */}
+                {zoom === 1 && (() => {
+                  const urlWithoutQuery = previewItem.url.split("?")[0];
+                  const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+                  const isVideo = previewItem.type === "video" || (match && ["mp4", "mov", "webm"].includes(match[1].toLowerCase()));
+                  const ext = match ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
+                  const filename = `TinyWorld_${isVideo ? "Video" : "Foto"}_${Date.now()}.${ext}`;
+                  const downloadUrl = `/api/download?url=${encodeURIComponent(previewItem.url)}&filename=${encodeURIComponent(filename)}`;
+
+                  return (
+                    <a
+                      href={downloadUrl}
+                      download={filename}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/20 flex items-center justify-center z-45 cursor-pointer backdrop-blur-sm shadow-black/40"
+                      title="Descargar"
+                    >
+                      <Download size={20} strokeWidth={2.5} />
+                    </a>
+                  );
+                })()}
+              </div>
             </div>
 
-            <div className="mt-4 text-center select-none" onClick={(e) => e.stopPropagation()}>
-              <h4 className="text-white text-base md:text-xl font-bold tracking-tight italic drop-shadow-md">
-                {event?.title || "Recuerdo de Invitado"}
-              </h4>
-              <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mt-1.5 block">
-                Subido el {new Date(previewItem.created_at).toLocaleString()}
-              </span>
-            </div>
+            {/* Flechas de navegación flotantes a los lados de la pantalla */}
+            {(() => {
+              const idx = mediaList.findIndex(item => item.id === previewItem.id);
+              return idx > 0 ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3.5 bg-black/50 hover:bg-black/75 rounded-full text-white transition-colors cursor-pointer z-50 hover:scale-110"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={26} strokeWidth={2.5} />
+                </button>
+              ) : null;
+            })()}
+
+            {(() => {
+              const idx = mediaList.findIndex(item => item.id === previewItem.id);
+              return idx !== -1 && idx < mediaList.length - 1 ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3.5 bg-black/50 hover:bg-black/75 rounded-full text-white transition-colors cursor-pointer z-50 hover:scale-110"
+                  title="Siguiente"
+                >
+                  <ChevronRight size={26} strokeWidth={2.5} />
+                </button>
+              ) : null;
+            })()}
           </div>
         )}
       </AnimatePresence>

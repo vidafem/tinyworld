@@ -10,7 +10,7 @@ import {
   ArrowLeft, CheckCircle2, Circle, AlertCircle,
   Camera, Wand2, MousePointer2, LogOut,
   Book, BookOpen, Layers, Filter, ChevronDown, Sparkles, ChevronLeft, ChevronRight,
-  Loader2
+  Loader2, ZoomIn, ZoomOut
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import MediaEditor from "@/components/Common/MediaEditor";
@@ -107,6 +107,13 @@ export default function PregnancyGallery({
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const toggleZoom = () => {
+    setZoom(prev => prev === 1 ? 2.5 : 1);
+  };
+  useEffect(() => {
+    setZoom(1);
+  }, [previewItem]);
   const [showDownloadChoice, setShowDownloadChoice] = useState(false);
   
   const [newFolderName, setNewFolderName] = useState("");
@@ -924,129 +931,180 @@ export default function PregnancyGallery({
       <AnimatePresence>
         {showPreviewModal && previewItem && (
           <div 
-            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-black/98"
             onClick={() => setShowPreviewModal(false)}
           >
-            <button 
-              onClick={() => setShowPreviewModal(false)} 
-              className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-3 bg-white/10 hover:bg-white/20 rounded-full z-[2100] cursor-pointer shadow-lg hover:scale-110"
+            {/* Cabecera superior: Título, fecha y botón Cerrar al lado */}
+            <div 
+              className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/90 to-transparent flex items-center justify-between px-6 z-[2100]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X size={22} />
-            </button>
-
-            {/* Contenedor principal con flechas */}
-            <div className="relative w-full max-w-5xl flex items-center justify-center gap-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-col text-left max-w-[70%]">
+                <h3 className="text-white text-base md:text-xl font-bold tracking-tight line-clamp-1 italic">
+                  {(previewItem as any).title || "Mi Recuerdo"}
+                </h3>
+                <span className="text-white/50 text-[10px] md:text-xs font-black uppercase tracking-wider mt-0.5">
+                  {new Date(previewItem.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
               
-              {/* Flecha Izquierda */}
-              {(() => {
-                const idx = displayedItems.findIndex(item => item.id === previewItem.id);
-                return idx > 0 ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95 animate-fade-in"
-                    title="Anterior"
-                  >
-                    <ChevronLeft size={24} strokeWidth={2.5} />
-                  </button>
-                ) : (
-                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
-                );
-              })()}
+              <div className="flex items-center gap-3">
+                {/* Botón de Zoom */}
+                <button
+                  onClick={toggleZoom}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer hover:scale-110 active:scale-95"
+                  title={zoom > 1 ? "Alejar" : "Acercar"}
+                >
+                  {zoom > 1 ? <ZoomOut size={20} /> : <ZoomIn size={20} />}
+                </button>
 
-              {/* Contenedor de la foto/video */}
-              <div className="w-full max-w-4xl max-h-[80vh] flex items-center justify-center p-1 md:p-2 flex-1">
-                <div className="relative group max-w-full max-h-[80vh] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-white/10 bg-neutral-900/40">
-                  {previewItem.type === 'image' ? (
+                {/* Botón Cerrar */}
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer hover:scale-110 active:scale-95"
+                  title="Cerrar"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenedor del video/imagen con soporte de scroll cuando hay zoom */}
+            <div 
+              className="w-full h-full flex items-center justify-center overflow-auto p-4 md:p-12"
+              onClick={() => setShowPreviewModal(false)}
+            >
+              <div 
+                className="relative flex items-center justify-center max-w-full max-h-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {previewItem.type === 'image' ? (
+                  <>
                     <img 
                       src={getProxiedUrl(previewItem.url)} 
                       crossOrigin="anonymous" 
-                      className="max-w-full max-h-[80vh] block object-contain" 
+                      className="max-w-full max-h-[82vh] rounded-lg object-contain shadow-2xl transition-transform duration-300 select-none" 
+                      style={{ transform: `scale(${zoom})`, transformOrigin: "center center", cursor: zoom > 1 ? "zoom-out" : "zoom-in" }}
+                      alt="Vista previa"
+                      onDoubleClick={toggleZoom}
                     />
-                  ) : previewItem.type === 'video' ? (
+                    {zoom === 1 && (
+                      <div className="absolute bottom-4 right-4 z-30" onClick={(e) => e.stopPropagation()}>
+                        {!showDownloadChoice ? (
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setShowDownloadChoice(true)} 
+                            className="w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl flex items-center justify-center border border-white/25 transition-all cursor-pointer backdrop-blur-sm shadow-black/40"
+                          >
+                            <Download size={20} strokeWidth={2.5} />
+                          </motion.button>
+                        ) : (
+                          <motion.div 
+                            initial={{ scale: 0.8, opacity: 0 }} 
+                            animate={{ scale: 1, opacity: 1 }} 
+                            className="flex flex-col gap-1.5 p-2 bg-black/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20"
+                          >
+                            <div className="flex gap-1.5">
+                              <button 
+                                onClick={() => downloadFile(previewItem.url, true)} 
+                                className={`px-3 py-2 ${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5 cursor-pointer`}
+                              >
+                                Polaroid
+                              </button>
+                              <button 
+                                onClick={() => downloadFile(previewItem.url, false)} 
+                                className="px-3 py-2 bg-white text-stone-900 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-stone-100 cursor-pointer"
+                              >
+                                Normal
+                              </button>
+                            </div>
+                            <button onClick={() => setShowDownloadChoice(false)} className="py-1 text-[8px] font-black text-white/50 uppercase tracking-widest cursor-pointer hover:text-white transition-colors">
+                              Cerrar
+                            </button>
+                          </motion.div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : previewItem.type === 'video' ? (
+                  <>
                     <video 
                       src={getProxiedUrl(previewItem.url)} 
                       crossOrigin="anonymous" 
+                      className="max-w-full max-h-[82vh] rounded-lg shadow-2xl transition-transform duration-300" 
+                      style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
                       controls 
-                      className="max-w-full max-h-[80vh] block object-contain bg-black" 
                       autoPlay 
                     />
-                  ) : (
-                    <div className="w-[320px] md:w-[480px] p-8 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 rounded-[2.5rem] shadow-2xl relative">
-                      <div className={`w-20 h-20 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center mb-6 shadow-xl`}>
-                        <Mic size={40} />
-                      </div>
-                      <audio src={getProxiedUrl(previewItem.url)} crossOrigin="anonymous" controls className="w-full" />
-                    </div>
-                  )}
-
-                  {/* Panel de descarga superpuesto sobre la foto en la esquina inferior derecha */}
-                  <div className="absolute bottom-4 right-4 z-30" onClick={(e) => e.stopPropagation()}>
-                    {!showDownloadChoice ? (
-                      <motion.button 
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setShowDownloadChoice(true)} 
-                        className="w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl flex items-center justify-center border border-white/25 transition-all cursor-pointer backdrop-blur-sm shadow-black/40"
-                      >
-                        <Download size={20} strokeWidth={2.5} />
-                      </motion.button>
-                    ) : (
-                      <motion.div 
-                        initial={{ scale: 0.8, opacity: 0 }} 
-                        animate={{ scale: 1, opacity: 1 }} 
-                        className="flex flex-col gap-1.5 p-2 bg-black/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20"
-                      >
-                        <div className="flex gap-1.5">
-                          {previewItem.type === 'image' && (
-                            <button 
-                              onClick={() => downloadFile(previewItem.url, true)} 
-                              className={`px-3 py-2 ${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5 cursor-pointer`}
-                            >
-                              Polaroid
-                            </button>
-                          )}
-                          <button 
-                            onClick={() => downloadFile(previewItem.url, false)} 
-                            className="px-3 py-2 bg-white text-stone-900 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-stone-100 cursor-pointer"
+                    {zoom === 1 && (
+                      <div className="absolute bottom-4 right-4 z-30" onClick={(e) => e.stopPropagation()}>
+                        {!showDownloadChoice ? (
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setShowDownloadChoice(true)} 
+                            className="w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl flex items-center justify-center border border-white/25 transition-all cursor-pointer backdrop-blur-sm shadow-black/40"
                           >
-                            {previewItem.type === 'image' ? 'Normal' : 'Descargar'}
-                          </button>
-                        </div>
-                        <button onClick={() => setShowDownloadChoice(false)} className="py-1 text-[8px] font-black text-white/50 uppercase tracking-widest cursor-pointer hover:text-white transition-colors">
-                          Cerrar
-                        </button>
-                      </motion.div>
+                            <Download size={20} strokeWidth={2.5} />
+                          </motion.button>
+                        ) : (
+                          <motion.div 
+                            initial={{ scale: 0.8, opacity: 0 }} 
+                            animate={{ scale: 1, opacity: 1 }} 
+                            className="flex flex-col gap-1.5 p-2 bg-black/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20"
+                          >
+                            <button 
+                              onClick={() => downloadFile(previewItem.url, false)} 
+                              className="px-3 py-2 bg-white text-stone-900 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-stone-100 cursor-pointer"
+                            >
+                              Descargar
+                            </button>
+                            <button onClick={() => setShowDownloadChoice(false)} className="py-1 text-[8px] font-black text-white/50 uppercase tracking-widest cursor-pointer hover:text-white transition-colors">
+                              Cerrar
+                            </button>
+                          </motion.div>
+                        )}
+                      </div>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Flecha Derecha */}
-              {(() => {
-                const idx = displayedItems.findIndex(item => item.id === previewItem.id);
-                return idx !== -1 && idx < displayedItems.length - 1 ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95 animate-fade-in"
-                    title="Siguiente"
-                  >
-                    <ChevronRight size={24} strokeWidth={2.5} />
-                  </button>
+                  </>
                 ) : (
-                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
-                );
-              })()}
-
+                  <div className="w-[320px] md:w-[480px] p-8 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 rounded-[2.5rem] shadow-2xl relative">
+                    <div className={`w-20 h-20 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center mb-6 shadow-xl`}>
+                      <Mic size={40} />
+                    </div>
+                    <audio src={getProxiedUrl(previewItem.url)} crossOrigin="anonymous" controls className="w-full" />
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="mt-6 text-center select-none" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-white text-base md:text-2xl font-bold tracking-tight italic drop-shadow-md">
-                {(previewItem as any).title || "Mi Recuerdo"}
-              </h3>
-              <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.25em] mt-1.5 block">
-                {new Date(previewItem.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
+            {/* Flechas de navegación flotantes a los lados de la pantalla */}
+            {(() => {
+              const idx = displayedItems.findIndex(item => item.id === previewItem.id);
+              return idx > 0 ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3.5 bg-black/50 hover:bg-black/75 rounded-full text-white transition-colors cursor-pointer z-50 hover:scale-110"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={26} strokeWidth={2.5} />
+                </button>
+              ) : null;
+            })()}
+
+            {(() => {
+              const idx = displayedItems.findIndex(item => item.id === previewItem.id);
+              return idx !== -1 && idx < displayedItems.length - 1 ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3.5 bg-black/50 hover:bg-black/75 rounded-full text-white transition-colors cursor-pointer z-50 hover:scale-110"
+                  title="Siguiente"
+                >
+                  <ChevronRight size={26} strokeWidth={2.5} />
+                </button>
+              ) : null;
+            })()}
           </div>
         )}
       </AnimatePresence>
