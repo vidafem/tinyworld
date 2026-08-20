@@ -221,6 +221,11 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
   const getGlobalMediaItems = () => {
     const allMedia: any[] = [];
     
+    // System folders configuration
+    const isAllEnabled = child.preview_config?.folders?.['all'] !== false;
+    const isByDateEnabled = child.preview_config?.folders?.['by_date'] !== false;
+    const isGlobalGalleryEnabled = isAllEnabled || isByDateEnabled;
+
     // Get active custom folder IDs
     const activeCustomFolderIds = folders
       .filter(f => child.preview_config?.folders?.[f.id] !== false)
@@ -245,8 +250,8 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
       if (mem.media_urls) {
         mem.media_urls.forEach((url: string) => {
           if (url && url.trim() !== "") {
-            // For visitors, only allow if associated with an active custom folder
-            if (!isParent) {
+            // For visitors, allow if global gallery is enabled OR if associated with an active custom folder
+            if (!isParent && !isGlobalGalleryEnabled) {
               const isAllowed = allowedUrls.has(url) || allowedUrls.has(getProxiedUrl(url)) || (mem.id && allowedMemoryIds.has(mem.id));
               if (!isAllowed) return;
             }
@@ -277,8 +282,8 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
       if (mem.media_urls) {
         mem.media_urls.forEach((url: string) => {
           if (url && url.trim() !== "") {
-            // For visitors, only allow if associated with an active custom folder
-            if (!isParent) {
+            // For visitors, allow if global gallery is enabled OR if associated with an active custom folder
+            if (!isParent && !isGlobalGalleryEnabled) {
               const isAllowed = allowedUrls.has(url) || allowedUrls.has(getProxiedUrl(url)) || (mem.id && allowedMemoryIds.has(mem.id));
               if (!isAllowed) return;
             }
@@ -402,63 +407,14 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
   const loadChildData = async (sectionId: string | null = activeStage.id) => {
     setLoadingData(true);
     try {
-      // 1. Fetch general memories
-      const { data: genMem } = await supabase
-        .from("general_memories")
-        .select("*")
-        .eq("child_id", childId)
-        .order("memory_date", { ascending: false });
-      setGeneralMemories(genMem || []);
+      let stagesData: any[] = [];
+      let foldersData: any[] = [];
+      let itemsData: any[] = [];
+      let genMemData: any[] = [];
+      let allPregMemData: any[] = [];
+      let calData: any[] = [];
+      let pagesData: any[] = [];
 
-      // 2. Fetch pregnancy memories
-      let pregMemQuery = supabase.from("pregnancy_memories").select("*").eq("child_id", childId);
-      if (sectionId) {
-        pregMemQuery = pregMemQuery.eq("section_id", sectionId);
-      } else {
-        pregMemQuery = pregMemQuery.is("section_id", null);
-      }
-      const { data: pregMem } = await pregMemQuery.order("memory_date", { ascending: false });
-      setPregnancyMemories(pregMem || []);
-
-      // Fetch all pregnancy memories globally for global folder-level gallery structure
-      const { data: allPregMem } = await supabase
-        .from("pregnancy_memories")
-        .select("*")
-        .eq("child_id", childId)
-        .order("memory_date", { ascending: false });
-      setAllPregnancyMemories(allPregMem || []);
-
-      // 3. Fetch calendars
-      let calQuery = supabase.from("pregnancy_calendars").select("*").eq("child_id", childId);
-      if (sectionId) {
-        calQuery = calQuery.eq("section_id", sectionId);
-      } else {
-        calQuery = calQuery.is("section_id", null);
-      }
-      const { data: cal } = await calQuery;
-      setCalendars(cal || []);
-
-      // 4. Fetch album pages
-      let pagesQuery = supabase.from("pregnancy_album_pages").select("*").eq("child_id", childId);
-      if (sectionId) {
-        pagesQuery = pagesQuery.eq("section_id", sectionId);
-      } else {
-        pagesQuery = pagesQuery.is("section_id", null);
-      }
-      const { data: pages } = await pagesQuery.order("page_number", { ascending: true });
-      setAlbumPages(pages || []);
-
-      // Fetch all album pages globally for counting
-      const { data: allPagesData } = await supabase
-        .from("pregnancy_album_pages")
-        .select("page_number, section_id")
-        .eq("child_id", childId);
-      setAllAlbumPages(allPagesData || []);
-
-      // Fetch stages, folders and folder items list (via public API to bypass RLS restrictions for visitors)
-      let stagesData = [];
-      let foldersData = [];
-      let itemsData = [];
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const res = await fetch(`/api/children/${childId}`, session ? {
@@ -470,12 +426,39 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
           stagesData = payload.stages || [];
           foldersData = payload.folders || [];
           itemsData = payload.folderItems || [];
+          genMemData = payload.generalMemories || [];
+          allPregMemData = payload.pregnancyMemories || [];
+          calData = payload.calendars || [];
+          pagesData = payload.albumPages || [];
+          if (payload.child) {
+            setChild(payload.child);
+          }
         } else {
           throw new Error("API call failed");
         }
       } catch (apiErr) {
         console.warn("Bypassing API, falling back to direct supabase queries:", apiErr);
-        // Fallback for stages
+        // Fallback direct supabase
+        const { data: genMem } = await supabase
+          .from("general_memories")
+          .select("*")
+          .eq("child_id", childId)
+          .order("memory_date", { ascending: false });
+        genMemData = genMem || [];
+
+        const { data: allPregMem } = await supabase
+          .from("pregnancy_memories")
+          .select("*")
+          .eq("child_id", childId)
+          .order("memory_date", { ascending: false });
+        allPregMemData = allPregMem || [];
+
+        const { data: cal } = await supabase.from("pregnancy_calendars").select("*").eq("child_id", childId);
+        calData = cal || [];
+
+        const { data: pages } = await supabase.from("pregnancy_album_pages").select("*").eq("child_id", childId).order("page_number", { ascending: true });
+        pagesData = pages || [];
+
         const { data: directStages } = await supabase
           .from("life_sections")
           .select("*")
@@ -483,14 +466,12 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
           .order("created_at", { ascending: true });
         stagesData = directStages || [];
 
-        // Fallback for folders
         const { data: directFolders } = await supabase
           .from("pregnancy_folders")
           .select("id, name")
           .eq("child_id", childId);
         foldersData = directFolders || [];
 
-        // Fallback for folder items
         if (directFolders && directFolders.length > 0) {
           const folderIds = directFolders.map(f => f.id);
           const { data: directItems } = await supabase
@@ -500,7 +481,26 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
           itemsData = directItems || [];
         }
       }
+
+      setGeneralMemories(genMemData);
+      setAllPregnancyMemories(allPregMemData);
       
+      const filteredPregMem = sectionId
+        ? allPregMemData.filter((m: any) => m.section_id === sectionId)
+        : allPregMemData.filter((m: any) => !m.section_id);
+      setPregnancyMemories(filteredPregMem);
+
+      const filteredCal = sectionId
+        ? calData.filter((c: any) => c.section_id === sectionId)
+        : calData.filter((c: any) => !c.section_id);
+      setCalendars(filteredCal);
+
+      const filteredPages = sectionId
+        ? pagesData.filter((p: any) => p.section_id === sectionId)
+        : pagesData.filter((p: any) => !p.section_id);
+      setAlbumPages(filteredPages);
+      setAllAlbumPages(pagesData);
+
       setStages([{ id: null, title: "Embarazo" }, ...(stagesData || [])]);
       setFolders(foldersData || []);
       setFolderItems(itemsData || []);
@@ -508,14 +508,14 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
       // Consolidate gallery images
       const images: string[] = [];
       if (child.preview_config?.show_pregnancy !== false || isParent) {
-        (pregMem || []).forEach(m => {
+        filteredPregMem.forEach((m: any) => {
           if (m.media_urls && Array.isArray(m.media_urls)) {
             images.push(...m.media_urls);
           }
         });
       }
       if (child.preview_config?.show_gallery !== false || isParent) {
-        (genMem || []).forEach(m => {
+        genMemData.forEach((m: any) => {
           if (m.media_urls && Array.isArray(m.media_urls)) {
             images.push(...m.media_urls);
           }
@@ -659,6 +659,10 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
   // Extract all valid image URLs from current active stage memories with privacy filtering
   const stageImages: string[] = [];
 
+  const isAllEnabledStage = child.preview_config?.folders?.['all'] !== false;
+  const isByDateEnabledStage = child.preview_config?.folders?.['by_date'] !== false;
+  const isGlobalGalleryEnabledStage = isAllEnabledStage || isByDateEnabledStage;
+
   // Get active custom folder IDs
   const activeCustomFolderIds = folders
     .filter(f => child.preview_config?.folders?.[f.id] !== false)
@@ -683,8 +687,8 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
     if (mem.media_urls && Array.isArray(mem.media_urls)) {
       mem.media_urls.forEach((url: string) => {
         if (url && url.trim() !== "") {
-          // For visitors, only allow if associated with an active custom folder
-          if (!isParent) {
+          // For visitors, allow if global gallery is enabled OR if associated with an active custom folder
+          if (!isParent && !isGlobalGalleryEnabledStage) {
             const isAllowed = allowedUrls.has(url) || allowedUrls.has(getProxiedUrl(url)) || (mem.id && allowedMemoryIds.has(mem.id));
             if (!isAllowed) return; // skip this URL
           }

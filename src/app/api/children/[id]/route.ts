@@ -82,12 +82,43 @@ export async function GET(
     folderItems = items || [];
   }
 
+  // Cargar recuerdos de embarazo (ecografías, fotos, hitos)
+  const { data: pregnancyMemories } = await supabaseAdmin
+    .from("pregnancy_memories")
+    .select("*")
+    .eq("child_id", childId)
+    .order("memory_date", { ascending: false });
+
+  // Cargar recuerdos generales del bebé
+  const { data: generalMemories } = await supabaseAdmin
+    .from("general_memories")
+    .select("*")
+    .eq("child_id", childId)
+    .order("memory_date", { ascending: false });
+
+  // Cargar calendarios
+  const { data: calendars } = await supabaseAdmin
+    .from("pregnancy_calendars")
+    .select("*")
+    .eq("child_id", childId);
+
+  // Cargar páginas del álbum digital
+  const { data: albumPages } = await supabaseAdmin
+    .from("pregnancy_album_pages")
+    .select("*")
+    .eq("child_id", childId)
+    .order("page_number", { ascending: true });
+
   return NextResponse.json({
     child: isOwner ? child : publicChildPayload(child),
     isOwner,
     stages: stages || [],
     folders: visibleFolders,
     folderItems,
+    pregnancyMemories: pregnancyMemories || [],
+    generalMemories: generalMemories || [],
+    calendars: calendars || [],
+    albumPages: albumPages || [],
   });
 }
 

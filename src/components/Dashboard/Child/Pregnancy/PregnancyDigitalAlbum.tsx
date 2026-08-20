@@ -655,13 +655,33 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
           .select("*"),
       ]);
 
-      const realMemories = (memoriesRes.data || []).filter(
+      let rawMemories = memoriesRes.data || [];
+      let rawPages = pagesRes.data || [];
+
+      if ((!rawMemories.length || !rawPages.length) && childId) {
+        try {
+          const apiRes = await fetch(`/api/children/${childId}`);
+          if (apiRes.ok) {
+            const payload = await apiRes.json();
+            if (payload.pregnancyMemories?.length && !rawMemories.length) {
+              rawMemories = payload.pregnancyMemories.filter((m: any) => sectionId ? m.section_id === sectionId : !m.section_id);
+            }
+            if (payload.albumPages?.length && !rawPages.length) {
+              rawPages = payload.albumPages.filter((p: any) => sectionId ? p.section_id === sectionId : !p.section_id);
+            }
+          }
+        } catch (apiErr) {
+          console.warn("API fallback error in digital album:", apiErr);
+        }
+      }
+
+      const realMemories = rawMemories.filter(
         (memory: PregnancyMemory) => memory.title && memory.title.trim() !== "" && !memory.title.includes("Galería")
       );
 
       setMemories(realMemories);
       setDbTemplates(templatesRes.data || []);
-      setSavedPages(((pagesRes.data || []) as AlbumPage[]).map((page) => ({
+      setSavedPages((rawPages as AlbumPage[]).map((page) => ({
         ...page,
         content_json: Array.isArray(page.content_json) ? page.content_json : [],
       })));
@@ -670,7 +690,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
 
       // Collect all gallery media from all memories
       const allMedia: string[] = [];
-      (memoriesRes.data || []).forEach((m: any) => {
+      rawMemories.forEach((m: any) => {
         (m.media_urls || []).forEach((url: string) => {
           if (url && !allMedia.includes(url)) allMedia.push(url);
         });
