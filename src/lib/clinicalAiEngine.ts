@@ -197,9 +197,48 @@ export function generateInstantClinicalResponse(
   }
 
   // =========================================================================
+  // SALUDOS Y CONVERSACIÓN CASUAL
+  // =========================================================================
+  if (
+    lower === "hola" || 
+    lower.startsWith("hola") || 
+    lower.includes("buenos dias") || 
+    lower.includes("buenas tardes") || 
+    lower.includes("buenas noches") || 
+    lower.includes("como estas") || 
+    lower.includes("cómo estás") || 
+    lower.includes("que tal") || 
+    lower.includes("qué tal")
+  ) {
+    return `¡Hola! Muy bien, gracias por preguntar 😊✨\n\n` +
+      `Soy **TinyAI**, tu asistente para todo lo relacionado con el embarazo, la maternidad y el bienestar de **${childName}**.\n\n` +
+      `¿En qué te puedo ayudar hoy? Puedes preguntarme con total libertad sobre:\n` +
+      `• 🧷 Marcas de pañales, toallitas y productos recomendados.\n` +
+      `• 🍼 Biberones anti-cólicos, lactancia y sacaleches.\n` +
+      `• 🚗 Coches, cunas de colecho y sillas de auto.\n` +
+      `• 🥗 Alimentación, nutrición y vitaminas.\n` +
+      `• 🩺 Síntomas habituales, dudas de salud y cuidados diarios.\n` +
+      `• 💌 O redactar una carta emotiva pasando a la pestaña *"Cartas"* arriba.\n\n` +
+      `¡Dime qué te gustaría saber y con gusto te oriento!`;
+  }
+
+  // =========================================================================
   // 6. DESARROLLO Y TAMAÑO DEL BEBÉ (SÓLO SI PREGUNTA POR DESARROLLO/MEDIDAS)
   // =========================================================================
-  if (lower.includes("desarrollo") || lower.includes("tamaño") || lower.includes("medida") || lower.includes("peso") || lower.includes("como esta") || lower.includes("cómo está") || lower.includes("crecimiento") || lower.includes("semana 25") || lower.includes("cuanto mide") || lower.includes("cuánto mide")) {
+  if (
+    lower.includes("desarrollo") || 
+    lower.includes("tamaño") || 
+    lower.includes("medida") || 
+    lower.includes("cuanto mide") || 
+    lower.includes("cuánto mide") || 
+    lower.includes("peso del bebe") || 
+    lower.includes("peso del bebé") || 
+    lower.includes("como va el bebe") || 
+    lower.includes("cómo va el bebé") || 
+    lower.includes("como esta el bebe") || 
+    lower.includes("cómo está el bebé") || 
+    lower.includes("crecimiento")
+  ) {
     if (isPregnancy) {
       return `👶 **Desarrollo de ${childName} en la Semana ${weekNum} de Gestación** ✨\n\n` +
         `Actualmente te encuentras en el **${trimester}° Trimestre** (${weekNum} semanas y ${pregnancyDays} días de gestación):\n\n` +
