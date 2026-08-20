@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Trash2, Loader2, QrCode, Settings, Copy, Check,
-  ExternalLink, FileDown, CheckSquare, Square, X, ImageIcon, Video, FolderOpen, ChevronLeft, Printer
+  ExternalLink, FileDown, CheckSquare, Square, X, ImageIcon, Video, FolderOpen, ChevronLeft, ChevronRight, Printer
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
@@ -520,6 +520,35 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
     if (galleryTab === "all") return true;
     return item.type === galleryTab;
   });
+
+  const showPrevPreview = () => {
+    if (!previewItem) return;
+    const idx = filteredMedia.findIndex(item => item.id === previewItem.id);
+    if (idx > 0) {
+      setPreviewItem(filteredMedia[idx - 1]);
+    }
+  };
+
+  const showNextPreview = () => {
+    if (!previewItem) return;
+    const idx = filteredMedia.findIndex(item => item.id === previewItem.id);
+    if (idx !== -1 && idx < filteredMedia.length - 1) {
+      setPreviewItem(filteredMedia[idx + 1]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!previewItem) return;
+      if (e.key === "ArrowRight") {
+        showNextPreview();
+      } else if (e.key === "ArrowLeft") {
+        showPrevPreview();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewItem, filteredMedia]);
 
   return (
     <div className="space-y-6">
@@ -1587,54 +1616,102 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
       {/* Modal de Previsualización y Descarga para el Creador */}
       <AnimatePresence>
         {previewItem && (
-          <div className="fixed inset-0 z-[2500] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+          <div 
+            className="fixed inset-0 z-[2500] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md"
+            onClick={() => setPreviewItem(null)}
+          >
             <button
               onClick={() => setPreviewItem(null)}
-              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-3 bg-white/10 hover:bg-white/20 rounded-full z-[2600] cursor-pointer shadow-lg hover:scale-110"
             >
-              <X size={20} />
+              <X size={22} />
             </button>
 
-            <div className="max-w-2xl w-full max-h-[75vh] flex items-center justify-center p-2">
-              {previewItem.type === "video" ? (
-                <video
-                  src={previewItem.url}
-                  className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl"
-                  controls
-                  autoPlay
-                />
-              ) : (
-                <img
-                  src={previewItem.url}
-                  className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl"
-                  alt="Vista previa"
-                />
-              )}
-            </div>
-
-            <div className="mt-6 flex flex-col items-center gap-2">
+            {/* Contenedor principal con flechas */}
+            <div className="relative w-full max-w-5xl flex items-center justify-center gap-4" onClick={(e) => e.stopPropagation()}>
+              
+              {/* Flecha Izquierda */}
               {(() => {
-                const urlWithoutQuery = previewItem.url.split("?")[0];
-                const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
-                const isVideo = previewItem.type === "video" || (match && ["mp4", "mov", "webm"].includes(match[1].toLowerCase()));
-                const ext = match ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
-                const filename = `TinyWorld_${isVideo ? "Video" : "Foto"}_${Date.now()}.${ext}`;
-                const downloadUrl = `/api/download?url=${encodeURIComponent(previewItem.url)}&filename=${encodeURIComponent(filename)}`;
-
-                return (
-                  <a
-                    href={downloadUrl}
-                    download={filename}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                const idx = filteredMedia.findIndex(item => item.id === previewItem.id);
+                return idx > 0 ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
+                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95"
+                    title="Anterior"
                   >
-                    <FileDown size={14} />
-                    Descargar {isVideo ? "Video" : "Archivo"}
-                  </a>
+                    <ChevronLeft size={24} strokeWidth={2.5} />
+                  </button>
+                ) : (
+                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
                 );
               })()}
-              <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
+
+              {/* Contenedor del video/imagen */}
+              <div className="w-full max-w-4xl max-h-[80vh] flex items-center justify-center p-1 md:p-2 flex-1">
+                <div className="relative group max-w-full max-h-[80vh] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-white/10 bg-neutral-900/40">
+                  {previewItem.type === "video" ? (
+                    <video
+                      src={previewItem.url}
+                      className="max-w-full max-h-[80vh] block object-contain"
+                      controls
+                      autoPlay
+                    />
+                  ) : (
+                    <img
+                      src={previewItem.url}
+                      className="max-w-full max-h-[80vh] block object-contain"
+                      alt="Vista previa"
+                    />
+                  )}
+
+                  {/* Botón de descarga elegante superpuesto sobre la foto */}
+                  {(() => {
+                    const urlWithoutQuery = previewItem.url.split("?")[0];
+                    const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+                    const isVideo = previewItem.type === "video" || (match && ["mp4", "mov", "webm"].includes(match[1].toLowerCase()));
+                    const ext = match ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
+                    const filename = `TinyWorld_${isVideo ? "Video" : "Foto"}_${Date.now()}.${ext}`;
+                    const downloadUrl = `/api/download?url=${encodeURIComponent(previewItem.url)}&filename=${encodeURIComponent(filename)}`;
+
+                    return (
+                      <a
+                        href={downloadUrl}
+                        download={filename}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/25 flex items-center justify-center z-20 cursor-pointer backdrop-blur-sm shadow-black/40"
+                        title="Descargar"
+                      >
+                        <FileDown size={20} strokeWidth={2.5} />
+                      </a>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Flecha Derecha */}
+              {(() => {
+                const idx = filteredMedia.findIndex(item => item.id === previewItem.id);
+                return idx !== -1 && idx < filteredMedia.length - 1 ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
+                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95"
+                    title="Siguiente"
+                  >
+                    <ChevronRight size={24} strokeWidth={2.5} />
+                  </button>
+                ) : (
+                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
+                );
+              })()}
+            </div>
+
+            <div className="mt-6 text-center select-none" onClick={(e) => e.stopPropagation()}>
+              <h4 className="text-white text-base md:text-xl font-bold tracking-tight italic drop-shadow-md">
+                {activeEvent?.title || "Recuerdo de Invitado"}
+              </h4>
+              <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mt-1.5 block">
                 Subido el {new Date(previewItem.created_at).toLocaleString()}
               </span>
             </div>

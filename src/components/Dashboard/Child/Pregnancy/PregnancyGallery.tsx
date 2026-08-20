@@ -923,108 +923,130 @@ export default function PregnancyGallery({
 
       <AnimatePresence>
         {showPreviewModal && previewItem && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3 md:p-4 bg-black/95 backdrop-blur-xl">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} 
-              className={`${theme.bg} p-4 md:p-6 rounded-[2.5rem] shadow-2xl max-w-full md:max-w-lg w-full relative flex flex-col items-center border border-white/20`}
+          <div 
+            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+            onClick={() => setShowPreviewModal(false)}
+          >
+            <button 
+              onClick={() => setShowPreviewModal(false)} 
+              className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors p-3 bg-white/10 hover:bg-white/20 rounded-full z-[2100] cursor-pointer shadow-lg hover:scale-110"
             >
-              <button 
-                onClick={() => setShowPreviewModal(false)} 
-                className="absolute top-4 right-4 text-gray-700 bg-white/80 hover:bg-white transition-all p-2 rounded-full shadow-md z-[2100] cursor-pointer hover:scale-110"
-              >
-                <X size={20} />
-              </button>
+              <X size={22} />
+            </button>
+
+            {/* Contenedor principal con flechas */}
+            <div className="relative w-full max-w-5xl flex items-center justify-center gap-4" onClick={(e) => e.stopPropagation()}>
               
-              <div className="w-full aspect-square bg-white/40 overflow-hidden rounded-[2rem] mb-6 flex items-center justify-center shadow-inner group relative border border-white/30">
-                {previewItem.type === 'image' ? (
-                  <img src={getProxiedUrl(previewItem.url)} crossOrigin="anonymous" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                ) : previewItem.type === 'video' ? (
-                  <video src={getProxiedUrl(previewItem.url)} crossOrigin="anonymous" controls className="w-full h-full object-contain bg-black rounded-[1.5rem]" />
+              {/* Flecha Izquierda */}
+              {(() => {
+                const idx = displayedItems.findIndex(item => item.id === previewItem.id);
+                return idx > 0 ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
+                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95 animate-fade-in"
+                    title="Anterior"
+                  >
+                    <ChevronLeft size={24} strokeWidth={2.5} />
+                  </button>
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-8 gap-6">
-                    <div className={`w-24 h-24 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center shadow-inner animate-pulse`}>
-                      <Mic size={48} />
-                    </div>
-                    <audio src={getProxiedUrl(previewItem.url)} crossOrigin="anonymous" controls className="w-full" />
-                  </div>
-                )}
+                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
+                );
+              })()}
 
-                {/* Visual Chevrons */}
-                {(() => {
-                  const idx = displayedItems.findIndex(item => item.id === previewItem.id);
-                  return (
-                    <>
-                      {idx > 0 && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); showPrevPreview(); }}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/75 text-white rounded-full transition-all z-40 cursor-pointer shadow-md"
-                          title="Anterior"
-                        >
-                          <ChevronLeft size={20} />
-                        </button>
-                      )}
-                      {idx !== -1 && idx < displayedItems.length - 1 && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/75 text-white rounded-full transition-all z-40 cursor-pointer shadow-md"
-                          title="Siguiente"
-                        >
-                          <ChevronRight size={20} />
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
-                
-                <div className="absolute bottom-4 right-4 z-30">
-                  {!showDownloadChoice ? (
-                    <motion.button 
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setShowDownloadChoice(true)} 
-                      className="w-12 h-12 bg-black/60 hover:bg-black/80 text-white rounded-full shadow-2xl flex items-center justify-center border-2 border-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                    >
-                      <Download size={22} />
-                    </motion.button>
+              {/* Contenedor de la foto/video */}
+              <div className="w-full max-w-4xl max-h-[80vh] flex items-center justify-center p-1 md:p-2 flex-1">
+                <div className="relative group max-w-full max-h-[80vh] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-white/10 bg-neutral-900/40">
+                  {previewItem.type === 'image' ? (
+                    <img 
+                      src={getProxiedUrl(previewItem.url)} 
+                      crossOrigin="anonymous" 
+                      className="max-w-full max-h-[80vh] block object-contain" 
+                    />
+                  ) : previewItem.type === 'video' ? (
+                    <video 
+                      src={getProxiedUrl(previewItem.url)} 
+                      crossOrigin="anonymous" 
+                      controls 
+                      className="max-w-full max-h-[80vh] block object-contain bg-black" 
+                      autoPlay 
+                    />
                   ) : (
-                    <motion.div 
-                      initial={{ scale: 0.8, opacity: 0 }} 
-                      animate={{ scale: 1, opacity: 1 }} 
-                      className="flex flex-col gap-2 p-2 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white"
-                    >
-                      <div className="flex gap-2">
-                        {previewItem.type === 'image' && (
-                          <button 
-                            onClick={() => downloadFile(previewItem.url, true)} 
-                            className={`px-4 py-2.5 ${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-2`}
-                          >
-                            Polaroid
-                          </button>
-                        )}
-                        <button 
-                          onClick={() => downloadFile(previewItem.url, false)} 
-                          className={`px-4 py-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-xl text-[9px] font-black uppercase tracking-widest hover:${theme.bgLight}`}
-                        >
-                          {previewItem.type === 'image' ? 'Normal' : 'Descargar'}
-                        </button>
+                    <div className="w-[320px] md:w-[480px] p-8 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 rounded-[2.5rem] shadow-2xl relative">
+                      <div className={`w-20 h-20 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center mb-6 shadow-xl`}>
+                        <Mic size={40} />
                       </div>
-                      <button onClick={() => setShowDownloadChoice(false)} className={`py-1 text-[8px] font-black ${theme.text} opacity-40 uppercase tracking-widest`}>
-                        Cerrar
-                      </button>
-                    </motion.div>
+                      <audio src={getProxiedUrl(previewItem.url)} crossOrigin="anonymous" controls className="w-full" />
+                    </div>
                   )}
-                </div>
 
-                <div className={`absolute top-4 right-4 p-2 bg-white/40 backdrop-blur-md rounded-full ${theme.text}`}><Sparkles size={16} /></div>
+                  {/* Panel de descarga superpuesto sobre la foto en la esquina inferior derecha */}
+                  <div className="absolute bottom-4 right-4 z-30" onClick={(e) => e.stopPropagation()}>
+                    {!showDownloadChoice ? (
+                      <motion.button 
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setShowDownloadChoice(true)} 
+                        className="w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl flex items-center justify-center border border-white/25 transition-all cursor-pointer backdrop-blur-sm shadow-black/40"
+                      >
+                        <Download size={20} strokeWidth={2.5} />
+                      </motion.button>
+                    ) : (
+                      <motion.div 
+                        initial={{ scale: 0.8, opacity: 0 }} 
+                        animate={{ scale: 1, opacity: 1 }} 
+                        className="flex flex-col gap-1.5 p-2 bg-black/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20"
+                      >
+                        <div className="flex gap-1.5">
+                          {previewItem.type === 'image' && (
+                            <button 
+                              onClick={() => downloadFile(previewItem.url, true)} 
+                              className={`px-3 py-2 ${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5 cursor-pointer`}
+                            >
+                              Polaroid
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => downloadFile(previewItem.url, false)} 
+                            className="px-3 py-2 bg-white text-stone-900 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-stone-100 cursor-pointer"
+                          >
+                            {previewItem.type === 'image' ? 'Normal' : 'Descargar'}
+                          </button>
+                        </div>
+                        <button onClick={() => setShowDownloadChoice(false)} className="py-1 text-[8px] font-black text-white/50 uppercase tracking-widest cursor-pointer hover:text-white transition-colors">
+                          Cerrar
+                        </button>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex flex-col items-center gap-1 opacity-40 mb-2">
-                <div className="flex items-center gap-2">
-                  <span className={`text-lg font-outfit font-black ${theme.text} tracking-[0.3em] uppercase text-[10px]`}>TinyWorld</span>
-                </div>
-                <p className={`text-[9px] font-black ${theme.text} uppercase tracking-widest`}>{new Date(previewItem.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-              </div>
-            </motion.div>
+              {/* Flecha Derecha */}
+              {(() => {
+                const idx = displayedItems.findIndex(item => item.id === previewItem.id);
+                return idx !== -1 && idx < displayedItems.length - 1 ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); showNextPreview(); }}
+                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer shrink-0 hover:scale-110 active:scale-95 animate-fade-in"
+                    title="Siguiente"
+                  >
+                    <ChevronRight size={24} strokeWidth={2.5} />
+                  </button>
+                ) : (
+                  <div className="w-12 h-12 shrink-0 hidden md:block opacity-0 pointer-events-none" />
+                );
+              })()}
+
+            </div>
+
+            <div className="mt-6 text-center select-none" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-white text-base md:text-2xl font-bold tracking-tight italic drop-shadow-md">
+                {(previewItem as any).title || "Mi Recuerdo"}
+              </h3>
+              <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.25em] mt-1.5 block">
+                {new Date(previewItem.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
           </div>
         )}
       </AnimatePresence>
