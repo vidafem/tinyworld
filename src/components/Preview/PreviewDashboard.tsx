@@ -532,31 +532,35 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
 
   useEffect(() => {
     loadChildData(activeStage.id);
-    // Initialize form data
-    setFormData({
-      name: child.name || "",
-      nickname: child.nickname || "",
-      birth_date: child.birth_date || "",
-      birth_time: child.birth_time || "",
-      weight: child.weight || "",
-      height: child.height || "",
-      gender: child.gender || "",
-      father_name: child.father_name || "",
-      mother_name: child.mother_name || "",
-      birth_hospital: child.birth_hospital || "",
-      theme_color: child.theme_color || "neutral",
-      access_code: child.access_code || "",
-      preview_config: {
-        show_pregnancy: true,
-        show_gallery: true,
-        show_calendars: true,
-        show_album: true,
-        status: "pregnancy",
-        fum: "",
-        ...(child.preview_config || {})
-      }
-    });
-  }, [childId, child]);
+  }, [childId, activeStage.id]);
+
+  useEffect(() => {
+    if (child) {
+      setFormData({
+        name: child.name || "",
+        nickname: child.nickname || "",
+        birth_date: child.birth_date || "",
+        birth_time: child.birth_time || "",
+        weight: child.weight || "",
+        height: child.height || "",
+        gender: child.gender || "",
+        father_name: child.father_name || "",
+        mother_name: child.mother_name || "",
+        birth_hospital: child.birth_hospital || "",
+        theme_color: child.theme_color || "neutral",
+        access_code: child.access_code || "",
+        preview_config: {
+          show_pregnancy: true,
+          show_gallery: true,
+          show_calendars: true,
+          show_album: true,
+          status: "pregnancy",
+          fum: "",
+          ...(child.preview_config || {})
+        }
+      });
+    }
+  }, [child]);
 
   // Sidebar Mobile Timer Auto-close
   useEffect(() => {
