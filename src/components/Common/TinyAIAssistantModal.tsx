@@ -372,17 +372,19 @@ export default function TinyAIAssistantModal({ theme, childName = "el Bebé", ch
 
   if (isDisabled) return null;
 
-  // Sugerencias contextuales exactas para las semanas o edad
-  const dynamicSuggestions = stageInfo.isPregnancy ? [
-    `🤰 ¿Cómo es el desarrollo de mi bebé en la ${stageInfo.short}?`,
-    `🩺 ¿Qué síntomas o cuidados son clave en la ${stageInfo.short}?`,
-    `🥗 ¿Qué nutrición debo priorizar en el ${stageInfo.trimester ? `${stageInfo.trimester}° Trimestre` : "embarazo"}?`,
-    `💌 Escribe una carta emotiva para mi bebé en la ${stageInfo.short}`
+  // Sugerencias variadas y prácticas (productos, desarrollo, cuidados y cartas)
+  const dynamicSuggestions = mode === "chat" ? [
+    `🧷 ¿Qué marcas de pañales son más recomendadas?`,
+    `🍼 ¿Cuáles son los mejores biberones anti-cólicos?`,
+    `🤰 ¿Cómo va el desarrollo en la ${stageInfo.short}?`,
+    `🥗 ¿Qué alimentos y nutrientes priorizar?`,
+    `🚗 ¿Qué coche o silla de auto conviene elegir?`,
+    `🌙 ¿Cómo aliviar cólicos y mejorar el sueño?`
   ] : [
-    `👶 ¿Qué hitos de desarrollo corresponden a ${stageInfo.short}?`,
-    `🌙 ¿Cómo regular el sueño a esta edad (${stageInfo.short})?`,
-    `🍼 Recomendaciones de alimentación para ${stageInfo.short}`,
-    `💌 Redacta una carta de amor para celebrar sus ${stageInfo.short}`
+    `💌 Carta tierna y emotiva para ${targetName}`,
+    `✨ Carta de bienvenida para el nacimiento`,
+    `💖 Carta de promesas de amor de mamá y papá`,
+    `🎂 Carta especial de bendiciones para su vida`
   ];
 
   return (

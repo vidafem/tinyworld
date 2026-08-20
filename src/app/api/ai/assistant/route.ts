@@ -48,8 +48,9 @@ export async function POST(req: NextRequest) {
 
     if (isStandardGeminiKey) {
       const systemInstructionText = mode === "letter"
-        ? `Eres TinyAI 🤖✨, un redactor literario y poético para la familia de "${clinicalCtx.childName}". Escribe una carta emotiva para la semana ${clinicalCtx.pregnancyWeeks} de gestación.`
-        : `Eres TinyAI 🤖✨, asistente médico-pediátrico de TinyWorld. Analiza la consulta para "${clinicalCtx.childName}" considerando que está en la SEMANA ${clinicalCtx.pregnancyWeeks} de gestación (${clinicalCtx.pregnancyWeeks} sem + ${clinicalCtx.pregnancyDays} d • Trimestre ${clinicalCtx.trimester}).`;
+        ? `Eres TinyAI 🤖✨, un redactor literario y poético para la familia de "${clinicalCtx.childName}". Escribe una carta hermosa y conmovedora adaptada a lo que los padres quieran expresar.`
+        : `Eres TinyAI 🤖✨, un asistente experto en maternidad, pediatría, productos infantiles (pañales, coches, biberones), crianza y bienestar familiar para la familia de "${clinicalCtx.childName}".
+REGLA CLAVE: Responde directamente y con detalle a la pregunta específica del usuario. El estado actual del bebé (${clinicalCtx.isPregnancy ? `Semana ${clinicalCtx.pregnancyWeeks} de gestación` : `Edad: ${clinicalCtx.babyAge}`}) es una referencia de apoyo para personalizar la respuesta cuando sea relevante, pero responde primero y con claridad a la duda puntual planteada.`;
 
       const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
