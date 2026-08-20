@@ -1713,21 +1713,36 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
               })()}
 
               {/* Contenedor del video/imagen */}
-              <div className="max-w-2xl w-full max-h-[75vh] flex items-center justify-center p-2 flex-1">
-                {previewItem.type === "video" ? (
-                  <video
-                    src={previewItem.url}
-                    className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl"
-                    controls
-                    autoPlay
-                  />
-                ) : (
-                  <img
-                    src={previewItem.url}
-                    className="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl"
-                    alt="Vista previa"
-                  />
-                )}
+              <div className="w-full max-w-5xl max-h-[80vh] flex items-center justify-center p-1 md:p-4 flex-1">
+                <div className="relative group max-w-full max-h-[80vh] rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-2 border-white/10 bg-neutral-900/40">
+                  {previewItem.type === "video" ? (
+                    <video
+                      src={previewItem.url}
+                      className="max-w-full max-h-[80vh] block object-contain"
+                      controls
+                      autoPlay
+                    />
+                  ) : (
+                    <img
+                      src={previewItem.url}
+                      className="max-w-full max-h-[80vh] block object-contain"
+                      alt="Vista previa"
+                    />
+                  )}
+                  {/* Botón de descarga elegante superpuesto sobre la foto en la esquina inferior derecha */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); triggerDownload(previewItem); }}
+                    disabled={sharingMediaId === previewItem.id || downloadingFormat}
+                    className="absolute bottom-4 right-4 w-12 h-12 bg-black/60 hover:bg-black/85 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all border border-white/25 flex items-center justify-center z-20 cursor-pointer backdrop-blur-sm shadow-black/40 disabled:opacity-65"
+                    title="Descargar"
+                  >
+                    {sharingMediaId === previewItem.id || downloadingFormat ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download size={20} strokeWidth={2.5} />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Flecha Derecha */}
@@ -1747,25 +1762,11 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
               })()}
             </div>
 
-            <div className="mt-6 flex flex-col items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => triggerDownload(previewItem)}
-                disabled={sharingMediaId === previewItem.id || downloadingFormat}
-                className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-all disabled:opacity-60"
-              >
-                {sharingMediaId === previewItem.id || downloadingFormat ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
-                    Preparando descarga...
-                  </>
-                ) : (
-                  <>
-                    <Download size={14} />
-                    Descargar Archivo
-                  </>
-                )}
-              </button>
-              <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
+            <div className="mt-4 text-center select-none" onClick={(e) => e.stopPropagation()}>
+              <h4 className="text-white text-base md:text-xl font-bold tracking-tight italic drop-shadow-md">
+                {event?.title || "Recuerdo de Invitado"}
+              </h4>
+              <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mt-1.5 block">
                 Subido el {new Date(previewItem.created_at).toLocaleString()}
               </span>
             </div>
