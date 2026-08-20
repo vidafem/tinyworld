@@ -266,7 +266,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
                           const getProxiedUrl = (u: string) => {
                             if (!u) return '';
                             if (u.includes('.r2.dev') || u.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && u.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
-                              return `/api/download?url=${encodeURIComponent(u)}`;
+                              return `/api/download?url=${encodeURIComponent(u)}&inline=true`;
                             }
                             return u;
                           };
@@ -381,7 +381,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
                       const getProxiedUrl = (u: string) => {
                         if (!u) return '';
                         if (u.includes('.r2.dev') || u.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && u.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
-                          return `/api/download?url=${encodeURIComponent(u)}`;
+                          return `/api/download?url=${encodeURIComponent(u)}&inline=true`;
                         }
                         return u;
                       };
