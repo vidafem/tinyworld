@@ -814,7 +814,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         )}
       </AnimatePresence>
 
-      <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} />
+      <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
     </div>
   );
 }

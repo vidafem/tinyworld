@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
+import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 
 interface ChildHubProps {
   childId: string;
@@ -267,6 +268,8 @@ export default function ChildHub({ childId }: ChildHubProps) {
       <footer className="p-8 text-center mt-auto opacity-20">
         <p className={`text-[10px] font-black ${theme.text} uppercase tracking-[0.5em]`}>TinyWorld Studio</p>
       </footer>
+
+      <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
     </div>
   );
 }
