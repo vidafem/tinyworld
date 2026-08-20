@@ -43,14 +43,23 @@ export async function POST(req: NextRequest) {
       parentsNames: childContext.parentsNames
     };
 
-    // Si hay una API Key que comience con el formato estándar de Google AI Studio (AIzaSy...)
-    const isStandardGeminiKey = rawApiKey.startsWith("AIzaSy") && rawApiKey.length >= 35;
+    // Si hay una API Key disponible
+    if (rawApiKey && rawApiKey.length >= 20) {
+      const stageReference = clinicalCtx.isPregnancy
+        ? `Actualmente el embarazo está en la Semana ${clinicalCtx.pregnancyWeeks} de gestación (Trimestre ${clinicalCtx.trimester}).`
+        : `El bebé ${clinicalCtx.childName} tiene ${clinicalCtx.babyAge || "pocos meses"} de edad.`;
 
-    if (isStandardGeminiKey) {
       const systemInstructionText = mode === "letter"
-        ? `Eres TinyAI 🤖✨, un redactor literario y poético para la familia de "${clinicalCtx.childName}". Escribe una carta hermosa y conmovedora adaptada a lo que los padres quieran expresar.`
-        : `Eres TinyAI 🤖✨, un asistente experto en maternidad, pediatría, productos infantiles (pañales, coches, biberones), crianza y bienestar familiar para la familia de "${clinicalCtx.childName}".
-REGLA CLAVE: Responde directamente y con detalle a la pregunta específica del usuario. El estado actual del bebé (${clinicalCtx.isPregnancy ? `Semana ${clinicalCtx.pregnancyWeeks} de gestación` : `Edad: ${clinicalCtx.babyAge}`}) es una referencia de apoyo para personalizar la respuesta cuando sea relevante, pero responde primero y con claridad a la duda puntual planteada.`;
+        ? `Eres TinyAI 🤖✨, un redactor literario y poético para la familia de "${clinicalCtx.childName}". Escribe una carta profunda, hermosa y conmovedora adaptada a lo que los padres quieran expresar.`
+        : `Eres TinyAI 🤖✨, un asistente cálido, inteligente, empático y conversacional para la aplicación TinyWorld, especializado en embarazo, maternidad, pediatría, productos infantiles (pañales, coches, biberones), crianza y bienestar de la familia de "${clinicalCtx.childName}".
+Contexto de referencia: ${stageReference}
+
+INSTRUCCIONES CLAVE:
+1. Responde de forma 100% natural, directa y útil a lo que el usuario pregunte.
+2. Si el usuario te saluda ("hola como estas"), responde cordialmente presentándote como su asistente.
+3. Si pregunta sobre marcas (pañales, biberones, coches, cunas), brinda una comparativa detallada, pros y contras, y consejos de compra.
+4. Si pregunta sobre salud o nutrición, responde con empatía y claridad médica estructurada.
+5. Usa formato markdown limpio (negritas, viñetas).`;
 
       const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
 
@@ -73,19 +82,28 @@ REGLA CLAVE: Responde directamente y con detalle a la pregunta específica del u
         parts: [{ text: sanitizedPrompt }]
       });
 
-      const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+      // Probar modelos compatibles con la API de Google Gemini en v1 y v1beta
+      const candidateEndpoints = [
+        { url: `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=${rawApiKey}`, model: "gemini-3.5-flash" },
+        { url: `https://generativelanguage.googleapis.com/v1/models/gemini-3.1-flash-lite:generateContent?key=${rawApiKey}`, model: "gemini-3.1-flash-lite" },
+        { url: `https://generativelanguage.googleapis.com/v1/models/gemini-3.7-flash:generateContent?key=${rawApiKey}`, model: "gemini-3.7-flash" },
+        { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${rawApiKey}`, model: "gemini-2.0-flash" }
+      ];
 
-      for (const model of models) {
+      for (const endpoint of candidateEndpoints) {
         try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${rawApiKey}`;
-          const res = await fetch(url, {
+          const res = await fetch(endpoint.url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              system_instruction: { parts: [{ text: systemInstructionText }] },
-              contents,
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: `${systemInstructionText}\n\nConsulta del usuario: ${sanitizedPrompt}` }]
+                }
+              ],
               generationConfig: {
-                temperature: mode === "letter" ? 0.85 : 0.6,
+                temperature: mode === "letter" ? 0.85 : 0.7,
                 maxOutputTokens: 1500
               }
             })
@@ -98,22 +116,22 @@ REGLA CLAVE: Responde directamente y con detalle a la pregunta específica del u
               return NextResponse.json({ 
                 reply: text.trim(),
                 isAiGenerated: true,
-                modelUsed: model,
+                modelUsed: endpoint.model,
                 stageAnalyzed: clinicalCtx.isPregnancy ? `Semana ${clinicalCtx.pregnancyWeeks}` : clinicalCtx.babyAge
               });
             }
           }
         } catch (apiErr) {
-          console.warn(`[TinyAI] Fallo al llamar API externa ${model}, usando motor clínico autónomo:`, apiErr);
+          console.warn(`[TinyAI] Falló endpoint ${endpoint.model}:`, apiErr);
         }
       }
     }
 
-    // Motor Clínico Autónomo: Genera análisis instantáneo preciso con toda la información de la semana
-    const instantReply = generateInstantClinicalResponse(sanitizedPrompt, mode, clinicalCtx);
+    // Motor de respaldo autónomo si no hay API key o si se cae la conexión externa
+    const fallbackReply = generateInstantClinicalResponse(sanitizedPrompt, mode, clinicalCtx);
 
     return NextResponse.json({
-      reply: instantReply,
+      reply: fallbackReply,
       isAiGenerated: true,
       modelUsed: "TinyClinical-Engine",
       stageAnalyzed: clinicalCtx.isPregnancy ? `Semana ${clinicalCtx.pregnancyWeeks}` : clinicalCtx.babyAge
