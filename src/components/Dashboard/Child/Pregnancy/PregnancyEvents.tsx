@@ -1613,16 +1613,27 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
             </div>
 
             <div className="mt-6 flex flex-col items-center gap-2">
-              <a
-                href={`/api/download?url=${encodeURIComponent(previewItem.url)}`}
-                download
-                target="_blank"
-                rel="noreferrer"
-                className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg"
-              >
-                <FileDown size={14} />
-                Descargar Archivo
-              </a>
+              {(() => {
+                const urlWithoutQuery = previewItem.url.split("?")[0];
+                const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+                const isVideo = previewItem.type === "video" || (match && ["mp4", "mov", "webm"].includes(match[1].toLowerCase()));
+                const ext = match ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
+                const filename = `TinyWorld_${isVideo ? "Video" : "Foto"}_${Date.now()}.${ext}`;
+                const downloadUrl = `/api/download?url=${encodeURIComponent(previewItem.url)}&filename=${encodeURIComponent(filename)}`;
+
+                return (
+                  <a
+                    href={downloadUrl}
+                    download={filename}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-6 py-4 bg-white text-stone-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <FileDown size={14} />
+                    Descargar {isVideo ? "Video" : "Archivo"}
+                  </a>
+                );
+              })()}
               <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">
                 Subido el {new Date(previewItem.created_at).toLocaleString()}
               </span>

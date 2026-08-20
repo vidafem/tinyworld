@@ -79,7 +79,9 @@ export function parseAllowedMediaUrl(rawUrl: string) {
     configuredHosts.includes(hostname) ||
     hostname.endsWith(".r2.dev") ||
     hostname.endsWith(".supabase.co") ||
-    hostname.endsWith(".supabase.in");
+    hostname.endsWith(".supabase.in") ||
+    hostname.endsWith(".r2.cloudflarestorage.com") ||
+    hostname.endsWith(".amazonaws.com");
 
   if (!isAllowedHost) {
     return { error: "Dominio no permitido" as const };

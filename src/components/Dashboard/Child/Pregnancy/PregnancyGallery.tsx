@@ -317,12 +317,19 @@ export default function PregnancyGallery({
   const downloadFile = async (url: string, withFrame: boolean) => {
     setShowDownloadChoice(false);
     try {
-      if (!withFrame) {
-        const response = await fetch(`/api/download?url=${encodeURIComponent(url)}`);
-        const blob = await response.blob();
+      const urlWithoutQuery = url.split("?")[0];
+      const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+      const isVideo = previewItem?.type === 'video' || (match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1].toLowerCase()));
+      const isAudio = previewItem?.type === 'audio' || (match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1].toLowerCase()));
+      const ext = match ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'png');
+
+      if (!withFrame || isVideo || isAudio) {
+        const filename = `TinyWorld_${isVideo ? 'Video' : isAudio ? 'Audio' : 'Foto'}_${Date.now()}.${ext}`;
+        const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `TinyWorld_Foto_${Date.now()}.png`;
+        link.href = proxyUrl;
+        link.download = filename;
+        link.target = "_blank";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

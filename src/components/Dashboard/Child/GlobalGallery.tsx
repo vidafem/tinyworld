@@ -279,22 +279,30 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
     audio: currentFolderItemsList.filter(it => it.type === 'audio').length,
   };
 
-  async function downloadMedia(url: string, title: string) {
+  const downloadMedia = (url: string, title?: string) => {
     try {
-      const filename = `TinyWorld-${title.replace(/\s+/g, '_')}-${new Date().getTime()}.jpeg`;
+      const urlWithoutQuery = url.split("?")[0];
+      const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+      const isVideo = previewItem?.type === 'video' || (match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1].toLowerCase()));
+      const isAudio = previewItem?.type === 'audio' || (match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1].toLowerCase()));
+      const ext = match ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'jpg');
+      
+      const cleanTitle = (title || (isVideo ? 'Video' : isAudio ? 'Audio' : 'Foto')).replace(/[\r\n\s]+/g, '_');
+      const filename = `TinyWorld_${cleanTitle}_${Date.now()}.${ext}`;
       const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
       
       const link = document.createElement('a');
       link.href = proxyUrl;
       link.download = filename;
+      link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      console.error("Download failed:", err);
-      window.open(url, '_blank');
+      console.error("Error al descargar medio:", err);
+      window.open(url, "_blank");
     }
-  }
+  };
 
   const handleBack = () => {
     if (view === 'items') {

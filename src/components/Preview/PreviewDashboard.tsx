@@ -195,12 +195,20 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
 
   const downloadMedia = async (url: string, title: string) => {
     try {
-      const filename = `TinyWorld-${title.replace(/\s+/g, '_')}-${new Date().getTime()}.jpeg`;
+      const urlWithoutQuery = url.split("?")[0];
+      const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+      const isVideo = previewMediaItem?.type === 'video' || (match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1].toLowerCase()));
+      const isAudio = previewMediaItem?.type === 'audio' || (match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1].toLowerCase()));
+      const ext = match ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'jpeg');
+
+      const cleanTitle = (title || (isVideo ? 'Video' : isAudio ? 'Audio' : 'Foto')).replace(/[\r\n\s]+/g, '_');
+      const filename = `TinyWorld-${cleanTitle}-${new Date().getTime()}.${ext}`;
       const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
       
       const link = document.createElement('a');
       link.href = proxyUrl;
       link.download = filename;
+      link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
