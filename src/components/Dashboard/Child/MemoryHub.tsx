@@ -274,11 +274,12 @@ export default function MemoryHub({ childId }: { childId: string }) {
                           if (isVideo) {
                             return (
                               <video 
-                                src={getProxiedUrl(url)} 
+                                src={getProxiedUrl(url) + "#t=0.5"} 
                                 crossOrigin="anonymous" 
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                                 muted 
                                 playsInline 
+                                preload="metadata"
                               />
                             );
                           }
@@ -389,10 +390,13 @@ export default function MemoryHub({ childId }: { childId: string }) {
                         <div key={i} className={`aspect-square rounded-2xl overflow-hidden shadow-md border-2 border-white bg-white/20 flex items-center justify-center`}>
                           {isVideo ? (
                             <video 
-                              src={getProxiedUrl(url)} 
+                              src={getProxiedUrl(url) + "#t=0.5"} 
                               crossOrigin="anonymous" 
                               className="w-full h-full object-cover" 
                               controls 
+                              muted
+                              playsInline
+                              preload="metadata"
                             />
                           ) : isAudio ? (
                             <div className="flex flex-col items-center justify-center w-full h-full p-1 bg-white/5">

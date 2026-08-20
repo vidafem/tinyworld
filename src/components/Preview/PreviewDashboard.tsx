@@ -2540,7 +2540,15 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
                       return (
                         <div key={index} className="relative group rounded-3xl overflow-hidden shadow-sm border border-gray-100 aspect-video md:aspect-[4/3] bg-gray-50">
                           {isVideo ? (
-                            <video src={getProxiedUrl(url)} controls className="w-full h-full object-cover" />
+                            <video 
+                              src={getProxiedUrl(url) + "#t=0.5"} 
+                              controls 
+                              className="w-full h-full object-cover" 
+                              muted 
+                              playsInline 
+                              preload="metadata"
+                              crossOrigin="anonymous"
+                            />
                           ) : isAudio ? (
                             <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-sage/5 gap-3">
                               <div className={`w-14 h-14 rounded-full ${theme.bg} ${theme.text} flex items-center justify-center shadow-inner`}>

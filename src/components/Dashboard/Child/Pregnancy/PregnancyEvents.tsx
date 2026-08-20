@@ -752,7 +752,14 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                         >
                           {item.type === "video" ? (
                             <div className="w-full h-full relative bg-black flex items-center justify-center">
-                              <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                              <video 
+                                src={item.url + "#t=0.5"} 
+                                className="w-full h-full object-cover" 
+                                muted 
+                                playsInline 
+                                preload="metadata"
+                                crossOrigin="anonymous"
+                              />
                               <div className="absolute top-1 right-1 bg-black/60 p-1.5 rounded-full text-white">
                                 <Video size={10} />
                               </div>

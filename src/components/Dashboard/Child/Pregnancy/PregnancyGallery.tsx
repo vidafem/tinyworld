@@ -793,7 +793,14 @@ export default function PregnancyGallery({
                         <img src={getProxiedUrl(item.url)} crossOrigin="anonymous" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                       ) : item.type === 'video' ? (
                         <div className="w-full h-full relative">
-                          <video src={getProxiedUrl(item.url)} crossOrigin="anonymous" className="w-full h-full object-cover" />
+                          <video 
+                            src={getProxiedUrl(item.url) + "#t=0.5"} 
+                            crossOrigin="anonymous" 
+                            className="w-full h-full object-cover" 
+                            muted 
+                            playsInline 
+                            preload="metadata"
+                          />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white"><Video size={32} /></div>
                         </div>
                       ) : (

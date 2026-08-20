@@ -2121,7 +2121,14 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                     <button key={i} onClick={() => pickPhoto(url)} className="aspect-square rounded-xl overflow-hidden border-2 border-transparent transition-all hover:scale-105 shadow-sm relative bg-black/5" style={{ ['--hover-border' as any]: theme.hex }} onMouseEnter={(e) => (e.currentTarget.style.borderColor = theme.hex)} onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}>
                       {mt === "video" ? (
                         <>
-                          <video src={getProxiedUrl(url)} className="w-full h-full object-cover" muted preload="metadata" />
+                          <video 
+                             src={getProxiedUrl(url) + "#t=0.5"} 
+                             className="w-full h-full object-cover" 
+                             muted 
+                             playsInline 
+                             preload="metadata" 
+                             crossOrigin="anonymous" 
+                           />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20"><PlayCircle size={24} className="text-white" /></div>
                         </>
                       ) : mt === "audio" ? (

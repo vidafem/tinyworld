@@ -578,11 +578,12 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                         if (isVideo) {
                           return (
                             <video 
-                              src={getProxiedUrl(url)} 
+                              src={getProxiedUrl(url) + "#t=0.5"} 
                               crossOrigin="anonymous" 
                               className="w-full h-full object-cover" 
                               muted 
                               playsInline 
+                              preload="metadata"
                             />
                           );
                         }

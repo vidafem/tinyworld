@@ -1481,7 +1481,14 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                         <div className="aspect-square w-full rounded overflow-hidden bg-stone-50 border border-black/5 relative flex items-center justify-center">
                           {item.type === 'video' ? (
                             <div className="w-full h-full relative">
-                              <video src={item.url} className="w-full h-full object-cover animate-pulse" />
+                              <video 
+                                src={item.url + "#t=0.5"} 
+                                className="w-full h-full object-cover animate-pulse" 
+                                muted 
+                                playsInline 
+                                preload="metadata" 
+                                crossOrigin="anonymous" 
+                              />
                               <div className="absolute inset-0 flex items-center justify-center bg-black/10 text-white">
                                 <Film size={12} />
                               </div>
@@ -1591,7 +1598,14 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
                       <div className="aspect-square bg-stone-100 rounded-lg overflow-hidden mb-2 relative shadow-inner flex items-center justify-center">
                         {item.type === 'video' ? (
                           <div className="w-full h-full relative">
-                            <video src={item.url} className="w-full h-full object-cover border border-black/10" />
+                            <video 
+                              src={item.url + "#t=0.5"} 
+                              className="w-full h-full object-cover border border-black/10" 
+                              muted 
+                              playsInline 
+                              preload="metadata" 
+                              crossOrigin="anonymous" 
+                            />
                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white">
                               <Film size={24} />
                             </div>
