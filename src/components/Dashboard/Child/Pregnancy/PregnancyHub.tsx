@@ -19,6 +19,8 @@ import FutureNames from "./FutureNames";
 import HowIsBabyCard from "../../../Preview/HowIsBabyCard";
 import PregnancyEvents from "./PregnancyEvents";
 import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
+import AppButton from "@/components/Common/AppButton";
+import ConfirmDialog from "@/components/Common/ConfirmDialog";
 
 const PregnancyCalendar = dynamic(() => import("./PregnancyCalendar"), {
   loading: () => (
@@ -780,40 +782,19 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         )}
       </main>
 
-      <AnimatePresence>
-        {confirmConfig && confirmConfig.show && (
-          <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }} 
-              animate={{ scale: 1, opacity: 1 }} 
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full shadow-2xl text-center"
-            >
-              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Trash2 size={28} />
-              </div>
-              <h3 className={`text-xl font-black ${theme.text} mb-2 tracking-tighter italic`}>{confirmConfig.title}</h3>
-              <p className={`${theme.text} opacity-40 text-[10px] md:text-xs mb-8 uppercase tracking-widest leading-relaxed`}>
-                {confirmConfig.text}
-              </p>
-              <div className="flex flex-col gap-2">
-                <button 
-                  onClick={confirmConfig.onConfirm}
-                  className="w-full py-4 bg-red-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:bg-red-600 transition-colors"
-                >
-                  Sí, Borrar
-                </button>
-                <button 
-                  onClick={() => setConfirmConfig(null)}
-                  className={`w-full py-4 ${theme.text} opacity-30 font-black text-[10px] uppercase tracking-[0.2em]`}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        isOpen={Boolean(confirmConfig && confirmConfig.show)}
+        onClose={() => setConfirmConfig(null)}
+        onConfirm={() => {
+          if (confirmConfig?.onConfirm) confirmConfig.onConfirm();
+        }}
+        title={confirmConfig?.title || "¿Confirmar Acción?"}
+        message={confirmConfig?.text || "Esta acción no se puede deshacer."}
+        confirmText="Sí, Borrar"
+        cancelText="Cancelar"
+        variant="danger"
+        theme={theme}
+      />
 
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
     </div>
@@ -824,27 +805,31 @@ function HubButton({ onClick, icon, title, subtitle, theme, isMobile }: any) {
   return (
     <motion.button 
       onClick={onClick}
-      whileHover={{ y: -5 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ y: -5, transition: { type: "spring", stiffness: 400, damping: 20 } }}
+      whileTap={{ scale: 0.96 }}
       className={`
-        bg-white/60 hover:bg-white p-3 md:p-6 rounded-[2.5rem] md:rounded-[3rem] 
-        shadow-sm hover:shadow-xl transition-all border border-white/50 
+        bg-white/75 dark:bg-stone-900/75 hover:bg-white dark:hover:bg-stone-900 
+        p-4 md:p-6 rounded-[2.2rem] md:rounded-[2.8rem] 
+        shadow-sm hover:shadow-xl transition-all border border-white/70 dark:border-stone-800 
         flex flex-row md:flex-col items-center gap-4 md:gap-5 group w-full text-left md:text-center
-        backdrop-blur-md
+        backdrop-blur-xl cursor-pointer relative overflow-hidden
       `}
+      style={{
+        boxShadow: `0 8px 24px -6px ${theme?.hex || '#8C7A6B'}20, inset 0 1px 0 rgba(255,255,255,0.7)`,
+      }}
     >
       <div className={`
-        w-16 h-16 md:w-20 md:h-20 shrink-0 rounded-full ${theme.bg} 
-        flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner
-        border-4 border-white
+        w-14 h-14 md:w-20 md:h-20 shrink-0 rounded-full ${theme.bg} 
+        flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner
+        border-3 border-white dark:border-stone-800
       `}>
         <div className={theme.text}>{icon}</div>
       </div>
       <div className="flex-1 md:w-full">
-        <h2 className={`text-base md:text-xl font-black ${theme.text} leading-tight tracking-tighter`}>{title}</h2>
-        <p className={`${theme.text} opacity-40 text-[9px] md:text-xs font-bold uppercase tracking-widest mt-1`}>{subtitle}</p>
+        <h2 className={`text-sm md:text-lg font-black ${theme.text} leading-tight tracking-tight uppercase font-outfit`}>{title}</h2>
+        <p className={`${theme.text} opacity-50 text-[9px] md:text-xs font-bold uppercase tracking-widest mt-0.5 font-quicksand`}>{subtitle}</p>
       </div>
-      <div className="md:hidden opacity-20"><ChevronRight size={18} /></div>
+      <div className="md:hidden opacity-30"><ChevronRight size={18} /></div>
     </motion.button>
   );
 }

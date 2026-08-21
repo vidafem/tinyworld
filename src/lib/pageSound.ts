@@ -157,3 +157,111 @@ export function playBookOpenSound(): void {
     noiseNode.stop(now + duration);
   } catch (err) {}
 }
+
+/**
+ * Dispara una micro-vibración háptica suave en dispositivos móviles compatibles.
+ */
+export function triggerHaptic(type: "light" | "medium" | "success" | "warning" = "light"): void {
+  if (typeof window === "undefined" || !("vibrate" in navigator)) return;
+  try {
+    if (type === "light") navigator.vibrate(8);
+    else if (type === "medium") navigator.vibrate(16);
+    else if (type === "success") navigator.vibrate([10, 40, 15]);
+    else if (type === "warning") navigator.vibrate([20, 50, 20]);
+  } catch (e) {}
+}
+
+/**
+ * Tono musical pentatónico cálido para confirmaciones y guardados exitosos.
+ */
+export function playSuccessChime(): void {
+  triggerHaptic("success");
+  if (isAudioMuted()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (Acorde Mayor luminoso)
+
+    notes.forEach((freq, index) => {
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + index * 0.05);
+
+      gain.gain.setValueAtTime(0.0001, now + index * 0.05);
+      gain.gain.linearRampToValueAtTime(0.12, now + index * 0.05 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.05 + 0.55);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + index * 0.05);
+      osc.stop(now + index * 0.05 + 0.6);
+    });
+  } catch (e) {}
+}
+
+/**
+ * Sonido táctil sutil tipo burbuja / pop para botones y switches.
+ */
+export function playSoftPop(): void {
+  triggerHaptic("light");
+  if (isAudioMuted()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(780, now + 0.04);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.18, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.08);
+  } catch (e) {}
+}
+
+/**
+ * Sonido táctil para apertura de modales o selecciones.
+ */
+export function playActionSnap(): void {
+  triggerHaptic("medium");
+  if (isAudioMuted()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(260, now);
+    osc.frequency.exponentialRampToValueAtTime(540, now + 0.06);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.14, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.1);
+  } catch (e) {}
+}
+
