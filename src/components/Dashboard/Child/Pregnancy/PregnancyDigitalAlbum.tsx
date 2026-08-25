@@ -1448,70 +1448,56 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
               {isMuted ? <VolumeX size={18} className="opacity-40" /> : <Volume2 size={18} />}
             </button>
 
-            <div className={`flex items-center gap-1 md:gap-2 bg-white rounded-2xl px-2 py-1 shadow-sm border ${theme.borderAccent}`}>
-              <ZoomOut size={14} className={`${theme.text} opacity-30`} />
-              <input
-                type="range"
-                min="0.75"
-                max="1.45"
-                step="0.05"
-                value={zoom}
-                onChange={(event) => setZoom(Number(event.target.value))}
-                className="w-14 sm:w-24 md:w-36 cursor-pointer"
-                style={{ accentColor: theme.hex }}
-              />
-              <ZoomIn size={14} className={`${theme.text} opacity-30`} />
-              <span className={`w-10 text-right text-[10px] font-black ${theme.text} opacity-40`}>{Math.round(zoom * 100)}%</span>
-            </div>
-          </div>
+            {!readOnly && (
+              <>
+                <button
+                  onClick={exportAlbumToPdf}
+                  disabled={isExportingPdf}
+                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer`}
+                  title={isExportingPdf ? "Generando..." : "Exportar Álbum a PDF"}
+                >
+                  {isExportingPdf ? <Loader2 className="animate-spin" size={18} /> : <FileDown size={18} />}
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setEditMode((value) => {
+                      const next = !value;
+                      setEditSidebarOpen(next);
+                      return next;
+                    });
+                    setSelectedPageNumber(visiblePages[0]?.page_number || null);
+                    setSelectedElementId(null);
+                  }}
+                  className={`p-2.5 rounded-2xl font-black shadow-sm flex items-center justify-center transition-all ${editMode ? `${theme.primaryBg} ${theme.textActive}` : `bg-white ${theme.text} border ${theme.borderAccent}`}`}
+                  title={editMode ? "Cerrar edición" : "Editar álbum"}
+                >
+                  {editMode ? <X size={18} /> : <Edit3 size={18} />}
+                </button>
 
-          {!readOnly && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={exportAlbumToPdf}
-                disabled={isExportingPdf}
-                className={`px-3 md:px-5 py-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm flex items-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer`}
-                title="Exportar Álbum completo a PDF 300 DPI"
-              >
-                {isExportingPdf ? <Loader2 className="animate-spin" size={15} /> : <FileDown size={15} />}
-                {isExportingPdf ? "Generando..." : "Exportar PDF"}
-              </button>
-              <button
-                onClick={() => {
-                  setEditMode((value) => {
-                    const next = !value;
-                    setEditSidebarOpen(next);
-                    return next;
-                  });
-                  setSelectedPageNumber(visiblePages[0]?.page_number || null);
-                  setSelectedElementId(null);
-                }}
-                className={`px-3 md:px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm flex items-center gap-2 transition-all ${editMode ? `${theme.primaryBg} ${theme.textActive}` : `bg-white ${theme.text} border ${theme.borderAccent}`}`}
-              >
-                {editMode ? <X size={15} /> : <Edit3 size={15} />}
-                {editMode ? "Cerrar" : "Editar"}
-              </button>
-              {editMode && (
-                <button
-                  onClick={() => setEditSidebarOpen((value) => !value)}
-                  className={`px-3 md:px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm flex items-center gap-2 transition-all ${editSidebarOpen ? `bg-white ${theme.text} border ${theme.borderAccent}` : `${theme.primaryBg} ${theme.textActive}`}`}
-                >
-                  <LayoutTemplate size={15} />
-                  Herramientas
-                </button>
-              )}
-              {editMode && (
-                <button
-                  onClick={() => savePage()}
-                  disabled={saving || !selectedPage}
-                  className={`px-3 md:px-5 py-2.5 ${theme.primaryBg} ${theme.textActive} rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 disabled:opacity-40`}
-                >
-                  {saving ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
-                  Guardar
-                </button>
-              )}
-            </div>
-          )}
+                {editMode && (
+                  <button
+                    onClick={() => setEditSidebarOpen((value) => !value)}
+                    className={`p-2.5 rounded-2xl font-black shadow-sm flex items-center justify-center transition-all ${editSidebarOpen ? `bg-white ${theme.text} border ${theme.borderAccent}` : `${theme.primaryBg} ${theme.textActive}`}`}
+                    title="Herramientas de diseño"
+                  >
+                    <LayoutTemplate size={18} />
+                  </button>
+                )}
+
+                {editMode && (
+                  <button
+                    onClick={() => savePage()}
+                    disabled={saving || !selectedPage}
+                    className={`p-2.5 ${theme.primaryBg} ${theme.textActive} rounded-2xl font-black shadow-lg flex items-center justify-center disabled:opacity-40 transition-all hover:scale-105 active:scale-95`}
+                    title="Guardar página"
+                  >
+                    {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </header>
 
         <main className="relative flex-1 min-h-0">
