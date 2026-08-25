@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.never-match-dark-mode-selector));
+
 :root {
   --background: #F5F2EB; /* Arena/Beige Original */
   --foreground: #171717;
