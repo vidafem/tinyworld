@@ -274,23 +274,25 @@ export default function MobileProfileSelector({ onOpenProfile }: MobileProfileSe
               Color del Tema
             </label>
             <div className="grid grid-cols-4 gap-2">
-              {Object.entries(themePalettes).map(([key, theme]: [string, any]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setNewTheme(key)}
-                  className={`p-2.5 rounded-2xl ${theme.bg} border-2 transition-all flex items-center justify-center gap-1.5 ${
-                    newTheme === key
-                      ? "border-stone-800 dark:border-white scale-105 shadow-md"
-                      : "border-transparent opacity-80"
-                  }`}
-                >
-                  <Baby size={15} className={theme.text} />
-                  <span className={`text-[9px] font-bold capitalize ${theme.text}`}>
-                    {key}
-                  </span>
-                </button>
-              ))}
+              {Object.entries(themePalettes)
+                .filter(([key]) => !key.startsWith('c'))
+                .map(([key, theme]: [string, any]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setNewTheme(key)}
+                    className={`p-2.5 rounded-2xl ${theme.bg} border-2 transition-all flex items-center justify-center gap-1.5 ${
+                      newTheme === key
+                        ? "border-stone-800 dark:border-white scale-105 shadow-md"
+                        : "border-transparent opacity-80"
+                    }`}
+                  >
+                    <Baby size={15} className={theme.text} />
+                    <span className={`text-[9px] font-bold capitalize ${theme.text}`}>
+                      {key}
+                    </span>
+                  </button>
+                ))}
             </div>
           </div>
 

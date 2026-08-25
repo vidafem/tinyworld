@@ -2230,7 +2230,11 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
                             key={key}
                             type="button"
                             onClick={() => setFormData(prev => ({ ...prev, theme_color: key }))}
-                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full border-[3px] transition-transform ${formData.theme_color === key ? `border-white ring-2 ${pal.text.replace('text-', 'ring-')}/30 scale-110` : 'border-transparent hover:scale-110'} ${pal.bg}`}
+                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full border-[3px] transition-transform ${
+                              formData.theme_color === key 
+                                ? `border-white ring-2 ${pal.text.replace('text-', 'ring-')}/30 scale-110` 
+                                : 'border-stone-200 dark:border-stone-700/60 opacity-80 hover:scale-110 shadow-sm'
+                            } ${pal.bg}`}
                           />
                         ))}
                       </div>

@@ -455,13 +455,17 @@ export default function ChildProfile({ childId }: { childId: string }) {
               <div className="col-span-2 md:col-span-4 mt-2 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-stone-100 dark:border-stone-800 pt-4">
                 <div className="flex flex-col items-center md:items-start w-full md:w-auto">
                   <label className={`block text-[9px] font-bold uppercase tracking-wider mb-2 ${theme.text} opacity-60`}>Color del Tema</label>
-                  <div className="flex justify-center md:justify-start gap-2">
+                  <div className="flex flex-wrap justify-center md:justify-start gap-2 max-w-full md:max-w-xl">
                     {Object.entries(themePalettes).map(([key, pal]) => (
                       <button
                         key={key}
                         type="button"
                         onClick={() => setFormData(prev => ({ ...prev, theme_color: key }))}
-                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full border-[3px] transition-transform ${formData.theme_color === key ? 'border-stone-800 dark:border-white ring-2 ring-gold/40 scale-110' : 'border-transparent opacity-80 hover:scale-105'} ${pal.bg}`}
+                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full border-[3px] transition-transform ${
+                          formData.theme_color === key 
+                            ? 'border-stone-800 dark:border-white ring-2 ring-gold/40 scale-110' 
+                            : 'border-stone-200 dark:border-stone-700/60 opacity-80 hover:scale-105 shadow-sm'
+                        } ${pal.bg}`}
                       />
                     ))}
                   </div>
