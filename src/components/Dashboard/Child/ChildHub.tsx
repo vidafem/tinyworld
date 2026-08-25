@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
+import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 import AppButton from "@/components/Common/AppButton";
 
 interface ChildHubProps {
@@ -88,7 +89,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
           <AppButton
             variant="secondary"
             size="icon"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => { playActionSnap(); router.push("/dashboard"); }}
             icon={<ChevronLeft size={20} className={theme.text} />}
             className="shadow-sm"
           />
@@ -97,7 +98,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
             <AppButton
               variant="secondary"
               size="icon"
-              onClick={() => setShowMasterMenu(!showMasterMenu)}
+              onClick={() => { playSoftPop(); setShowMasterMenu(!showMasterMenu); }}
               icon={<Menu size={20} className={theme.text} />}
               className="shadow-sm"
             />
@@ -114,10 +115,10 @@ export default function ChildHub({ childId }: ChildHubProps) {
                     className={`absolute top-14 left-0 w-64 bg-white/95 dark:bg-stone-900/95 backdrop-blur-2xl rounded-[2rem] shadow-2xl border ${theme.borderAccent} p-2.5 overflow-hidden z-50`}
                   >
                     <div className="flex flex-col gap-1">
-                       <button onClick={() => router.push('/dashboard')} className={`w-full p-3.5 hover:${theme.bgLight} rounded-2xl flex items-center gap-3.5 ${theme.text} transition-colors group text-left`}><div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`}><Home size={17}/></div><span className="font-black uppercase tracking-widest text-[10px]">Mis Bebés</span></button>
-                       <button onClick={() => router.push('/dashboard?view=profile')} className={`w-full p-3.5 hover:${theme.bgLight} rounded-2xl flex items-center gap-3.5 ${theme.text} transition-colors group text-left`}><div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`}><User size={17}/></div><span className="font-black uppercase tracking-widest text-[10px]">Mi Perfil</span></button>
+                       <button onClick={() => { playActionSnap(); router.push('/dashboard'); }} className={`w-full p-3.5 hover:${theme.bgLight} rounded-2xl flex items-center gap-3.5 ${theme.text} transition-colors group text-left`}><div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`}><Home size={17}/></div><span className="font-black uppercase tracking-widest text-[10px]">Mis Bebés</span></button>
+                       <button onClick={() => { playActionSnap(); router.push('/dashboard?view=profile'); }} className={`w-full p-3.5 hover:${theme.bgLight} rounded-2xl flex items-center gap-3.5 ${theme.text} transition-colors group text-left`}><div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`}><User size={17}/></div><span className="font-black uppercase tracking-widest text-[10px]">Mi Perfil</span></button>
                        <div className={`h-px ${theme.borderAccent} opacity-40 my-1 mx-3`} />
-                       <button onClick={handleLogout} className="w-full p-3.5 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-2xl flex items-center gap-3.5 text-red-500 transition-colors group text-left"><div className="p-2 bg-red-50 dark:bg-red-900/30 rounded-xl group-hover:bg-red-500 group-hover:text-white transition-colors"><LogOut size={17}/></div><span className="font-black uppercase tracking-widest text-[10px]">Cerrar Sesión</span></button>
+                       <button onClick={() => { playActionSnap(); handleLogout(); }} className="w-full p-3.5 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-2xl flex items-center gap-3.5 text-red-500 transition-colors group text-left"><div className="p-2 bg-red-50 dark:bg-red-900/30 rounded-xl group-hover:bg-red-500 group-hover:text-white transition-colors"><LogOut size={17}/></div><span className="font-black uppercase tracking-widest text-[10px]">Cerrar Sesión</span></button>
                     </div>
                   </motion.div>
                 </>
@@ -137,7 +138,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
           <AppButton
             variant="secondary"
             size="icon"
-            onClick={() => router.push(`/dashboard/child/${child.id}/profile`)}
+            onClick={() => { playActionSnap(); router.push(`/dashboard/child/${child.id}/profile`); }}
             icon={<Settings2 size={20} className={theme.text} />}
             className="shadow-sm"
           />
@@ -281,6 +282,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
               whileHover={{ y: -6, transition: { type: "spring", stiffness: 400, damping: 20 } }}
               whileTap={{ scale: 0.96 }}
               onClick={() => {
+                playSoftPop();
                 setExpandingCard(opt.id);
                 setTimeout(() => router.push(opt.route), 350);
               }}

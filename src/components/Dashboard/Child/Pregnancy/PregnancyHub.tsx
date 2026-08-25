@@ -21,6 +21,8 @@ import PregnancyEvents from "./PregnancyEvents";
 import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 import AppButton from "@/components/Common/AppButton";
 import ConfirmDialog from "@/components/Common/ConfirmDialog";
+import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import { playSoftPop, playActionSnap, playSuccessChime } from "@/lib/pageSound";
 
 const PregnancyCalendar = dynamic(() => import("./PregnancyCalendar"), {
   loading: () => (
@@ -85,6 +87,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
   const [memories, setMemories] = useState<PregnancyMemory[]>([]);
   const [showMasterMenu, setShowMasterMenu] = useState(false);
   const [shouldOpenVisualizer, setShouldOpenVisualizer] = useState(false);
+  const [toast, setToast] = useState<ToastData | null>(null);
   
   const [currentView, setCurrentView] = useState<'hub' | 'events' | 'memory-list' | 'memory-form' | 'calendar-list' | 'calendar-edit' | 'gallery' | 'album' | 'future-names' | 'baby-info'>('hub');
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
@@ -203,6 +206,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         await supabase.from("pregnancy_memories").delete().eq("id", id);
         setMemories(memories.filter(m => m.id !== id));
         setConfirmConfig(null);
+        setToast({ type: "success", message: "¡Recuerdo eliminado con éxito!" });
       }
     });
   };
@@ -222,6 +226,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
       setCalendars([data, ...calendars]);
       setSelectedCalendarId(data.id);
       setCurrentView('calendar-edit');
+      setToast({ type: "success", message: "¡Calendario creado con éxito!" });
     }
     setLoading(false);
   };
@@ -260,6 +265,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         <div className="flex items-center gap-2 md:gap-4 relative z-[120]">
           <button 
             onClick={() => {
+              playActionSnap();
               if (currentView === 'hub') {
                 if (onBack) {
                   onBack();
@@ -293,7 +299,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
 
           <div className="relative">
             <button 
-              onClick={() => setShowMasterMenu(!showMasterMenu)}
+              onClick={() => { playSoftPop(); setShowMasterMenu(!showMasterMenu); }}
               className={`p-2.5 bg-white rounded-2xl shadow-sm ${theme.text} hover:scale-110 active:scale-95 transition-all border ${theme.borderAccent}`}
             >
               <Menu size={isMobile ? 22 : 24} />
@@ -314,11 +320,11 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                     className={`absolute top-16 left-0 w-64 bg-white rounded-[2rem] shadow-2xl border ${theme.borderAccent} p-3 overflow-hidden`}
                   >
                     <div className="flex flex-col gap-1">
-                       <button onClick={() => window.location.href = '/dashboard'} className={`w-full p-4 hover:${theme.bgLight} rounded-2xl flex items-center gap-4 ${theme.text} transition-colors group`}>
+                       <button onClick={() => { playActionSnap(); router.push('/dashboard'); }} className={`w-full p-4 hover:${theme.bgLight} rounded-2xl flex items-center gap-4 ${theme.text} transition-colors group`}>
                           <div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`}><Home size={18}/></div>
                           <span className="font-black uppercase tracking-widest text-[10px]">Mis Bebés</span>
                        </button>
-                       <button onClick={() => router.push('/dashboard?view=profile')} className={`w-full p-4 hover:${theme.bgLight} rounded-2xl flex items-center gap-4 ${theme.text} transition-colors group`}>
+                       <button onClick={() => { playActionSnap(); router.push('/dashboard?view=profile'); }} className={`w-full p-4 hover:${theme.bgLight} rounded-2xl flex items-center gap-4 ${theme.text} transition-colors group`}>
                           <div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`} style={{ color: theme.hex }}><User size={18}/></div>
                           <span className="font-black uppercase tracking-widest text-[10px]">Mi Perfil</span>
                        </button>
@@ -332,6 +338,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              playSoftPop();
                               const next = !aiEnabled;
                               setAiEnabled(next);
                               localStorage.setItem("tinyworld_ai_disabled", next ? "false" : "true");
@@ -344,7 +351,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                         </div>
                        
                        <div className={`h-px ${theme.borderAccent} opacity-50 my-1 mx-4`} />
-                       <button onClick={handleLogout} className="w-full p-4 hover:bg-red-50 rounded-2xl flex items-center gap-4 text-red-500 transition-colors group">
+                       <button onClick={() => { playActionSnap(); handleLogout(); }} className="w-full p-4 hover:bg-red-50 rounded-2xl flex items-center gap-4 text-red-500 transition-colors group">
                           <div className="p-2 bg-red-50 rounded-xl group-hover:bg-red-500 group-hover:text-white transition-colors"><LogOut size={18}/></div>
                           <span className="font-black uppercase tracking-widest text-[10px]">Cerrar Sesión</span>
                        </button>
@@ -676,6 +683,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                             await supabase.from("pregnancy_calendars").delete().eq("id", cal.id);
                             setCalendars(calendars.filter(c => c.id !== cal.id));
                             setConfirmConfig(null);
+                            setToast({ type: "success", message: "¡Calendario eliminado con éxito!" });
                           }
                         });
                       }} className="p-2 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-colors">
@@ -696,8 +704,12 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
             memory={selectedMemory}
             theme={theme} 
             isMobile={isMobile}
-            onBack={() => setCurrentView('memory-list')}
-            onComplete={() => { refreshMemories(); setCurrentView('memory-list'); }} 
+            onBack={() => { playActionSnap(); setCurrentView('memory-list'); }}
+            onComplete={(msg?: string) => { 
+              refreshMemories(); 
+              setCurrentView('memory-list'); 
+              if (msg) setToast({ type: "success", message: msg });
+            }} 
           />
         )}
 
@@ -707,9 +719,10 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
             calendarId={selectedCalendarId}
             sectionId={sectionId}
             theme={theme}
-            onBack={() => { setCurrentView('calendar-list'); refreshCalendars(); }}
+            onBack={() => { playActionSnap(); setCurrentView('calendar-list'); refreshCalendars(); }}
             autoDownload={downloadCalendarId === selectedCalendarId}
             onAutoDownloadComplete={() => { setDownloadCalendarId(null); setCurrentView('calendar-list'); refreshCalendars(); }}
+            onSaveComplete={(msg) => setToast({ type: "success", message: msg })}
           />
         )}
         {currentView === 'gallery' && (
@@ -718,7 +731,8 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
             sectionId={sectionId}
             child={child}
             theme={theme}
-            onBack={() => setCurrentView('hub')}
+            onBack={() => { playActionSnap(); setCurrentView('hub'); }}
+            setToast={setToast}
             
             // Estados compartidos
             view={galleryView}
@@ -797,6 +811,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
       />
 
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
+      <FloatingToast toast={toast} onClose={() => setToast(null)} theme={theme} />
     </div>
   );
 }
@@ -804,7 +819,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
 function HubButton({ onClick, icon, title, subtitle, theme, isMobile }: any) {
   return (
     <motion.button 
-      onClick={onClick}
+      onClick={() => { playSoftPop(); onClick(); }}
       whileHover={{ y: -5, transition: { type: "spring", stiffness: 400, damping: 20 } }}
       whileTap={{ scale: 0.96 }}
       className={`

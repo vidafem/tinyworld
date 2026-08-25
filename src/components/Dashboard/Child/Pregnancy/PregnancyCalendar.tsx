@@ -29,9 +29,10 @@ interface PregnancyCalendarProps {
   readOnly?: boolean;
   hideHeader?: boolean;
   variant?: 'full' | 'thumbnail';
+  onSaveComplete?: (message: string) => void;
 }
 
-export default function PregnancyCalendar({ childId, calendarId, sectionId = null, theme, onBack, autoDownload = false, onAutoDownloadComplete, readOnly = false, hideHeader = false, variant = 'full' }: PregnancyCalendarProps) {
+export default function PregnancyCalendar({ childId, calendarId, sectionId = null, theme, onBack, autoDownload = false, onAutoDownloadComplete, readOnly = false, hideHeader = false, variant = 'full', onSaveComplete }: PregnancyCalendarProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -276,6 +277,9 @@ export default function PregnancyCalendar({ childId, calendarId, sectionId = nul
     setActiveStickerId(null);
     setActiveTextId(null);
     setSelectedSlot(null);
+    if (onSaveComplete) {
+      onSaveComplete("¡Calendario guardado con éxito!");
+    }
   };
 
   const downloadImage = async () => {

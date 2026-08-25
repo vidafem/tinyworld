@@ -16,7 +16,7 @@ interface MemoryFormProps {
   memory?: any;
   theme: any;
   isMobile?: boolean;
-  onComplete: () => void;
+  onComplete: (message?: string) => void;
   onBack?: () => void;
 }
 
@@ -199,7 +199,7 @@ export default function MemoryForm({ childId, sectionId = null, memory, theme, i
 
     setLoading(false);
     if (!result.error) {
-      onComplete();
+      onComplete(memory ? "¡Recuerdo actualizado con éxito!" : "¡Recuerdo creado con éxito!");
     } else {
       setError("Error: " + result.error.message);
     }
@@ -217,7 +217,7 @@ export default function MemoryForm({ childId, sectionId = null, memory, theme, i
       {isMobile && (
         <div className="fixed top-0 left-0 right-0 z-[150] bg-white/70 backdrop-blur-xl border-b border-white/50 px-6 py-4 flex items-center justify-between shadow-sm">
           <button 
-            onClick={onBack || onComplete} 
+            onClick={() => onBack ? onBack() : onComplete()} 
             className={`p-2 bg-white rounded-xl shadow-md ${theme.text} border ${theme.borderAccent}`}
           >
             <ChevronLeft size={20} />

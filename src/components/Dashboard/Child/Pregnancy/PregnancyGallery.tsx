@@ -62,6 +62,7 @@ interface PregnancyGalleryProps {
   setTriggerNewFolder: (t: boolean) => void;
   triggerUpload: boolean;
   setTriggerUpload: (t: boolean) => void;
+  setToast?: (toast: any) => void;
 }
 
 export default function PregnancyGallery({ 
@@ -87,7 +88,8 @@ export default function PregnancyGallery({
   triggerNewFolder,
   setTriggerNewFolder,
   triggerUpload,
-  setTriggerUpload
+  setTriggerUpload,
+  setToast
 }: PregnancyGalleryProps) {
   const [loading, setLoading] = useState(true);
   const [activeMediaTab, setActiveMediaTab] = useState<'image' | 'video' | 'audio'>('image');
@@ -285,6 +287,12 @@ export default function PregnancyGallery({
       setSelectedItems([]); setIsDeleteMode(false); setIsMultiSelectMode(false); 
       await loadGalleryData();
       if (currentFolder?.isCustom) fetchFolderContent(currentFolder.id);
+      if (setToast) {
+        setToast({ 
+          type: "success", 
+          message: folderToDelete ? "¡Carpeta eliminada con éxito!" : "¡Fotos eliminadas con éxito!" 
+        });
+      }
       
       // Notificar al Hub para que refresque la lista de recuerdos si es necesario
       if ((window as any).refreshPregnancyMemories) {
@@ -318,6 +326,12 @@ export default function PregnancyGallery({
       setShowFolderWizard(false); setNewFolderName(""); setSelectedItems([]); setWizardStep(1); setEditingFolderId(null);
       await loadGalleryData();
       if (currentFolder?.isCustom) fetchFolderContent(currentFolder.id);
+      if (setToast) {
+        setToast({ 
+          type: "success", 
+          message: editingFolderId ? "¡Carpeta actualizada con éxito!" : "¡Carpeta creada con éxito!" 
+        });
+      }
     } catch (err) { alert("Error al guardar cambios"); } finally { setIsUploading(false); }
   };
 
@@ -575,6 +589,9 @@ export default function PregnancyGallery({
       setShowUploadModal(false); 
       setFileToEdit(null);
       await loadGalleryData();
+      if (setToast) {
+        setToast({ type: "success", message: "¡Archivo subido con éxito!" });
+      }
     } catch (err: any) { 
       alert("Error al subir: " + err.message); 
     } finally { 
