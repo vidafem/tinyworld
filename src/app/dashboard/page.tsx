@@ -9,10 +9,21 @@ import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+let cachedRole: "admin" | "parent" | null = null;
+let cachedSessionChecked = false;
+
+if (typeof window !== "undefined") {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT") {
+      cachedRole = null;
+      cachedSessionChecked = false;
+    }
+  });
+}
+
 function DashboardContent() {
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
-  const [role, setRole] = useState<"admin" | "parent" | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<"admin" | "parent" | null>(cachedRole);
+  const [loading, setLoading] = useState(!cachedSessionChecked);
   const [view, setView] = useState<'selection' | 'profile'>('selection');
   
   const router = useRouter();
@@ -25,17 +36,13 @@ function DashboardContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  useEffect(() => {
     async function checkUser() {
+      if (cachedSessionChecked) {
+        setRole(cachedRole);
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -50,11 +57,10 @@ function DashboardContent() {
           .eq("id", session.user.id)
           .single();
 
-        if (profile) {
-          setRole(profile.role);
-        } else {
-          setRole("parent");
-        }
+        const userRole = profile?.role || "parent";
+        cachedRole = userRole;
+        cachedSessionChecked = true;
+        setRole(userRole);
       } catch (error) {
         console.error("Error fetching user role:", error);
       } finally {
@@ -64,7 +70,7 @@ function DashboardContent() {
     checkUser();
   }, [router]);
 
-  if (isMobile === null || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="animate-spin text-sage" size={40} />
@@ -85,10 +91,15 @@ function DashboardContent() {
     }} />;
   }
 
-  return isMobile ? (
-    <MobileProfileSelector onOpenProfile={() => setView('profile')} />
-  ) : (
-    <DesktopProfileSelector onOpenProfile={() => setView('profile')} />
+  return (
+    <>
+      <div className="block md:hidden min-h-screen bg-background">
+        <MobileProfileSelector onOpenProfile={() => setView('profile')} />
+      </div>
+      <div className="hidden md:block min-h-screen bg-background">
+        <DesktopProfileSelector onOpenProfile={() => setView('profile')} />
+      </div>
+    </>
   );
 }
 

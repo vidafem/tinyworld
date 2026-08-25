@@ -7,13 +7,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 
 const TOTAL_STICKERS = 20;
 
 export default function DesktopHome() {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const [randomStickers, setRandomStickers] = useState<any[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -108,14 +108,7 @@ export default function DesktopHome() {
     generateStickers();
   }, []);
 
-  // Alternar modo oscuro
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
+
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -133,47 +126,16 @@ export default function DesktopHome() {
   return (
     <div ref={containerRef} className="relative min-h-[300vh] selection:bg-gold/30">
 
-      {/* Estrellas Parpadeantes (Solo visibles en Dark Mode) */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-0 dark:opacity-100 transition-opacity duration-1000 overflow-hidden">
-        {[...Array(30)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-white/80"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              width: `${Math.random() * 3 + 1}px`,
-              height: `${Math.random() * 3 + 1}px`,
-              boxShadow: "0 0 8px 1px rgba(255, 255, 255, 0.4)",
-            }}
-            animate={{ opacity: [0.1, 1, 0.1], scale: [0.8, 1.2, 0.8] }}
-            transition={{ duration: 3 + Math.random() * 4, repeat: Infinity, ease: "easeInOut", delay: Math.random() * 5 }}
-          />
-        ))}
-      </div>
+
       
-      {/* Toggle Modo Oscuro y Sidebar */}
+      {/* Toggle Sidebar */}
       <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
         <button 
-          onClick={() => setIsDark(!isDark)}
-          className="p-3 rounded-full bg-white/50 dark:bg-black/50 backdrop-blur-md shadow-lg border border-taupe/10 hover:scale-110 transition-transform text-taupe dark:text-gold dark:neon-glow-gold"
-          title="Modo Noche"
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={isDark ? "moon" : "sun"}
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: 90, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {isDark ? <Star size={20} className="fill-gold" /> : <Sun size={20} />}
-            </motion.div>
-          </AnimatePresence>
-        </button>
-        <button 
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-3 rounded-full bg-white/50 dark:bg-black/50 backdrop-blur-md shadow-lg border border-taupe/10 hover:scale-110 transition-transform text-taupe dark:text-taupe"
+          onClick={() => {
+            setIsSidebarOpen(true);
+            playActionSnap();
+          }}
+          className="p-3 rounded-full bg-white/50 backdrop-blur-md shadow-lg border border-taupe/10 hover:scale-110 transition-transform text-taupe"
         >
           <Menu size={20} />
         </button>
@@ -186,14 +148,17 @@ export default function DesktopHome() {
         className="fixed top-0 right-0 h-full w-72 glass-panel z-[60] p-8 flex flex-col shadow-2xl"
       >
         <button 
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => {
+            setIsSidebarOpen(false);
+            playActionSnap();
+          }}
           className="self-end p-2 hover:bg-beige/50 rounded-full mb-8 text-taupe"
         >
           <X size={24} />
         </button>
         <h3 className="font-outfit text-xl mb-10 text-taupe border-b border-taupe/10 pb-2">Acceso</h3>
         <div className="space-y-6">
-          <Link href="/login" className="flex items-center gap-4 w-full p-4 rounded-xl border border-taupe/20 hover:border-gold hover:bg-white transition-all group">
+          <Link href="/login" onClick={() => playSoftPop()} className="flex items-center gap-4 w-full p-4 rounded-xl border border-taupe/20 hover:border-gold hover:bg-white transition-all group">
             <LogIn size={20} className="group-hover:text-gold" />
             <div className="text-left">
               <p className="font-semibold text-sm">Soy Papá/Mamá</p>
@@ -204,6 +169,7 @@ export default function DesktopHome() {
             onClick={() => {
               setIsSidebarOpen(false);
               setShowCodeModal(true);
+              playActionSnap();
             }} 
             className="flex items-center gap-4 w-full p-4 rounded-xl border border-taupe/20 hover:border-gold hover:bg-white transition-all group text-left cursor-pointer"
           >
@@ -216,14 +182,13 @@ export default function DesktopHome() {
         </div>
       </motion.div>
 
-      {/* Stickers Cortina - Absolutos al documento para que hagan scroll natural */}
-      <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+      {/* Stickers Cortina - En capa superior z-40 para que no se oculten */}
+      <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
         {randomStickers.map((sticker) => (
           <StickerItem 
             key={sticker.id} 
             sticker={sticker} 
             scrollYProgress={scrollYProgress} 
-            isDark={isDark} 
           />
         ))}
       </div>
@@ -339,11 +304,17 @@ export default function DesktopHome() {
           <h2 className="text-5xl font-outfit font-bold text-taupe dark:neon-text-taupe mb-8 transition-colors">¿Listo para empezar la historia?</h2>
           <p className="text-xl mb-12 text-taupe/70 dark:text-taupe/90 dark:neon-text-taupe italic transition-colors">"No recordamos días, recordamos momentos."</p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <button className="px-10 py-5 bg-sage text-white rounded-full font-bold text-lg shadow-lg shadow-sage/30 hover:bg-sage/90 transition-all hover:scale-105 active:scale-95">
+            <button 
+              onClick={() => playSoftPop()}
+              className="px-10 py-5 bg-sage text-white rounded-full font-bold text-lg shadow-lg shadow-sage/30 hover:bg-sage/90 transition-all hover:scale-105 active:scale-95"
+            >
               Crear Nuevo Diario
             </button>
             <button 
-              onClick={() => setShowCodeModal(true)}
+              onClick={() => {
+                setShowCodeModal(true);
+                playActionSnap();
+              }}
               className="px-10 py-5 border-2 border-taupe/20 text-taupe rounded-full font-bold text-lg hover:bg-white transition-all cursor-pointer"
             >
               Ver Demo de Invitado
@@ -378,6 +349,7 @@ export default function DesktopHome() {
                   setShowCodeModal(false);
                   setCodeError("");
                   setGuestCode("");
+                  playActionSnap();
                 }}
                 className="absolute top-6 right-6 p-2 hover:bg-taupe/5 rounded-full text-taupe transition-colors"
               >
@@ -415,6 +387,7 @@ export default function DesktopHome() {
                 <button 
                   type="submit"
                   disabled={isCheckingCode}
+                  onClick={() => playSoftPop()}
                   className="w-full py-4 bg-taupe text-white rounded-2xl font-bold hover:bg-taupe/90 active:scale-98 transition-all text-sm uppercase tracking-widest shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isCheckingCode ? (
@@ -436,7 +409,7 @@ export default function DesktopHome() {
 }
 
 // Subcomponente para animar stickers de forma dinámica según la sección
-function StickerItem({ sticker, scrollYProgress, isDark }: any) {
+function StickerItem({ sticker, scrollYProgress }: any) {
   const isHero = sticker.section === 0;
   const isSec1 = sticker.section === 1;
   const isSec2 = sticker.section === 2;
@@ -493,7 +466,7 @@ function StickerItem({ sticker, scrollYProgress, isDark }: any) {
           src={sticker.src} 
           alt="Sticker" 
           fill 
-          className={`object-contain transition-all duration-700 ${isDark ? 'drop-shadow-[0_0_20px_rgba(255,217,102,0.6)] brightness-110' : ''}`}
+          className="object-contain transition-all duration-700"
           sizes="(max-width: 768px) 128px, 192px"
         />
       </motion.div>

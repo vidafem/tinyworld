@@ -7,13 +7,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 
 const TOTAL_STICKERS = 20;
 
 export default function MobileHome() {
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const [randomStickers, setRandomStickers] = useState<any[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -55,26 +55,18 @@ export default function MobileHome() {
     const generateStickers = () => {
       const newStickers = [];
       const zones = [
-        // MARCO HERO (Mobile 0-100vh)
-        { sec: 0, t: [5, 12], l: [2, 15], leftSide: true },
-        { sec: 0, t: [15, 22], l: [35, 45], leftSide: Math.random() > 0.5 },
-        { sec: 0, t: [15, 22], l: [75, 85], leftSide: false },
-        { sec: 0, t: [35, 45], l: [2, 12], leftSide: true },
-        { sec: 0, t: [45, 55], l: [78, 88], leftSide: false },
-        { sec: 0, t: [65, 75], l: [5, 15], leftSide: true },
-        { sec: 0, t: [75, 85], l: [75, 85], leftSide: false },
+        // MARCO HERO (Mobile 0-100vh) - Reducidos a 3 clave para optimizar rendimiento móvil
+        { sec: 0, t: [5, 12], l: [2, 10], leftSide: true },
+        { sec: 0, t: [20, 28], l: [75, 85], leftSide: false },
+        { sec: 0, t: [45, 55], l: [4, 12], leftSide: true },
         
-        // Seccion 2 (100-200vh)
-        { sec: 1, t: [110, 120], l: [5, 15], leftSide: true },
-        { sec: 1, t: [140, 150], l: [75, 85], leftSide: false },
-        { sec: 1, t: [160, 170], l: [5, 15], leftSide: true },
-        { sec: 1, t: [180, 190], l: [75, 85], leftSide: false },
+        // Seccion 2 (100-200vh) - Reducidos a 2
+        { sec: 1, t: [120, 135], l: [75, 85], leftSide: false },
+        { sec: 1, t: [160, 175], l: [4, 12], leftSide: true },
         
-        // Seccion 3 (200-300vh)
-        { sec: 2, t: [210, 220], l: [5, 15], leftSide: true },
-        { sec: 2, t: [230, 240], l: [75, 85], leftSide: false },
-        { sec: 2, t: [250, 260], l: [5, 15], leftSide: true },
-        { sec: 2, t: [270, 280], l: [75, 85], leftSide: false }
+        // Seccion 3 (200-300vh) - Reducidos a 2
+        { sec: 2, t: [215, 230], l: [75, 85], leftSide: false },
+        { sec: 2, t: [255, 270], l: [4, 12], leftSide: true }
       ];
       
       const stickerImages = Array.from({length: 20}, (_, i) => i + 1).sort(() => 0.5 - Math.random());
@@ -101,14 +93,7 @@ export default function MobileHome() {
     generateStickers();
   }, []);
 
-  // Alternar modo oscuro
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
+
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -126,46 +111,16 @@ export default function MobileHome() {
   return (
     <div ref={containerRef} className="relative min-h-[250vh] selection:bg-gold/30">
 
-      {/* Estrellas Parpadeantes (Solo visibles en Dark Mode) */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-0 dark:opacity-100 transition-opacity duration-1000 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-white/80"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              width: `${Math.random() * 2 + 1}px`,
-              height: `${Math.random() * 2 + 1}px`,
-              boxShadow: "0 0 8px 1px rgba(255, 255, 255, 0.4)",
-            }}
-            animate={{ opacity: [0.1, 1, 0.1], scale: [0.8, 1.2, 0.8] }}
-            transition={{ duration: 3 + Math.random() * 4, repeat: Infinity, ease: "easeInOut", delay: Math.random() * 5 }}
-          />
-        ))}
-      </div>
+
       
-      {/* Botones Móvil: Menú y Dark Mode */}
+      {/* Botones Móvil: Menú */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
         <button 
-          onClick={() => setIsDark(!isDark)}
-          className="p-3 bg-white/50 dark:bg-black/50 backdrop-blur-md rounded-full shadow-sm text-taupe dark:text-gold dark:neon-glow-gold transition-colors"
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={isDark ? "moon" : "sun"}
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: 90, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {isDark ? <Star size={20} className="fill-gold" /> : <Sun size={20} />}
-            </motion.div>
-          </AnimatePresence>
-        </button>
-        <button 
-          onClick={() => setIsSidebarOpen(true)}
-          className="p-3 bg-white/50 dark:bg-black/50 backdrop-blur-md rounded-full shadow-sm text-taupe dark:text-taupe transition-colors"
+          onClick={() => {
+            setIsSidebarOpen(true);
+            playActionSnap();
+          }}
+          className="p-3 bg-white/50 backdrop-blur-md rounded-full shadow-sm text-taupe transition-colors"
         >
           <Menu size={20} />
         </button>
@@ -179,14 +134,17 @@ export default function MobileHome() {
       >
         <div className="w-4/5 h-full glass-panel p-6 flex flex-col shadow-2xl">
           <button 
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => {
+              setIsSidebarOpen(false);
+              playActionSnap();
+            }}
             className="self-end p-2 bg-beige/30 rounded-full mb-10 text-taupe"
           >
             <X size={24} />
           </button>
           <h3 className="font-outfit text-2xl mb-8 text-taupe">TinyWorld</h3>
           <div className="space-y-4">
-            <Link href="/login" className="flex items-center gap-4 w-full p-5 rounded-2xl bg-white/50 border border-taupe/10">
+            <Link href="/login" onClick={() => playSoftPop()} className="flex items-center gap-4 w-full p-5 rounded-2xl bg-white/50 border border-taupe/10">
               <LogIn size={24} className="text-sage" />
               <div className="text-left">
                 <p className="font-bold text-base">Iniciar Sesión</p>
@@ -197,6 +155,7 @@ export default function MobileHome() {
               onClick={() => {
                 setIsSidebarOpen(false);
                 setShowCodeModal(true);
+                playActionSnap();
               }}
               className="flex items-center gap-4 w-full p-5 rounded-2xl bg-white/50 border border-taupe/10 text-left cursor-pointer"
             >
@@ -210,14 +169,13 @@ export default function MobileHome() {
         </div>
       </motion.div>
 
-      {/* Stickers Cortina Móvil - Absolutos al documento */}
-      <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+      {/* Stickers Cortina Móvil - En capa superior z-40 para que no se oculten */}
+      <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
         {randomStickers.map((sticker) => (
           <StickerItem 
             key={sticker.id} 
             sticker={sticker} 
             scrollYProgress={scrollYProgress} 
-            isDark={isDark} 
           />
         ))}
       </div>
@@ -310,11 +268,17 @@ export default function MobileHome() {
         <div className="space-y-10">
           <h2 className="text-4xl font-outfit font-bold text-taupe dark:neon-text-taupe transition-colors">¿Empezamos la historia?</h2>
           <div className="flex flex-col gap-4">
-            <button className="w-full py-5 bg-sage text-white rounded-2xl font-bold shadow-lg shadow-sage/20">
+            <button 
+              onClick={() => playSoftPop()}
+              className="w-full py-5 bg-sage text-white rounded-2xl font-bold shadow-lg shadow-sage/20"
+            >
               Crear Nuevo Diario
             </button>
             <button 
-              onClick={() => setShowCodeModal(true)}
+              onClick={() => {
+                setShowCodeModal(true);
+                playActionSnap();
+              }}
               className="w-full py-5 border-2 border-taupe/10 text-taupe rounded-2xl font-bold cursor-pointer"
             >
               Ver Demo
@@ -350,6 +314,7 @@ export default function MobileHome() {
                   setShowCodeModal(false);
                   setCodeError("");
                   setGuestCode("");
+                  playActionSnap();
                 }}
                 className="absolute top-6 right-6 p-2 hover:bg-taupe/5 rounded-full text-taupe transition-colors"
               >
@@ -387,6 +352,7 @@ export default function MobileHome() {
                 <button 
                   type="submit"
                   disabled={isCheckingCode}
+                  onClick={() => playSoftPop()}
                   className="w-full py-4 bg-taupe text-white rounded-2xl font-bold hover:bg-taupe/90 active:scale-98 transition-all text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isCheckingCode ? (
@@ -408,16 +374,17 @@ export default function MobileHome() {
 }
 
 // Subcomponente para evitar el error de "Rules of Hooks" al usar useTransform en un array
-function StickerItem({ sticker, scrollYProgress, isDark }: any) {
+function StickerItem({ sticker, scrollYProgress }: any) {
   const isHero = sticker.section === 0;
   const isSec1 = sticker.section === 1;
   const isSec2 = sticker.section === 2;
 
-  const xMove = sticker.isLeft ? -250 : 250; 
+  // Ajustado a 80px en móvil para evitar que se desborden de la pantalla
+  const xMove = sticker.isLeft ? -80 : 80; 
   
-  const domain = isHero ? [0, 0.1, 0.2, 1] : 
-                 isSec1 ? [0, 0.15, 0.25, 0.4, 0.5, 1] : 
-                          [0, 0.4, 0.6, 1];
+  const domain = isHero ? [0, 0.15, 0.3, 1] : 
+                 isSec1 ? [0, 0.2, 0.35, 0.45, 0.6, 1] : 
+                          [0, 0.5, 0.7, 1];
                           
   const xValues = isHero ? [0, 0, xMove, xMove] :
                   isSec1 ? [xMove, xMove, 0, 0, xMove, xMove] :
@@ -444,23 +411,23 @@ function StickerItem({ sticker, scrollYProgress, isDark }: any) {
       }}
     >
       <motion.div
-        animate={{ 
-          y: [0, -18, 0], 
-          x: [0, sticker.id % 2 === 0 ? 8 : -8, 0],
-          rotate: [0, sticker.id % 2 === 0 ? 6 : -6, sticker.id % 2 === 0 ? -6 : 6, 0] 
-        }}
+        // Flotación atenuada sólo en Hero para móvil para optimizar drásticamente el uso de CPU/Batería
+        animate={isHero ? { 
+          y: [0, -8, 0],
+          rotate: [0, sticker.id % 2 === 0 ? 3 : -3, 0] 
+        } : undefined}
         transition={{ 
-          duration: 3.5 + (sticker.id % 4) * 0.5, 
+          duration: 4.5 + (sticker.id % 4) * 0.5, 
           repeat: Infinity, 
           ease: "easeInOut" 
         }}
-        className="relative w-32 h-32 drop-shadow-xl hover:scale-110 transition-transform duration-300"
+        className="relative w-32 h-32 drop-shadow-xl hover:scale-105 transition-transform duration-300"
       >
         <Image 
           src={sticker.src} 
           alt="Sticker" 
           fill 
-          className={`object-contain transition-all duration-700 ${isDark ? 'drop-shadow-[0_0_15px_rgba(255,217,102,0.6)] brightness-110' : ''}`}
+          className="object-contain transition-all duration-700"
           sizes="96px"
         />
       </motion.div>
