@@ -915,7 +915,6 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         initialStyle={getCurrentCardStyle()}
         theme={theme}
         onSave={saveCurrentCardStyle}
-        onDelete={sectionId ? triggerDeleteStage : undefined}
         availableItems={availableItems}
       />
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />

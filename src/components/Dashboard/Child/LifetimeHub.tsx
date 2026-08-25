@@ -222,45 +222,32 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
                 style={{ backgroundColor: stage.card_color || undefined }}
               >
                 <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        playSoftPop();
-                        try {
-                          const nextFav = !stage.is_favorite;
-                          const { error } = await supabase
-                            .from("life_sections")
-                            .update({ is_favorite: nextFav })
-                            .eq("id", stage.id);
-                          if (error) throw error;
-                          setStages(stages.map(s => s.id === stage.id ? { ...s, is_favorite: nextFav } : s));
-                        } catch (err) {
-                          console.error("Error toggling favorite:", err);
-                        }
-                      }}
-                      className={`p-3 rounded-2xl transition-all shadow-inner border hover:scale-105 active:scale-95 relative z-10 ${
-                        stage.is_favorite 
-                          ? `${theme.primaryBg} text-white border-white` 
-                          : `bg-white ${theme.text} ${theme.borderAccent}`
-                      }`}
-                    >
-                      <Heart size={20} className={stage.is_favorite ? 'fill-current' : ''} />
-                    </button>
-                    <div className={`px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 relative z-10 border ${
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      playSoftPop();
+                      try {
+                        const nextFav = !stage.is_favorite;
+                        const { error } = await supabase
+                          .from("life_sections")
+                          .update({ is_favorite: nextFav })
+                          .eq("id", stage.id);
+                        if (error) throw error;
+                        setStages(stages.map(s => s.id === stage.id ? { ...s, is_favorite: nextFav } : s));
+                      } catch (err) {
+                        console.error("Error toggling favorite:", err);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 relative z-10 border hover:scale-105 active:scale-95 shadow-sm ${
                       stage.is_favorite 
-                        ? `bg-white/90 ${theme.text} border-white/60 shadow-sm` 
+                        ? `bg-white/90 ${theme.text} border-white/60` 
                         : "bg-white/30 text-stone-400 border-white/20"
-                    }`}>
-                      <Heart size={10} className={`transition-all duration-300 ${stage.is_favorite ? "fill-current text-red-500 scale-110" : "text-stone-400/60"}`} />
-                      <span>Favorito</span>
-                    </div>
-                  </div>
-                  <div className={`p-3 rounded-2xl bg-white/75 ${theme.text} shrink-0 shadow-inner border border-white`}>
-                    <div className="h-5 w-5 flex items-center justify-center">
-                      {renderCardIcon(stage.card_icon || "Sparkles", 20)}
-                    </div>
-                  </div>
+                    }`}
+                  >
+                    <Heart size={10} className={`transition-all duration-300 ${stage.is_favorite ? "fill-current text-red-500 scale-110" : "text-stone-400/60"}`} />
+                    <span>Favorito</span>
+                  </button>
                   <button
                     onClick={(e) => { playSoftPop(); handleDeleteClick(stage, e); }}
                     disabled={deletingStageId === stage.id}
