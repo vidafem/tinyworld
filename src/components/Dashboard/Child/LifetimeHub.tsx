@@ -247,12 +247,14 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
                     >
                       <Heart size={20} className={stage.is_favorite ? 'fill-current' : ''} />
                     </button>
-                    {stage.is_favorite && (
-                      <div className={`px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/80 ${theme.text} border border-white/60 shadow-sm flex items-center gap-1.5 relative z-10`}>
-                        <Heart size={10} className="fill-current text-red-500" />
-                        <span>Favorito</span>
-                      </div>
-                    )}
+                    <div className={`px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 relative z-10 border ${
+                      stage.is_favorite 
+                        ? `bg-white/90 ${theme.text} border-white/60 shadow-sm` 
+                        : "bg-white/30 text-stone-400 border-white/20"
+                    }`}>
+                      <Heart size={10} className={`transition-all duration-300 ${stage.is_favorite ? "fill-current text-red-500 scale-110" : "text-stone-400/60"}`} />
+                      <span>Favorito</span>
+                    </div>
                   </div>
                   <div className={`p-3 rounded-2xl bg-white/75 ${theme.text} shrink-0 shadow-inner border border-white`}>
                     <div className="h-5 w-5 flex items-center justify-center">
