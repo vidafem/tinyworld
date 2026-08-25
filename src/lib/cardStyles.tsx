@@ -29,12 +29,27 @@ export interface CardStyle {
 }
 
 export const CARD_COLOR_OPTIONS = [
-  "#FFF5F7",
-  "#F2FFF9",
-  "#EEF7FF",
-  "#FFF7E8",
-  "#F6F0FF",
-  "#FFFDF2",
+  "#FFF5F7", // Rosa Claro
+  "#FFE5EC", // Rosa Pastel
+  "#FFD2FC", // Lila Claro
+  "#FFF0E5", // Melocotón Claro
+  "#FFE4D6", // Melocotón Pastel
+  "#FFF7E8", // Durazno
+  "#FFFDF2", // Crema
+  "#FFF9DB", // Amarillo Clásico
+  "#FFF0C2", // Amarillo Trigo
+  "#F2FFF9", // Menta Suave
+  "#E6FCF5", // Menta Pastel
+  "#D3F9D8", // Verde Manzana
+  "#EEF7FF", // Celeste Claro
+  "#E3FAF9", // Turquesa Claro
+  "#E7F5FF", // Azul Hielo
+  "#F6F0FF", // Lavanda Claro
+  "#F3E8FF", // Violeta Pastel
+  "#E8EAFF", // Azul Bígaro
+  "#F4EBE1", // Arena Beige
+  "#E8E4D9", // Lino Neutro
+  "#E5EAE3", // Salvia Pastel
 ];
 
 export const CARD_ICON_OPTIONS = [

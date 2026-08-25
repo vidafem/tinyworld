@@ -26,6 +26,7 @@ interface CardStyleConfiguratorProps {
   initialStyle?: CardStyle | null;
   theme: any;
   onSave: (style: CardStyle) => Promise<void>;
+  onDelete?: () => Promise<void>;
 }
 
 export default function CardStyleConfigurator({
@@ -34,6 +35,7 @@ export default function CardStyleConfigurator({
   initialStyle,
   theme,
   onSave,
+  onDelete,
 }: CardStyleConfiguratorProps) {
   const [style, setStyle] = useState<CardStyle>(normalizeCardStyle(initialStyle));
   const [assets, setAssets] = useState<AssetOption[]>([]);
@@ -184,6 +186,15 @@ export default function CardStyleConfigurator({
         </section>
 
         <div className="flex justify-end gap-3 border-t border-stone-100 pt-5">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="mr-auto rounded-2xl bg-red-50 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-red-500 transition-colors hover:bg-red-100"
+            >
+              Eliminar Etapa
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

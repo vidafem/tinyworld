@@ -91,27 +91,52 @@ export default function ChildHub({ childId }: ChildHubProps) {
   const theme = themePalettes[child.theme_color] || themePalettes.neutral;
   const cardStyles = child.preview_config?.card_styles || {};
 
-  const baseHubOptions: HubOption[] = [
-    { id: "pregnancy", title: "Embarazo", desc: "Dulce espera & Hitos", iconName: "Heart", route: `/dashboard/child/${child.id}/pregnancy`, delay: 0.05, cardStyle: cardStyles.pregnancy },
-    { id: "lifetime", title: "Toda una Vida", desc: "Etapas y Recuerdos", iconName: "Sparkles", route: `/dashboard/child/${child.id}/lifetime`, delay: 0.1, cardStyle: cardStyles.lifetime },
-    { id: "gallery", title: "Galería", desc: "Fotos, Videos y Audios", iconName: "Images", route: `/dashboard/child/${child.id}/gallery`, delay: 0.15, cardStyle: cardStyles.gallery },
-    { id: "book", title: "Libro", desc: "Álbumes Digitales", iconName: "BookOpen", route: `/dashboard/child/${child.id}/book`, delay: 0.2, cardStyle: cardStyles.book },
-    { id: "calendar", title: "Calendarios", desc: "Bóveda Mensual", iconName: "CalendarDays", route: `/dashboard/child/${child.id}/calendar`, delay: 0.25, cardStyle: cardStyles.calendar },
-    { id: "preview", title: "Preview", desc: "Vista Pública / Invitado", iconName: "Eye", route: `/preview/${child.id}`, delay: 0.3, cardStyle: cardStyles.preview }
-  ];
+  const lifetimeOption: HubOption = { 
+    id: "lifetime", 
+    title: "Toda una Vida", 
+    desc: "Etapas y Recuerdos", 
+    iconName: "Sparkles", 
+    route: `/dashboard/child/${child.id}/lifetime`, 
+    delay: 0.05, 
+    cardStyle: cardStyles.lifetime 
+  };
+
+  const pregnancyOption: HubOption = { 
+    id: "pregnancy", 
+    title: "Embarazo", 
+    desc: "Dulce espera & Hitos", 
+    iconName: "Heart", 
+    route: `/dashboard/child/${child.id}/pregnancy`, 
+    delay: 0.1, 
+    cardStyle: cardStyles.pregnancy 
+  };
+
   const favoriteHubOptions: HubOption[] = favoriteStages.map((stage, index) => ({
     id: `stage-${stage.id}`,
     title: stage.title,
     desc: "Etapa favorita",
     iconName: stage.card_icon || "Heart",
     route: `/dashboard/child/${child.id}/lifetime?section=${stage.id}`,
-    delay: 0.35 + index * 0.05,
+    delay: 0.15 + index * 0.05,
     cardStyle: {
       color: stage.card_color,
       icon: stage.card_icon,
     },
   }));
-  const hubOptions = [...baseHubOptions, ...favoriteHubOptions];
+
+  const restHubOptions: HubOption[] = [
+    { id: "gallery", title: "Galería", desc: "Fotos, Videos y Audios", iconName: "Images", route: `/dashboard/child/${child.id}/gallery`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.05, cardStyle: cardStyles.gallery },
+    { id: "book", title: "Libro", desc: "Álbumes Digitales", iconName: "BookOpen", route: `/dashboard/child/${child.id}/book`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.1, cardStyle: cardStyles.book },
+    { id: "calendar", title: "Calendarios", desc: "Bóveda Mensual", iconName: "CalendarDays", route: `/dashboard/child/${child.id}/calendar`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.15, cardStyle: cardStyles.calendar },
+    { id: "preview", title: "Preview", desc: "Vista Pública / Invitado", iconName: "Eye", route: `/preview/${child.id}`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.2, cardStyle: cardStyles.preview }
+  ];
+
+  const hubOptions = [
+    lifetimeOption,
+    pregnancyOption,
+    ...favoriteHubOptions,
+    ...restHubOptions
+  ];
 
   const prefix = "El Mundo de";
   const babyName = child.nickname || child.name;

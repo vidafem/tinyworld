@@ -271,6 +271,40 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
     setToast({ type: "success", message: "Tarjeta actualizada con éxito." });
   };
 
+  const triggerDeleteStage = async () => {
+    if (!sectionId) return;
+    
+    setShowCardStyleModal(false);
+
+    setConfirmConfig({
+      show: true,
+      title: "¿Eliminar Etapa?",
+      text: `¿Estás seguro de que quieres eliminar la etapa "${sectionTitle || 'esta etapa'}"? Se borrará permanentemente todo su historial, fotos, calendarios y páginas del álbum.`,
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from("life_sections").delete().eq("id", sectionId);
+          if (error) throw error;
+          
+          playSuccessChime();
+          setToast({ type: "success", message: "Etapa eliminada con éxito." });
+          
+          setTimeout(() => {
+            if (onBack) {
+              onBack();
+            } else {
+              router.push(`/dashboard/child/${childId}`);
+            }
+          }, 1500);
+        } catch (err) {
+          console.error("Error deleting stage from PregnancyHub:", err);
+          setToast({ type: "error", message: "No se pudo eliminar la etapa." });
+        } finally {
+          setConfirmConfig(null);
+        }
+      }
+    });
+  };
+
   const deleteMemory = async (id: string) => {
     setConfirmConfig({
       show: true,
@@ -835,6 +869,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         initialStyle={getCurrentCardStyle()}
         theme={theme}
         onSave={saveCurrentCardStyle}
+        onDelete={sectionId ? triggerDeleteStage : undefined}
       />
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
       <FloatingToast toast={toast} onClose={() => setToast(null)} theme={theme} />
