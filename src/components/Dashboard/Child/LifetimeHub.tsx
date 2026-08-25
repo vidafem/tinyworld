@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import PregnancyHub from "./Pregnancy/PregnancyHub";
+import { playSoftPop, playActionSnap } from "@/lib/pageSound";
+import { renderCardIcon } from "@/lib/cardStyles";
 
 interface LifetimeHubProps {
   childId: string;
@@ -19,6 +21,9 @@ interface LifeSection {
   child_id: string;
   title: string;
   created_at: string;
+  is_favorite?: boolean;
+  card_color?: string | null;
+  card_icon?: string | null;
 }
 
 export default function LifetimeHub({ childId }: LifetimeHubProps) {
@@ -42,7 +47,16 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
       ]);
 
       if (childRes.data) setChild(childRes.data);
-      if (stagesRes.data) setStages(stagesRes.data);
+      if (stagesRes.data) {
+        setStages(stagesRes.data);
+        const sectionParam = typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("section")
+          : null;
+        const requestedStage = sectionParam
+          ? (stagesRes.data as LifeSection[]).find((stage) => stage.id === sectionParam)
+          : null;
+        if (requestedStage) setSelectedStage(requestedStage);
+      }
       setLoading(false);
     }
     loadData();
@@ -134,7 +148,7 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
       <header className="px-4 md:px-6 py-4 flex items-center justify-between bg-white/60 backdrop-blur-xl sticky top-0 z-[50] shadow-sm border-b border-white/50">
         <div className="flex items-center gap-2 md:gap-4">
           <button 
-            onClick={() => router.push(`/dashboard/child/${childId}`)} 
+            onClick={() => { playActionSnap(); router.push(`/dashboard/child/${childId}`); }} 
             className={`p-2.5 bg-white rounded-2xl shadow-sm ${theme.text} hover:scale-110 transition-all border ${theme.borderAccent}`}
           >
             <ChevronLeft size={22} />
@@ -203,15 +217,42 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 whileHover={{ y: -6 }}
-                onClick={() => setSelectedStage(stage)}
+                onClick={() => { playSoftPop(); setSelectedStage(stage); }}
                 className="bg-white/60 hover:bg-white backdrop-blur-md p-6 rounded-[2.5rem] shadow-sm hover:shadow-xl border border-white/50 cursor-pointer flex flex-col justify-between min-h-[160px] relative group overflow-hidden transition-all"
+                style={{ backgroundColor: stage.card_color || undefined }}
               >
                 <div className="flex justify-between items-start">
-                  <div className={`p-3 rounded-2xl ${theme.bg} text-white shrink-0 shadow-inner border border-white`}>
-                    <Heart size={20} className={theme.text} />
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      playSoftPop();
+                      try {
+                        const nextFav = !stage.is_favorite;
+                        const { error } = await supabase
+                          .from("life_sections")
+                          .update({ is_favorite: nextFav })
+                          .eq("id", stage.id);
+                        if (error) throw error;
+                        setStages(stages.map(s => s.id === stage.id ? { ...s, is_favorite: nextFav } : s));
+                      } catch (err) {
+                        console.error("Error toggling favorite:", err);
+                      }
+                    }}
+                    className={`p-3 rounded-2xl transition-all shadow-inner border hover:scale-105 active:scale-95 relative z-10 ${
+                      stage.is_favorite 
+                        ? `${theme.primaryBg} text-white border-white` 
+                        : `bg-white ${theme.text} ${theme.borderAccent}`
+                    }`}
+                  >
+                    <Heart size={20} className={stage.is_favorite ? 'fill-current' : ''} />
+                  </button>
+                  <div className={`p-3 rounded-2xl bg-white/75 ${theme.text} shrink-0 shadow-inner border border-white`}>
+                    <div className="h-5 w-5 flex items-center justify-center">
+                      {renderCardIcon(stage.card_icon || "Sparkles", 20)}
+                    </div>
                   </div>
                   <button
-                    onClick={(e) => handleDeleteClick(stage, e)}
+                    onClick={(e) => { playSoftPop(); handleDeleteClick(stage, e); }}
                     disabled={deletingStageId === stage.id}
                     className="p-2 bg-transparent hover:bg-red-50 text-red-400 hover:text-red-600 rounded-full transition-colors relative z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100"
                   >

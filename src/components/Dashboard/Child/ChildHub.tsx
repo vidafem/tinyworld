@@ -13,14 +13,34 @@ import { themePalettes } from "@/lib/themes";
 import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 import AppButton from "@/components/Common/AppButton";
+import { CardStyle, renderCardIcon } from "@/lib/cardStyles";
 
 interface ChildHubProps {
   childId: string;
 }
 
+interface FavoriteLifeSection {
+  id: string;
+  title: string;
+  is_favorite?: boolean;
+  card_color?: string | null;
+  card_icon?: string | null;
+}
+
+interface HubOption {
+  id: string;
+  title: string;
+  desc: string;
+  iconName: string;
+  route: string;
+  delay: number;
+  cardStyle?: CardStyle;
+}
+
 export default function ChildHub({ childId }: ChildHubProps) {
   const router = useRouter();
   const [child, setChild] = useState<any>(null);
+  const [favoriteStages, setFavoriteStages] = useState<FavoriteLifeSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandingCard, setExpandingCard] = useState<string | null>(null);
   const [showMasterMenu, setShowMasterMenu] = useState(false);
@@ -32,8 +52,15 @@ export default function ChildHub({ childId }: ChildHubProps) {
     window.addEventListener('resize', syncViewport);
     
     async function loadChild() {
-      const { data } = await supabase.from("children").select("*").eq("id", childId).single();
-      if (data) setChild(data);
+      const [childRes, stagesRes] = await Promise.all([
+        supabase.from("children").select("*").eq("id", childId).single(),
+        supabase.from("life_sections").select("*").eq("child_id", childId).order("created_at", { ascending: true }),
+      ]);
+
+      if (childRes.data) setChild(childRes.data);
+      if (stagesRes.data) {
+        setFavoriteStages((stagesRes.data as FavoriteLifeSection[]).filter((stage) => Boolean(stage.is_favorite)));
+      }
       setLoading(false);
     }
     loadChild();
@@ -62,15 +89,29 @@ export default function ChildHub({ childId }: ChildHubProps) {
 
   if (!child) return null;
   const theme = themePalettes[child.theme_color] || themePalettes.neutral;
+  const cardStyles = child.preview_config?.card_styles || {};
 
-  const hubOptions = [
-    { id: "pregnancy", title: "Embarazo", desc: "Dulce espera & Hitos", icon: <Heart size={isMobile ? 22 : 32} />, route: `/dashboard/child/${child.id}/pregnancy`, delay: 0.05 },
-    { id: "lifetime", title: "Toda una Vida", desc: "Etapas y Recuerdos", icon: <Sparkles size={isMobile ? 22 : 32} />, route: `/dashboard/child/${child.id}/lifetime`, delay: 0.1 },
-    { id: "gallery", title: "Galería", desc: "Fotos, Videos y Audios", icon: <Images size={isMobile ? 22 : 32} />, route: `/dashboard/child/${child.id}/gallery`, delay: 0.15 },
-    { id: "book", title: "Libro", desc: "Álbumes Digitales", icon: <BookOpen size={isMobile ? 22 : 32} />, route: `/dashboard/child/${child.id}/book`, delay: 0.2 },
-    { id: "calendar", title: "Calendarios", desc: "Bóveda Mensual", icon: <CalendarDays size={isMobile ? 22 : 32} />, route: `/dashboard/child/${child.id}/calendar`, delay: 0.25 },
-    { id: "preview", title: "Preview", desc: "Vista Pública / Invitado", icon: <Eye size={isMobile ? 22 : 32} />, route: `/preview/${child.id}`, delay: 0.3 }
+  const baseHubOptions: HubOption[] = [
+    { id: "pregnancy", title: "Embarazo", desc: "Dulce espera & Hitos", iconName: "Heart", route: `/dashboard/child/${child.id}/pregnancy`, delay: 0.05, cardStyle: cardStyles.pregnancy },
+    { id: "lifetime", title: "Toda una Vida", desc: "Etapas y Recuerdos", iconName: "Sparkles", route: `/dashboard/child/${child.id}/lifetime`, delay: 0.1, cardStyle: cardStyles.lifetime },
+    { id: "gallery", title: "Galería", desc: "Fotos, Videos y Audios", iconName: "Images", route: `/dashboard/child/${child.id}/gallery`, delay: 0.15, cardStyle: cardStyles.gallery },
+    { id: "book", title: "Libro", desc: "Álbumes Digitales", iconName: "BookOpen", route: `/dashboard/child/${child.id}/book`, delay: 0.2, cardStyle: cardStyles.book },
+    { id: "calendar", title: "Calendarios", desc: "Bóveda Mensual", iconName: "CalendarDays", route: `/dashboard/child/${child.id}/calendar`, delay: 0.25, cardStyle: cardStyles.calendar },
+    { id: "preview", title: "Preview", desc: "Vista Pública / Invitado", iconName: "Eye", route: `/preview/${child.id}`, delay: 0.3, cardStyle: cardStyles.preview }
   ];
+  const favoriteHubOptions: HubOption[] = favoriteStages.map((stage, index) => ({
+    id: `stage-${stage.id}`,
+    title: stage.title,
+    desc: "Etapa favorita",
+    iconName: stage.card_icon || "Heart",
+    route: `/dashboard/child/${child.id}/lifetime?section=${stage.id}`,
+    delay: 0.35 + index * 0.05,
+    cardStyle: {
+      color: stage.card_color,
+      icon: stage.card_icon,
+    },
+  }));
+  const hubOptions = [...baseHubOptions, ...favoriteHubOptions];
 
   const prefix = "El Mundo de";
   const babyName = child.nickname || child.name;
@@ -294,15 +335,18 @@ export default function ChildHub({ childId }: ChildHubProps) {
                 relative overflow-hidden cursor-pointer
               `}
               style={{
+                backgroundColor: opt.cardStyle?.color || undefined,
                 boxShadow: `0 10px 25px -8px ${theme.hex}22, inset 0 1px 0 rgba(255,255,255,0.7)`,
               }}
             >
               <div className={`
-                w-13 h-13 md:w-20 md:h-20 shrink-0 rounded-full ${theme.bg} 
+                w-13 h-13 md:w-20 md:h-20 shrink-0 rounded-full ${opt.cardStyle?.color ? "bg-white/75" : theme.bg} 
                 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner
                 border-2 md:border-3 border-white dark:border-stone-800
               `}>
-                <div className={theme.text}>{opt.icon}</div>
+                <div className={`${theme.text} h-7 w-7 md:h-10 md:w-10 flex items-center justify-center`}>
+                  {renderCardIcon(opt.cardStyle?.icon || opt.iconName, isMobile ? 22 : 32)}
+                </div>
               </div>
               <div className="w-full">
                 <h2 className={`text-xs md:text-xl font-black ${theme.text} leading-tight tracking-tight uppercase md:normal-case font-outfit`}>

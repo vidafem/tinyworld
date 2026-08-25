@@ -87,6 +87,9 @@ CREATE TABLE IF NOT EXISTS public.life_sections (
     baby_height VARCHAR,
     baby_photo TEXT,
     show_in_books BOOLEAN DEFAULT true,
+    is_favorite BOOLEAN DEFAULT false,
+    card_color TEXT DEFAULT null,
+    card_icon TEXT DEFAULT null,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -266,7 +269,10 @@ ALTER TABLE public.life_sections
     ADD COLUMN IF NOT EXISTS baby_weight VARCHAR,
     ADD COLUMN IF NOT EXISTS baby_height VARCHAR,
     ADD COLUMN IF NOT EXISTS baby_photo TEXT,
-    ADD COLUMN IF NOT EXISTS show_in_books BOOLEAN DEFAULT true;
+    ADD COLUMN IF NOT EXISTS show_in_books BOOLEAN DEFAULT true,
+    ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS card_color TEXT DEFAULT null,
+    ADD COLUMN IF NOT EXISTS card_icon TEXT DEFAULT null;
 
 ALTER TABLE public.pregnancy_events
     ADD COLUMN IF NOT EXISTS section_id UUID REFERENCES public.life_sections(id) ON DELETE SET NULL,
@@ -321,4 +327,3 @@ DROP POLICY IF EXISTS "Invitados ven eventos activos" ON public.pregnancy_events
 DROP POLICY IF EXISTS "Padres gestionan fotos de eventos" ON public.pregnancy_event_media;
 DROP POLICY IF EXISTS "Invitados ven fotos de eventos activos" ON public.pregnancy_event_media;
 DROP POLICY IF EXISTS "Invitados suben fotos a eventos activos" ON public.pregnancy_event_media;
-

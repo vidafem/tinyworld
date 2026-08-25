@@ -6,8 +6,9 @@ import {
   ChevronLeft, Plus, Calendar as CalendarIcon, 
   BookOpen, Loader2, Edit3, Trash2, Camera,
   Image as ImageIcon, ChevronRight,
-  Menu, Home, User, LogOut, Download, Filter,
-  Baby, Sparkles, FolderPlus, CheckCircle2, X, Video, Mic, QrCode
+  Home, User, LogOut, Download, Filter,
+  Baby, Sparkles, FolderPlus, CheckCircle2, X, Video, Mic, QrCode,
+  Settings2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -22,6 +23,8 @@ import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 import AppButton from "@/components/Common/AppButton";
 import ConfirmDialog from "@/components/Common/ConfirmDialog";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import CardStyleConfigurator from "@/components/Common/CardStyleConfigurator";
+import { CardStyle } from "@/lib/cardStyles";
 import { playSoftPop, playActionSnap, playSuccessChime } from "@/lib/pageSound";
 
 const PregnancyCalendar = dynamic(() => import("./PregnancyCalendar"), {
@@ -79,13 +82,21 @@ interface PregnancyMemory {
   media_type?: string | null;
 }
 
+interface SectionCardStyle {
+  id: string;
+  title?: string | null;
+  card_color?: string | null;
+  card_icon?: string | null;
+}
+
 export default function PregnancyHub({ childId, sectionId = null, sectionTitle, onBack }: PregnancyHubProps) {
   const router = useRouter();
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [calendars, setCalendars] = useState<CalendarSummary[]>([]);
   const [memories, setMemories] = useState<PregnancyMemory[]>([]);
-  const [showMasterMenu, setShowMasterMenu] = useState(false);
+  const [showCardStyleModal, setShowCardStyleModal] = useState(false);
+  const [sectionCardStyle, setSectionCardStyle] = useState<SectionCardStyle | null>(null);
   const [shouldOpenVisualizer, setShouldOpenVisualizer] = useState(false);
   const [toast, setToast] = useState<ToastData | null>(null);
   
@@ -151,13 +162,17 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         query.is("section_id", null);
       }
 
-      const [childRes, calsRes] = await Promise.all([
+      const [childRes, calsRes, sectionRes] = await Promise.all([
         supabase.from("children").select("*").eq("id", childId).single(),
-        query.order('created_at', { ascending: false })
+        query.order('created_at', { ascending: false }),
+        sectionId
+          ? supabase.from("life_sections").select("id,title,card_color,card_icon").eq("id", sectionId).single()
+          : Promise.resolve({ data: null, error: null })
       ]);
 
       if (childRes.data) setChild(childRes.data);
       if (calsRes.data) setCalendars(calsRes.data);
+      if (sectionRes.data) setSectionCardStyle(sectionRes.data as SectionCardStyle);
       
       setLoading(false);
     }
@@ -195,6 +210,65 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
   const openMemoryList = () => {
     setCurrentView('memory-list');
     if (memories.length === 0) refreshMemories();
+  };
+
+  const getCurrentCardStyle = (): CardStyle => {
+    if (sectionId) {
+      return {
+        color: sectionCardStyle?.card_color || null,
+        icon: sectionCardStyle?.card_icon || null,
+      };
+    }
+    const config = child?.preview_config?.card_styles?.pregnancy || {};
+    return {
+      color: config.color || null,
+      icon: config.icon || null,
+    };
+  };
+
+  const saveCurrentCardStyle = async (style: CardStyle) => {
+    if (sectionId) {
+      const { error } = await supabase
+        .from("life_sections")
+        .update({
+          card_color: style.color || null,
+          card_icon: style.icon || null,
+        })
+        .eq("id", sectionId);
+
+      if (error) throw error;
+      setSectionCardStyle({
+        id: sectionId,
+        title: sectionTitle || sectionCardStyle?.title || null,
+        card_color: style.color || null,
+        card_icon: style.icon || null,
+      });
+    } else if (child) {
+      const previewConfig = child.preview_config && typeof child.preview_config === "object"
+        ? child.preview_config
+        : {};
+      const nextConfig = {
+        ...previewConfig,
+        card_styles: {
+          ...(previewConfig.card_styles || {}),
+          pregnancy: {
+            color: style.color || null,
+            icon: style.icon || null,
+          },
+        },
+      };
+
+      const { error } = await supabase
+        .from("children")
+        .update({ preview_config: nextConfig })
+        .eq("id", childId);
+
+      if (error) throw error;
+      setChild({ ...child, preview_config: nextConfig });
+    }
+
+    playSuccessChime();
+    setToast({ type: "success", message: "Tarjeta actualizada con éxito." });
   };
 
   const deleteMemory = async (id: string) => {
@@ -299,67 +373,20 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
 
           <div className="relative">
             <button 
-              onClick={() => { playSoftPop(); setShowMasterMenu(!showMasterMenu); }}
+              onClick={() => { playSoftPop(); setShowCardStyleModal(true); }}
               className={`p-2.5 bg-white rounded-2xl shadow-sm ${theme.text} hover:scale-110 active:scale-95 transition-all border ${theme.borderAccent}`}
+              title="Configurar Tarjeta"
             >
-              <Menu size={isMobile ? 22 : 24} />
+              <Settings2 size={isMobile ? 22 : 24} />
             </button>
 
-            <AnimatePresence>
-              {showMasterMenu && (
-                <>
-                  <motion.div 
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    onClick={() => setShowMasterMenu(false)}
-                    className="fixed inset-0 z-[-1]"
-                  />
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className={`absolute top-16 left-0 w-64 bg-white rounded-[2rem] shadow-2xl border ${theme.borderAccent} p-3 overflow-hidden`}
-                  >
-                    <div className="flex flex-col gap-1">
-                       <button onClick={() => { playActionSnap(); router.push('/dashboard'); }} className={`w-full p-4 hover:${theme.bgLight} rounded-2xl flex items-center gap-4 ${theme.text} transition-colors group`}>
-                          <div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`}><Home size={18}/></div>
-                          <span className="font-black uppercase tracking-widest text-[10px]">Mis Bebés</span>
-                       </button>
-                       <button onClick={() => { playActionSnap(); router.push('/dashboard?view=profile'); }} className={`w-full p-4 hover:${theme.bgLight} rounded-2xl flex items-center gap-4 ${theme.text} transition-colors group`}>
-                          <div className={`p-2 ${theme.bgLight} rounded-xl group-hover:${theme.primaryBg} group-hover:text-white transition-colors`} style={{ color: theme.hex }}><User size={18}/></div>
-                          <span className="font-black uppercase tracking-widest text-[10px]">Mi Perfil</span>
-                       </button>
-
-                       <div className={`w-full p-3.5 hover:${theme.bgLight} rounded-2xl flex items-center justify-between ${theme.text} transition-colors`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 ${theme.bgLight} rounded-xl`} style={{ color: theme.hex }}><Sparkles size={18}/></div>
-                            <span className="font-black uppercase tracking-widest text-[10px]">Asistente IA</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              playSoftPop();
-                              const next = !aiEnabled;
-                              setAiEnabled(next);
-                              localStorage.setItem("tinyworld_ai_disabled", next ? "false" : "true");
-                              window.dispatchEvent(new CustomEvent("tinyworld_ai_toggle"));
-                            }}
-                            className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${aiEnabled ? "bg-purple-600" : "bg-stone-300"}`}
-                          >
-                            <div className={`w-5 h-5 rounded-full bg-white shadow transform transition-transform ${aiEnabled ? "translate-x-5" : "translate-x-0"}`} />
-                          </button>
-                        </div>
-                       
-                       <div className={`h-px ${theme.borderAccent} opacity-50 my-1 mx-4`} />
-                       <button onClick={() => { playActionSnap(); handleLogout(); }} className="w-full p-4 hover:bg-red-50 rounded-2xl flex items-center gap-4 text-red-500 transition-colors group">
-                          <div className="p-2 bg-red-50 rounded-xl group-hover:bg-red-500 group-hover:text-white transition-colors"><LogOut size={18}/></div>
-                          <span className="font-black uppercase tracking-widest text-[10px]">Cerrar Sesión</span>
-                       </button>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
+            <CardStyleConfigurator
+              isOpen={showCardStyleModal}
+              onClose={() => setShowCardStyleModal(false)}
+              initialStyle={getCurrentCardStyle()}
+              theme={theme}
+              onSave={saveCurrentCardStyle}
+            />
           </div>
         </div>
 
