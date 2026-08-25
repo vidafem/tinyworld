@@ -379,14 +379,6 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
             >
               <Settings2 size={isMobile ? 22 : 24} />
             </button>
-
-            <CardStyleConfigurator
-              isOpen={showCardStyleModal}
-              onClose={() => setShowCardStyleModal(false)}
-              initialStyle={getCurrentCardStyle()}
-              theme={theme}
-              onSave={saveCurrentCardStyle}
-            />
           </div>
         </div>
 
@@ -837,6 +829,13 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         theme={theme}
       />
 
+      <CardStyleConfigurator
+        isOpen={showCardStyleModal}
+        onClose={() => setShowCardStyleModal(false)}
+        initialStyle={getCurrentCardStyle()}
+        theme={theme}
+        onSave={saveCurrentCardStyle}
+      />
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
       <FloatingToast toast={toast} onClose={() => setToast(null)} theme={theme} />
     </div>
