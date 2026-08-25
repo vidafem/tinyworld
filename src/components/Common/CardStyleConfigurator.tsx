@@ -20,6 +20,11 @@ interface AssetOption {
   url: string;
 }
 
+interface AvailableItem {
+  id: string;
+  label: string;
+}
+
 interface CardStyleConfiguratorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,6 +32,7 @@ interface CardStyleConfiguratorProps {
   theme: any;
   onSave: (style: CardStyle) => Promise<void>;
   onDelete?: () => Promise<void>;
+  availableItems?: AvailableItem[];
 }
 
 export default function CardStyleConfigurator({
@@ -36,6 +42,7 @@ export default function CardStyleConfigurator({
   theme,
   onSave,
   onDelete,
+  availableItems,
 }: CardStyleConfiguratorProps) {
   const [style, setStyle] = useState<CardStyle>(normalizeCardStyle(initialStyle));
   const [assets, setAssets] = useState<AssetOption[]>([]);
@@ -74,6 +81,7 @@ export default function CardStyleConfigurator({
       await onSave({
         color: style.color || null,
         icon: style.icon || null,
+        visible_items: style.visible_items || null,
       });
       onClose();
     } finally {
@@ -184,6 +192,47 @@ export default function CardStyleConfigurator({
             </div>
           )}
         </section>
+
+        {availableItems && availableItems.length > 0 && (
+          <section>
+            <h3 className={`text-[10px] font-black uppercase tracking-[0.18em] ${theme.text} opacity-50 mb-3`}>
+              Secciones Visibles
+            </h3>
+            <div className="space-y-3 bg-stone-50 dark:bg-stone-850 p-4 rounded-3xl border border-stone-100 dark:border-stone-800">
+              {availableItems.map((item) => {
+                const isVisible = (style.visible_items || []).includes(item.id);
+                return (
+                  <div key={item.id} className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-stone-600 dark:text-stone-300">
+                      {item.label}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStyle((current) => {
+                          const currentVisible = current.visible_items || [];
+                          const nextVisible = currentVisible.includes(item.id)
+                            ? currentVisible.filter((id) => id !== item.id)
+                            : [...currentVisible, item.id];
+                          return { ...current, visible_items: nextVisible };
+                        });
+                      }}
+                      className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+                        isVisible ? theme.primaryBg || "bg-sage" : "bg-stone-300 dark:bg-stone-700"
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full bg-white shadow transform transition-transform ${
+                          isVisible ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <div className="flex justify-end gap-3 border-t border-stone-100 pt-5">
           {onDelete && (

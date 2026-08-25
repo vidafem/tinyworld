@@ -26,6 +26,7 @@ import {
 export interface CardStyle {
   color?: string | null;
   icon?: string | null;
+  visible_items?: string[] | null;
 }
 
 export const CARD_COLOR_OPTIONS = [
@@ -119,6 +120,7 @@ export function normalizeCardStyle(style?: CardStyle | null): CardStyle {
   return {
     color: style?.color || null,
     icon: style?.icon || null,
+    visible_items: style?.visible_items || null,
   };
 }
 

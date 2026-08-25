@@ -222,30 +222,38 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
                 style={{ backgroundColor: stage.card_color || undefined }}
               >
                 <div className="flex justify-between items-start">
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      playSoftPop();
-                      try {
-                        const nextFav = !stage.is_favorite;
-                        const { error } = await supabase
-                          .from("life_sections")
-                          .update({ is_favorite: nextFav })
-                          .eq("id", stage.id);
-                        if (error) throw error;
-                        setStages(stages.map(s => s.id === stage.id ? { ...s, is_favorite: nextFav } : s));
-                      } catch (err) {
-                        console.error("Error toggling favorite:", err);
-                      }
-                    }}
-                    className={`p-3 rounded-2xl transition-all shadow-inner border hover:scale-105 active:scale-95 relative z-10 ${
-                      stage.is_favorite 
-                        ? `${theme.primaryBg} text-white border-white` 
-                        : `bg-white ${theme.text} ${theme.borderAccent}`
-                    }`}
-                  >
-                    <Heart size={20} className={stage.is_favorite ? 'fill-current' : ''} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        playSoftPop();
+                        try {
+                          const nextFav = !stage.is_favorite;
+                          const { error } = await supabase
+                            .from("life_sections")
+                            .update({ is_favorite: nextFav })
+                            .eq("id", stage.id);
+                          if (error) throw error;
+                          setStages(stages.map(s => s.id === stage.id ? { ...s, is_favorite: nextFav } : s));
+                        } catch (err) {
+                          console.error("Error toggling favorite:", err);
+                        }
+                      }}
+                      className={`p-3 rounded-2xl transition-all shadow-inner border hover:scale-105 active:scale-95 relative z-10 ${
+                        stage.is_favorite 
+                          ? `${theme.primaryBg} text-white border-white` 
+                          : `bg-white ${theme.text} ${theme.borderAccent}`
+                      }`}
+                    >
+                      <Heart size={20} className={stage.is_favorite ? 'fill-current' : ''} />
+                    </button>
+                    {stage.is_favorite && (
+                      <div className={`px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/80 ${theme.text} border border-white/60 shadow-sm flex items-center gap-1.5 relative z-10`}>
+                        <Heart size={10} className="fill-current text-red-500" />
+                        <span>Favorito</span>
+                      </div>
+                    )}
+                  </div>
                   <div className={`p-3 rounded-2xl bg-white/75 ${theme.text} shrink-0 shadow-inner border border-white`}>
                     <div className="h-5 w-5 flex items-center justify-center">
                       {renderCardIcon(stage.card_icon || "Sparkles", 20)}

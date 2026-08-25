@@ -213,22 +213,24 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
   };
 
   const getCurrentCardStyle = (): CardStyle => {
+    const config = child?.preview_config?.card_styles?.[sectionId || 'pregnancy'] || {};
     if (sectionId) {
       return {
         color: sectionCardStyle?.card_color || null,
         icon: sectionCardStyle?.card_icon || null,
+        visible_items: config.visible_items || ['memories', 'calendars', 'gallery', 'album', 'baby_info', 'events'],
       };
     }
-    const config = child?.preview_config?.card_styles?.pregnancy || {};
     return {
       color: config.color || null,
       icon: config.icon || null,
+      visible_items: config.visible_items || ['memories', 'calendars', 'gallery', 'album', 'names', 'how_is_baby', 'events'],
     };
   };
 
   const saveCurrentCardStyle = async (style: CardStyle) => {
     if (sectionId) {
-      const { error } = await supabase
+      const { error: secError } = await supabase
         .from("life_sections")
         .update({
           card_color: style.color || null,
@@ -236,34 +238,44 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         })
         .eq("id", sectionId);
 
-      if (error) throw error;
+      if (secError) throw secError;
       setSectionCardStyle({
         id: sectionId,
         title: sectionTitle || sectionCardStyle?.title || null,
         card_color: style.color || null,
         card_icon: style.icon || null,
       });
-    } else if (child) {
+    }
+
+    if (child) {
       const previewConfig = child.preview_config && typeof child.preview_config === "object"
         ? child.preview_config
         : {};
+      
+      const stageKey = sectionId || 'pregnancy';
+      const stageConfig = {
+        ...(previewConfig.card_styles?.[stageKey] || {}),
+        visible_items: style.visible_items || [],
+      };
+      if (!sectionId) {
+        stageConfig.color = style.color || null;
+        stageConfig.icon = style.icon || null;
+      }
+
       const nextConfig = {
         ...previewConfig,
         card_styles: {
           ...(previewConfig.card_styles || {}),
-          pregnancy: {
-            color: style.color || null,
-            icon: style.icon || null,
-          },
+          [stageKey]: stageConfig,
         },
       };
 
-      const { error } = await supabase
+      const { error: childError } = await supabase
         .from("children")
         .update({ preview_config: nextConfig })
         .eq("id", childId);
 
-      if (error) throw error;
+      if (childError) throw childError;
       setChild({ ...child, preview_config: nextConfig });
     }
 
@@ -364,6 +376,30 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
 
   if (!child) return null;
   const theme = themePalettes[child.theme_color || 'neutral'] || themePalettes.neutral;
+
+  const availableItems = sectionId
+    ? [
+        { id: "memories", label: "Recuerdos" },
+        { id: "calendars", label: "Calendarios" },
+        { id: "gallery", label: "Galería" },
+        { id: "album", label: "Álbum Digital" },
+        { id: "baby_info", label: "Información del Bebé" },
+        { id: "events", label: "Eventos Compartidos" },
+      ]
+    : [
+        { id: "memories", label: "Recuerdos" },
+        { id: "calendars", label: "Calendarios" },
+        { id: "gallery", label: "Galería" },
+        { id: "album", label: "Álbum Digital" },
+        { id: "names", label: "Futuro Nombre" },
+        { id: "how_is_baby", label: "Cómo está mi Bebé" },
+        { id: "events", label: "Eventos Compartidos" },
+      ];
+
+  const visibleItems = getCurrentCardStyle().visible_items || (sectionId 
+    ? ['memories', 'calendars', 'gallery', 'album', 'baby_info', 'events'] 
+    : ['memories', 'calendars', 'gallery', 'album', 'names', 'how_is_baby', 'events']
+  );
 
   return (
     <div className={`min-h-screen ${theme.bg} transition-colors duration-500 overflow-x-hidden relative`}>
@@ -514,39 +550,47 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
               className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-10 mt-4 md:mt-6"
             >
               {/* BOTONES PRINCIPALES: Estilo Cápsula en Móvil */}
-              <HubButton 
-                onClick={openMemoryList} 
-                icon={<Camera size={isMobile ? 22 : 32} />} 
-                title="Recuerdos" 
-                subtitle="Gestiona tus momentos." 
-                theme={theme} 
-                isMobile={isMobile}
-              />
-              <HubButton 
-                onClick={() => setCurrentView('calendar-list')} 
-                icon={<CalendarIcon size={isMobile ? 22 : 32} />} 
-                title="Calendarios" 
-                subtitle="Resúmenes mensuales." 
-                theme={theme} 
-                isMobile={isMobile}
-              />
-              <HubButton 
-                onClick={() => setCurrentView('gallery')} 
-                icon={<ImageIcon size={isMobile ? 22 : 32} />} 
-                title="Galería" 
-                subtitle="Tu historia en Polaroid." 
-                theme={theme} 
-                isMobile={isMobile}
-              />
-              <HubButton 
-                onClick={() => setCurrentView('album')} 
-                icon={<BookOpen size={isMobile ? 22 : 32} />} 
-                title="Álbum Digital" 
-                subtitle="Tu historia en libro." 
-                theme={theme} 
-                isMobile={isMobile}
-              />
-              {sectionId && (
+              {visibleItems.includes('memories') && (
+                <HubButton 
+                  onClick={openMemoryList} 
+                  icon={<Camera size={isMobile ? 22 : 32} />} 
+                  title="Recuerdos" 
+                  subtitle="Gestiona tus momentos." 
+                  theme={theme} 
+                  isMobile={isMobile}
+                />
+              )}
+              {visibleItems.includes('calendars') && (
+                <HubButton 
+                  onClick={() => setCurrentView('calendar-list')} 
+                  icon={<CalendarIcon size={isMobile ? 22 : 32} />} 
+                  title="Calendarios" 
+                  subtitle="Resúmenes mensuales." 
+                  theme={theme} 
+                  isMobile={isMobile}
+                />
+              )}
+              {visibleItems.includes('gallery') && (
+                <HubButton 
+                  onClick={() => setCurrentView('gallery')} 
+                  icon={<ImageIcon size={isMobile ? 22 : 32} />} 
+                  title="Galería" 
+                  subtitle="Tu historia en Polaroid." 
+                  theme={theme} 
+                  isMobile={isMobile}
+                />
+              )}
+              {visibleItems.includes('album') && (
+                <HubButton 
+                  onClick={() => setCurrentView('album')} 
+                  icon={<BookOpen size={isMobile ? 22 : 32} />} 
+                  title="Álbum Digital" 
+                  subtitle="Tu historia en libro." 
+                  theme={theme} 
+                  isMobile={isMobile}
+                />
+              )}
+              {sectionId && visibleItems.includes('baby_info') && (
                 <HubButton 
                   onClick={() => setCurrentView('baby-info')} 
                   icon={<Baby size={isMobile ? 22 : 32} />} 
@@ -556,7 +600,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                   isMobile={isMobile}
                 />
               )}
-              {!sectionId && (
+              {!sectionId && visibleItems.includes('names') && (
                 <HubButton 
                   onClick={() => setCurrentView('future-names')}
                   icon={<Baby size={isMobile ? 22 : 32} style={{ color: theme.hex }} />} 
@@ -566,17 +610,19 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                   isMobile={isMobile}
                 />
               )}
-              {!sectionId && (
+              {!sectionId && visibleItems.includes('how_is_baby') && (
                 <HowIsBabyCard fum={child.preview_config?.fum} theme={theme} initialOpen={shouldOpenVisualizer} />
               )}
-              <HubButton 
-                onClick={() => setCurrentView('events')} 
-                icon={<QrCode size={isMobile ? 22 : 32} />} 
-                title="Eventos Compartidos" 
-                subtitle="Invitados y Código QR" 
-                theme={theme} 
-                isMobile={isMobile}
-              />
+              {visibleItems.includes('events') && (
+                <HubButton 
+                  onClick={() => setCurrentView('events')} 
+                  icon={<QrCode size={isMobile ? 22 : 32} />} 
+                  title="Eventos Compartidos" 
+                  subtitle="Invitados y Código QR" 
+                  theme={theme} 
+                  isMobile={isMobile}
+                />
+              )}
             </motion.div>
           </>
         )}
@@ -870,6 +916,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         theme={theme}
         onSave={saveCurrentCardStyle}
         onDelete={sectionId ? triggerDeleteStage : undefined}
+        availableItems={availableItems}
       />
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
       <FloatingToast toast={toast} onClose={() => setToast(null)} theme={theme} />
