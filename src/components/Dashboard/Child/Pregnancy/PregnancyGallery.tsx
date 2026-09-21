@@ -703,23 +703,31 @@ export default function PregnancyGallery({
               )}
             </div>
           ) : (
-            <div className="relative">
+            <div className="flex items-center gap-3">
               <button 
-                onClick={() => setShowAddMenu(!showAddMenu)}
-                className={`w-10 h-10 ${theme.primaryBg} ${theme.textActive} rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-all`}
+                onClick={() => window.location.href = `/dashboard/child/${childId}/book`}
+                className={`w-10 h-10 bg-white ${theme.text} border ${theme.borderAccent} rounded-full shadow-sm flex items-center justify-center active:scale-90 transition-all`}
               >
-                <motion.div animate={{ rotate: showAddMenu ? 45 : 0 }}>
-                  <Plus size={22} />
-                </motion.div>
+                <Book size={20} />
               </button>
-              <AnimatePresence>
-                {showAddMenu && (
-                  <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className={`absolute right-0 mt-3 w-48 bg-white rounded-[1.5rem] shadow-2xl border ${theme.borderAccent} p-2 z-[200]`}>
-                    <button onClick={() => { setShowAddMenu(false); setShowUploadModal(true); }} className={`w-full flex items-center gap-3 p-3 hover:${theme.bgLight} rounded-xl transition-all text-left`}><div className={`w-8 h-8 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center`}><ImageIcon size={16} /></div><span className={`text-xs font-black ${theme.text} uppercase tracking-widest`}>Subir Foto</span></button>
-                    <button onClick={() => { setShowAddMenu(false); setShowFolderWizard(true); }} className={`w-full flex items-center gap-3 p-3 hover:${theme.bgLight} rounded-xl transition-all text-left`}><div className={`w-8 h-8 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center`}><FolderPlus size={16} /></div><span className={`text-xs font-black ${theme.text} uppercase tracking-widest`}>Nueva Carpeta</span></button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowAddMenu(!showAddMenu)}
+                  className={`w-10 h-10 ${theme.primaryBg} ${theme.textActive} rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-all`}
+                >
+                  <motion.div animate={{ rotate: showAddMenu ? 45 : 0 }}>
+                    <Plus size={22} />
                   </motion.div>
-                )}
-              </AnimatePresence>
+                </button>
+                <AnimatePresence>
+                  {showAddMenu && (
+                    <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className={`absolute right-0 mt-3 w-48 bg-white rounded-[1.5rem] shadow-2xl border ${theme.borderAccent} p-2 z-[200]`}>
+                      <button onClick={() => { setShowAddMenu(false); setShowUploadModal(true); }} className={`w-full flex items-center gap-3 p-3 hover:${theme.bgLight} rounded-xl transition-all text-left`}><div className={`w-8 h-8 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center`}><ImageIcon size={16} /></div><span className={`text-xs font-black ${theme.text} uppercase tracking-widest`}>Subir Foto</span></button>
+                      <button onClick={() => { setShowAddMenu(false); setShowFolderWizard(true); }} className={`w-full flex items-center gap-3 p-3 hover:${theme.bgLight} rounded-xl transition-all text-left`}><div className={`w-8 h-8 ${theme.bgLight} ${theme.text} rounded-full flex items-center justify-center`}><FolderPlus size={16} /></div><span className={`text-xs font-black ${theme.text} uppercase tracking-widest`}>Nueva Carpeta</span></button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           )}
         </div>
@@ -736,6 +744,9 @@ export default function PregnancyGallery({
                   <div className="w-full flex items-center gap-3">
                     <h2 className={`text-xl md:text-3xl font-black ${theme.text} flex items-center gap-2 md:gap-3 tracking-tighter`}><ImageIcon className="shrink-0" size={24} /> Galería</h2>
                   </div>
+                  <button onClick={() => window.location.href = `/dashboard/child/${childId}/book`} className={`flex items-center gap-2 px-4 py-2 bg-white ${theme.text} rounded-xl shadow-sm border ${theme.borderAccent} font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shrink-0`}>
+                    <Book size={16} /> Álbum
+                  </button>
                 </div>
               )}
 
