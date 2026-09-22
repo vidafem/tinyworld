@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import HTMLFlipBook from "react-pageflip";
 import {
   AlignCenter,
   AlignJustify,
@@ -500,6 +501,15 @@ function buildTemplateElements(templateId: TemplateId, page: Partial<AlbumPage>,
     ...(primary ? [makeMedia("journal-photo", primary, memory?.media_type, 24, 70, 52, 17, 1, -1)] : []),
   ];
 }
+
+const FlipPage = React.forwardRef<HTMLDivElement, { children: ReactNode; className?: string }>((props, ref) => {
+  return (
+    <div ref={ref} className={`bg-[#FFFDF8] h-full overflow-hidden ${props.className || ''}`}>
+      {props.children}
+    </div>
+  );
+});
+FlipPage.displayName = "FlipPage";
 
 export default function PregnancyDigitalAlbum({ childId, sectionId = null, sectionTitle, child, theme, isMobile, onBack, readOnly = false }: PregnancyDigitalAlbumProps) {
   const [loading, setLoading] = useState(true);
@@ -1440,6 +1450,24 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
           </div>
 
           <div className="flex items-center gap-2">
+            {!editMode && bookOpened && (
+              <>
+                <button
+                  onClick={() => setZoom(prev => Math.max(prev - 0.2, 0.5))}
+                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer`}
+                  title="Alejar"
+                >
+                  <Minus size={18} />
+                </button>
+                <button
+                  onClick={() => setZoom(prev => Math.min(prev + 0.2, 2.5))}
+                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer`}
+                  title="Acercar"
+                >
+                  <Plus size={18} />
+                </button>
+              </>
+            )}
             <button
               onClick={handleToggleMute}
               className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer`}
@@ -1572,7 +1600,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
           <section className="h-[calc(100vh-65px)] min-h-0 flex flex-col">
             <div className="flex-1 min-h-0 flex items-center justify-center p-2 md:p-4 overflow-auto">
               <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: "1500px" }}>
-                {bookOpened && (
+                {bookOpened && editMode && (
                 <button
                   onClick={handlePrevSpread}
                   disabled={!canPrev}
@@ -1609,6 +1637,43 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       snapLineX={snapLineX}
                       snapLineY={snapLineY}
                     />
+                  ) : !editMode ? (
+                    <div className="w-full h-full flex items-center justify-center transition-transform duration-300" style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}>
+                      <HTMLFlipBook
+                        width={isMobile ? 320 : 450}
+                        height={isMobile ? 450 : 600}
+                        size="stretch"
+                        minWidth={300}
+                        maxWidth={isMobile ? 400 : 1000}
+                        minHeight={400}
+                        maxHeight={1533}
+                        maxShadowOpacity={0.5}
+                        showCover={true}
+                        mobileScrollSupport={true}
+                        className="album-flipbook"
+                        usePortrait={isMobile}
+                      >
+                        {[coverPage, ...pages].map((page, index) => (
+                          <FlipPage key={page.page_number || index}>
+                            <AlbumPageView
+                              page={page}
+                              isMobile={isMobile}
+                              isLeft={!isMobile && index > 0 && index % 2 !== 0}
+                              editMode={false}
+                              selectedPageNumber={null}
+                              selectedElementId={null}
+                              theme={theme}
+                              onSelectPage={() => {}}
+                              onSelectElement={() => {}}
+                              onStartDrag={startDrag}
+                              onStartResize={startResize}
+                              onDeletePage={() => {}}
+                              onMediaClick={setMediaModal}
+                            />
+                          </FlipPage>
+                        ))}
+                      </HTMLFlipBook>
+                    </div>
                   ) : (
                   <motion.div
                     key={`${spreadIndex}-${isMobile ? "m" : "d"}`}
@@ -1733,7 +1798,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                   </div>
                 )}
 
-                {bookOpened && (
+                {bookOpened && editMode && (
                 <button
                   onClick={handleNextSpread}
                   disabled={!canNext}

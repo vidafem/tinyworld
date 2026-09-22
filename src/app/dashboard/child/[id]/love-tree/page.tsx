@@ -121,9 +121,9 @@ export default function LoveTreeParentPage({ params }: LoveTreeProps) {
           <div className="fixed inset-0 z-[100] bg-black">
             <button 
               onClick={() => setIsFullscreen(false)}
-              className="absolute top-6 left-6 z-[110] bg-white/20 hover:bg-white/40 backdrop-blur-md p-3 rounded-full text-white transition-colors"
+              className="absolute top-6 left-6 z-[110] bg-red-500 hover:bg-red-600 shadow-2xl p-3 px-6 rounded-full text-white font-black text-sm uppercase tracking-widest flex items-center gap-2 transition-all"
             >
-              <X size={24} />
+              <X size={20} strokeWidth={3} /> CERRAR
             </button>
             <LoveTreeCanvas child={child} />
           </div>
