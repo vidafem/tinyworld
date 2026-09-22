@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Heart, BookOpen, CalendarDays, Eye, 
   User, Loader2, Menu, Home, LogOut, ChevronLeft, Settings2,
-  Sparkles, Images, Baby, Camera, Mic, Map, TreeDeciduous
+  Sparkles, Images, Baby, Camera, Mic, Map, TreeDeciduous, Edit3, Settings
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -14,6 +14,7 @@ import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 import AppButton from "@/components/Common/AppButton";
 import { CardStyle, renderCardIcon } from "@/lib/cardStyles";
+import CardStyleConfigurator from "@/components/Common/CardStyleConfigurator";
 
 interface ChildHubProps {
   childId: string;
@@ -45,6 +46,8 @@ export default function ChildHub({ childId }: ChildHubProps) {
   const [expandingCard, setExpandingCard] = useState<string | null>(null);
   const [showMasterMenu, setShowMasterMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
   useEffect(() => {
     const syncViewport = () => setIsMobile(window.innerWidth < 768);
@@ -70,6 +73,19 @@ export default function ChildHub({ childId }: ChildHubProps) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
+  };
+
+  const handleSaveCardStyle = async (style: CardStyle) => {
+    if (!editingCardId || !child) return;
+    const currentConfig = child.preview_config || {};
+    const newStyles = {
+      ...(currentConfig.card_styles || {}),
+      [editingCardId]: style,
+    };
+    const newConfig = { ...currentConfig, card_styles: newStyles };
+    
+    await supabase.from("children").update({ preview_config: newConfig }).eq("id", child.id);
+    setChild({ ...child, preview_config: newConfig });
   };
 
   if (loading) {
@@ -208,6 +224,14 @@ export default function ChildHub({ childId }: ChildHubProps) {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3 z-[110]">
+          <AppButton
+            variant={isEditMode ? "primary" : "secondary"}
+            size="icon"
+            onClick={() => { playActionSnap(); setIsEditMode(!isEditMode); }}
+            icon={<Edit3 size={20} className={isEditMode ? "text-white" : theme.text} />}
+            className={`shadow-sm ${isEditMode ? theme.primaryBg : ""}`}
+            title="Editar Módulos"
+          />
           <AppButton
             variant="secondary"
             size="icon"
@@ -364,13 +388,34 @@ export default function ChildHub({ childId }: ChildHubProps) {
                 backdrop-blur-xl p-4 md:p-7 rounded-[2rem] md:rounded-[2.5rem] 
                 shadow-sm hover:shadow-2xl transition-all border border-white/70 dark:border-stone-800 
                 flex flex-col items-center gap-3 md:gap-5 group w-full text-center
-                relative overflow-hidden cursor-pointer
+                relative overflow-hidden ${isEditMode ? "cursor-default" : "cursor-pointer"}
               `}
               style={{
                 backgroundColor: opt.cardStyle?.color || undefined,
                 boxShadow: `0 10px 25px -8px ${theme.hex}22, inset 0 1px 0 rgba(255,255,255,0.7)`,
               }}
             >
+              <AnimatePresence>
+                {isEditMode && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    className="absolute top-3 right-3 z-20"
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingCardId(opt.id);
+                      }}
+                      className={`p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:scale-110 active:scale-95 transition-all border ${theme.borderAccent} cursor-pointer`}
+                    >
+                      <Settings size={16} className={theme.text} />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
               <div className={`
                 w-13 h-13 md:w-20 md:h-20 shrink-0 rounded-full ${opt.cardStyle?.color ? "bg-white/75" : theme.bg} 
                 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner
@@ -400,7 +445,16 @@ export default function ChildHub({ childId }: ChildHubProps) {
       </footer>
 
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
+
+      {editingCardId && (
+        <CardStyleConfigurator
+          isOpen={true}
+          onClose={() => setEditingCardId(null)}
+          theme={theme}
+          initialStyle={hubOptions.find(o => o.id === editingCardId)?.cardStyle}
+          onSave={handleSaveCardStyle}
+        />
+      )}
     </div>
   );
 }
-
