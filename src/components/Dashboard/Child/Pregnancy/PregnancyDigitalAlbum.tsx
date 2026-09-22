@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, forwardRef } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import HTMLFlipBook from "react-pageflip";
@@ -502,7 +502,7 @@ function buildTemplateElements(templateId: TemplateId, page: Partial<AlbumPage>,
   ];
 }
 
-const FlipPage = React.forwardRef<HTMLDivElement, { children: ReactNode; className?: string }>((props, ref) => {
+const FlipPage = forwardRef<HTMLDivElement, { children: ReactNode; className?: string }>((props, ref) => {
   return (
     <div ref={ref} className={`bg-[#FFFDF8] h-full overflow-hidden ${props.className || ''}`}>
       {props.children}
