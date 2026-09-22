@@ -384,32 +384,16 @@ export default function ChildHub({ childId }: ChildHubProps) {
                 setTimeout(() => router.push(opt.route), 350);
               }}
               className={`
-                bg-white/75 dark:bg-stone-900/75 hover:bg-white dark:hover:bg-stone-900 
+                ${opt.cardStyle?.color || 'bg-white/75 dark:bg-stone-900/75 hover:bg-white dark:hover:bg-stone-900'} 
                 backdrop-blur-xl p-4 md:p-7 rounded-[2rem] md:rounded-[2.5rem] 
                 shadow-sm hover:shadow-2xl transition-all border border-white/70 dark:border-stone-800 
                 flex flex-col items-center gap-3 md:gap-5 group w-full text-center
-                relative overflow-hidden ${isEditMode ? "cursor-default" : "cursor-pointer"}
+                relative overflow-hidden cursor-pointer
               `}
               style={{
-                backgroundColor: opt.cardStyle?.color || undefined,
                 boxShadow: `0 10px 25px -8px ${theme.hex}22, inset 0 1px 0 rgba(255,255,255,0.7)`,
               }}
             >
-              <div 
-                className="absolute top-2 right-2 md:top-3 md:right-3 z-20 opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300"
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setEditingCardId(opt.id);
-                  }}
-                  className={`p-1.5 md:p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:scale-110 active:scale-95 transition-all border ${theme.borderAccent} cursor-pointer`}
-                >
-                  <Settings size={isMobile ? 14 : 16} className={theme.text} />
-                </button>
-              </div>
-              
               <div className={`
                 w-13 h-13 md:w-20 md:h-20 shrink-0 rounded-full ${opt.cardStyle?.color ? "bg-white/75" : theme.bg} 
                 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner
@@ -419,9 +403,20 @@ export default function ChildHub({ childId }: ChildHubProps) {
                   {renderCardIcon(opt.cardStyle?.icon || opt.iconName, isMobile ? 22 : 32)}
                 </div>
               </div>
-              <div className="w-full">
-                <h2 className={`text-xs md:text-xl font-black ${theme.text} leading-tight tracking-tight uppercase md:normal-case font-outfit`}>
+              <div className="w-full relative">
+                <h2 className={`text-xs md:text-xl font-black ${theme.text} leading-tight tracking-tight uppercase md:normal-case font-outfit flex items-center justify-center gap-2`}>
                   {opt.title}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setEditingCardId(opt.id);
+                    }}
+                    className={`opacity-60 hover:opacity-100 hover:scale-110 active:scale-95 transition-all cursor-pointer`}
+                    title="Personalizar tarjeta"
+                  >
+                    <Settings size={14} className={theme.text} />
+                  </button>
                 </h2>
                 <p className={`hidden md:block ${theme.text} opacity-50 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-0.5 font-quicksand`}>
                   {opt.desc}

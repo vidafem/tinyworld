@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok && response.status !== 206) {
-      throw new Error(`Failed to fetch resource: ${response.status}`);
+      return new NextResponse(`Failed to fetch resource: ${response.status}`, { status: response.status });
     }
 
     const contentType = response.headers.get("content-type") || "application/octet-stream";

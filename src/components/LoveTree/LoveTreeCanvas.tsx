@@ -132,9 +132,7 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
 
   useEffect(() => {
     loadMessages();
-    if (localStorage.getItem('lovetree_visited')) {
-      setShowWelcome(false);
-    }
+    setShowWelcome(true);
 
     // Apple Watch magnifying effect loop
     let rafId: number;
@@ -171,7 +169,6 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
 
   const closeWelcome = () => {
     setShowWelcome(false);
-    localStorage.setItem('lovetree_visited', 'true');
   };
 
   const applyTransform = () => {

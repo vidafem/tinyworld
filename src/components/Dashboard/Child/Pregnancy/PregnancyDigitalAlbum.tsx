@@ -1638,22 +1638,31 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       snapLineY={snapLineY}
                     />
                   ) : !editMode ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
-                      <HTMLFlipBook
-                        width={(isMobile ? 320 : 450) * zoom}
-                        height={(isMobile ? 450 : 600) * zoom}
-                        size="fixed"
-                        minWidth={300}
-                        maxWidth={isMobile ? 400 : 1000}
-                        minHeight={400}
-                        maxHeight={1533}
-                        maxShadowOpacity={0.5}
-                        showCover={true}
-                        mobileScrollSupport={true}
-                        className="album-flipbook transition-all duration-300"
-                        usePortrait={isMobile}
+                    <div className="w-full h-full flex items-center justify-center relative perspective-1000">
+                      <div 
+                        className="drop-shadow-2xl flex justify-center transition-all duration-300"
+                        style={{ 
+                          width: isMobile ? `${320 * zoom}px` : `${900 * zoom}px`, 
+                          height: isMobile ? `${450 * zoom}px` : `${600 * zoom}px`,
+                          maxWidth: '100%',
+                          maxHeight: '100%'
+                        }}
                       >
+                        {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
+                        <HTMLFlipBook
+                          width={isMobile ? 320 : 450}
+                          height={isMobile ? 450 : 600}
+                          size="stretch"
+                          minWidth={280}
+                          maxWidth={1000}
+                          minHeight={400}
+                          maxHeight={1533}
+                          maxShadowOpacity={0.5}
+                          showCover={true}
+                          mobileScrollSupport={true}
+                          className="album-flipbook"
+                          usePortrait={isMobile}
+                        >
                         {[coverPage, ...pages].map((page, index) => (
                           <FlipPage key={page.page_number || index}>
                             <AlbumPageView
@@ -1674,6 +1683,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                           </FlipPage>
                         ))}
                       </HTMLFlipBook>
+                      </div>
                     </div>
                   ) : (
                   <motion.div
