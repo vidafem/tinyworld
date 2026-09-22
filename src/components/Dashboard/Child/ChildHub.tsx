@@ -395,26 +395,20 @@ export default function ChildHub({ childId }: ChildHubProps) {
                 boxShadow: `0 10px 25px -8px ${theme.hex}22, inset 0 1px 0 rgba(255,255,255,0.7)`,
               }}
             >
-              <AnimatePresence>
-                {isEditMode && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    className="absolute top-3 right-3 z-20"
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCardId(opt.id);
-                      }}
-                      className={`p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:scale-110 active:scale-95 transition-all border ${theme.borderAccent} cursor-pointer`}
-                    >
-                      <Settings size={16} className={theme.text} />
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div 
+                className="absolute top-2 right-2 md:top-3 md:right-3 z-20 opacity-80 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300"
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setEditingCardId(opt.id);
+                  }}
+                  className={`p-1.5 md:p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:scale-110 active:scale-95 transition-all border ${theme.borderAccent} cursor-pointer`}
+                >
+                  <Settings size={isMobile ? 14 : 16} className={theme.text} />
+                </button>
+              </div>
               
               <div className={`
                 w-13 h-13 md:w-20 md:h-20 shrink-0 rounded-full ${opt.cardStyle?.color ? "bg-white/75" : theme.bg} 

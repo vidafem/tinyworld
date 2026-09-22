@@ -1638,12 +1638,12 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       snapLineY={snapLineY}
                     />
                   ) : !editMode ? (
-                    <div className={`w-full flex items-center justify-center transition-transform duration-300 ${isMobile ? 'h-full' : 'max-w-5xl aspect-[3/2] mx-auto'}`} style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}>
+                    <div className="w-full h-full flex items-center justify-center">
                       {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
                       <HTMLFlipBook
-                        width={isMobile ? 320 : 450}
-                        height={isMobile ? 450 : 600}
-                        size="stretch"
+                        width={(isMobile ? 320 : 450) * zoom}
+                        height={(isMobile ? 450 : 600) * zoom}
+                        size="fixed"
                         minWidth={300}
                         maxWidth={isMobile ? 400 : 1000}
                         minHeight={400}
@@ -1651,7 +1651,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                         maxShadowOpacity={0.5}
                         showCover={true}
                         mobileScrollSupport={true}
-                        className="album-flipbook"
+                        className="album-flipbook transition-all duration-300"
                         usePortrait={isMobile}
                       >
                         {[coverPage, ...pages].map((page, index) => (

@@ -87,19 +87,15 @@ const INITIAL_NODES = samplePoints().map((pt, idx) => {
 
   const id = "leaf-" + i;
   const color = LEAF_COLORS[Math.floor(rnd() * LEAF_COLORS.length)];
-  // Hojas ligeramente más pequeñas
-  const size = between(32, 56) * (1 - Math.min(distFromCenter, 1) * 0.12);
+  // Revertimos tamaño
+  const size = between(40, 66) * (1 - Math.min(distFromCenter, 1) * 0.18);
   const rot = between(-30, 30);
   const erot = between(-3, 3);
   const envMain = color;
   const envLight = lighten(color, 0.55);
   const baseZ = Math.round((y + rnd() * 6) * 10);
-  
-  // Animación asíncrona
-  const floatDelay = rnd() * -4;
-  const floatDur = between(3, 5);
 
-  return { id, x, y, size, rot, erot, envMain, envLight, color, baseZ, floatDelay, floatDur };
+  return { id, x, y, size, rot, erot, envMain, envLight, color, baseZ };
 });
 
 
@@ -155,8 +151,8 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
         
         const dist = Math.hypot(nodeCx - cx, nodeCy - cy);
         
-        let dynamicScale = 1.4 - (dist / maxDist) * 0.9;
-        dynamicScale = Math.max(0.3, Math.min(1.4, dynamicScale));
+        let dynamicScale = 1.3 - (dist / maxDist) * 0.8;
+        dynamicScale = Math.max(0.4, Math.min(1.3, dynamicScale));
         
         (node as HTMLElement).style.setProperty('--watch-scale', dynamicScale.toFixed(3));
       });
@@ -408,9 +404,7 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
                       width: node.size, height: node.size * 1.05, 
                       '--rot': `${node.rot}deg`, 
                       '--erot': `${node.erot}deg`,
-                      '--hover': isHovered ? 1.6 : 1,
-                      '--float-delay': `${node.floatDelay}s`,
-                      '--float-dur': `${node.floatDur}s`
+                      '--hover': isHovered ? 1.32 : 1 
                     } as any}
                     onClick={() => handleLeafClick(node.id)}
                     onPointerEnter={(e) => { if (e.pointerType !== "touch") setHoveredNode(node.id) }}
