@@ -58,7 +58,7 @@
 /* ---------- Leaf / letter node ---------- */
 .nodePos {
   position: absolute;
-  transform: translate(-50%,-50%);
+  transform: translate(-50%,-50%) scale(var(--watch-scale, 1));
 }
 .node {
   position: relative;

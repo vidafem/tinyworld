@@ -132,6 +132,33 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
     if (localStorage.getItem('lovetree_visited')) {
       setShowWelcome(false);
     }
+
+    // Apple Watch magnifying effect loop
+    let rafId: number;
+    const updateMagnification = () => {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      const maxDist = Math.max(window.innerWidth, window.innerHeight) / 1.5;
+
+      const nodes = document.querySelectorAll(`.${styles.nodePos}`);
+      nodes.forEach((node) => {
+        const rect = node.getBoundingClientRect();
+        const nodeCx = rect.left + rect.width / 2;
+        const nodeCy = rect.top + rect.height / 2;
+        
+        const dist = Math.hypot(nodeCx - cx, nodeCy - cy);
+        
+        let dynamicScale = 1.3 - (dist / maxDist) * 0.8;
+        dynamicScale = Math.max(0.4, Math.min(1.3, dynamicScale));
+        
+        (node as HTMLElement).style.setProperty('--watch-scale', dynamicScale.toFixed(3));
+      });
+      
+      rafId = requestAnimationFrame(updateMagnification);
+    };
+    
+    rafId = requestAnimationFrame(updateMagnification);
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   const loadMessages = async () => {
