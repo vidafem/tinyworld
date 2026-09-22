@@ -206,22 +206,24 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
       dragState.current.touchMode = "pinch";
       dragState.current.pinchStartDist = touchDist(e.touches[0], e.touches[1]);
       dragState.current.pinchStartZoom = zoomState.current.zoom;
+      
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      dragState.current.panTouchStartX = cx;
+      dragState.current.panTouchStartY = cy;
+      
       setHoveredNode(null);
     } else if (e.touches.length === 1) {
       const t = e.touches[0];
+      dragState.current.touchMode = "pan";
+      dragState.current.panTouchStartX = t.clientX;
+      dragState.current.panTouchStartY = t.clientY;
+      dragState.current.panStartX = zoomState.current.panX;
+      dragState.current.panStartY = zoomState.current.panY;
+      
       const el = document.elementFromPoint(t.clientX, t.clientY);
       const nodeEl = el?.closest(`.${styles.node}`);
-      if (nodeEl) {
-        dragState.current.touchMode = "leaf-drag";
-        const id = (nodeEl as HTMLElement).dataset.id;
-        if (id) setHoveredNode(id);
-      } else {
-        dragState.current.touchMode = "pan";
-        dragState.current.panTouchStartX = t.clientX;
-        dragState.current.panTouchStartY = t.clientY;
-        dragState.current.panStartX = zoomState.current.panX;
-        dragState.current.panStartY = zoomState.current.panY;
-      }
+      dragState.current.touchActiveId = nodeEl ? (nodeEl as HTMLElement).dataset.id || null : null;
     }
   };
 
@@ -229,26 +231,51 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
     if (dragState.current.touchMode === "pinch" && e.touches.length === 2) {
       const d = touchDist(e.touches[0], e.touches[1]);
       const factor = d / (dragState.current.pinchStartDist || d);
-      setZoom(dragState.current.pinchStartZoom * factor, false);
-    } else if (dragState.current.touchMode === "leaf-drag" && e.touches.length === 1) {
-      const t = e.touches[0];
-      const el = document.elementFromPoint(t.clientX, t.clientY);
-      const nodeEl = el?.closest(`.${styles.node}`);
-      setHoveredNode(nodeEl ? (nodeEl as HTMLElement).dataset.id || null : null);
+      const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, dragState.current.pinchStartZoom * factor));
+      
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      
+      const rect = stageRef.current?.getBoundingClientRect();
+      if (rect) {
+        const scx = rect.left + rect.width / 2;
+        const scy = rect.top + rect.height / 2;
+        
+        const dx = cx - scx;
+        const dy = cy - scy;
+        
+        const zoomRatio = newZoom / zoomState.current.zoom;
+        zoomState.current.panX = zoomState.current.panX - dx * (zoomRatio - 1) + (cx - dragState.current.panTouchStartX);
+        zoomState.current.panY = zoomState.current.panY - dy * (zoomRatio - 1) + (cy - dragState.current.panTouchStartY);
+        
+        dragState.current.panTouchStartX = cx;
+        dragState.current.panTouchStartY = cy;
+      }
+      
+      zoomState.current.zoom = newZoom;
+      applyTransform();
     } else if (dragState.current.touchMode === "pan" && e.touches.length === 1) {
       const t = e.touches[0];
-      zoomState.current.panX = dragState.current.panStartX + (t.clientX - dragState.current.panTouchStartX);
-      zoomState.current.panY = dragState.current.panStartY + (t.clientY - dragState.current.panTouchStartY);
+      const dx = t.clientX - dragState.current.panTouchStartX;
+      const dy = t.clientY - dragState.current.panTouchStartY;
+      
+      zoomState.current.panX = dragState.current.panStartX + dx;
+      zoomState.current.panY = dragState.current.panStartY + dy;
       applyTransform();
+
+      if (Math.hypot(dx, dy) > 10) {
+        dragState.current.touchActiveId = null;
+      }
     }
   };
 
-  const onTouchEnd = () => {
-    if (dragState.current.touchMode === "leaf-drag" && hoveredNode) {
-      handleLeafClick(hoveredNode);
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (dragState.current.touchMode === "pan" && dragState.current.touchActiveId && e.touches.length === 0) {
+      handleLeafClick(dragState.current.touchActiveId);
     }
-    setHoveredNode(null);
     dragState.current.touchMode = null;
+    dragState.current.touchActiveId = null;
+    setHoveredNode(null);
   };
 
   const handleLeafClick = (leafId: string) => {
@@ -406,12 +433,10 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
                 <TreeDeciduous size={40} />
               </div>
               <h2 className="text-2xl font-black text-stone-800 mb-4 font-outfit">
-                El Árbol de Amor de {child.name}
+                El Arbol de Mensajes
               </h2>
               <p className="text-stone-600 font-bold mb-8 text-sm">
-                Navega por las hojas y las ramas del árbol arrastrando y haciendo zoom. 
-                <br/><br/>
-                ¡Presiona en cualquier hoja vacía y déjanos un mensaje hermoso que guardaremos para siempre!
+                ¡Navega por el arbol haz zoom y selecciona alguna hoja donde quieras dejar tu mensaje, lo guardaremos para siempre!
               </p>
               <AppButton variant="primary" className="w-full py-4 text-sm bg-[#2f8f7a] hover:bg-[#267a68] border-none text-white" onClick={closeWelcome}>
                 ¡Comenzar a Explorar!

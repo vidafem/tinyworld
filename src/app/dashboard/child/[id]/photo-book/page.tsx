@@ -18,75 +18,101 @@ export default function PhotoBookPage({ params }: PhotoBookPageProps) {
   const [child, setChild] = useState<any>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     loadChild(resolvedParams.id);
-    loadPhotos(resolvedParams.id);
   }, [resolvedParams.id]);
 
   async function loadChild(id: string) {
-    const { data } = await supabase.from("children").select("*").eq("id", id).single();
-    if (data) setChild(data);
-  }
+    const { data: childData } = await supabase.from("children").select("*").eq("id", id).single();
+    if (childData) {
+      setChild(childData);
+      
+      const { data: memories } = await supabase
+        .from("pregnancy_memories")
+        .select("media_urls")
+        .eq("child_id", id)
+        .not("media_urls", "is", null);
 
-  async function loadPhotos(childId: string) {
-    setLoading(true);
-    // Extraemos fotos desde los recuerdos de embarazo
-    const { data } = await supabase
-      .from("pregnancy_memories")
-      .select("media_urls")
-      .eq("child_id", childId)
-      .order("memory_date", { ascending: true });
-
-    if (data) {
-      const allPhotos: string[] = [];
-      data.forEach(mem => {
-        if (mem.media_urls && Array.isArray(mem.media_urls)) {
-          mem.media_urls.forEach((url: string) => {
-            // Filtrar solo imágenes básicas
-            if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
-              allPhotos.push(url);
-            }
-          });
-        }
-      });
-      setPhotos(allPhotos);
+      let allPhotos: string[] = [];
+      if (memories) {
+        memories.forEach(m => {
+          if (Array.isArray(m.media_urls)) {
+            m.media_urls.forEach(url => {
+              if (url && (url.includes(".jpg") || url.includes(".jpeg") || url.includes(".png") || url.includes(".webp"))) {
+                allPhotos.push(url);
+              }
+            });
+          }
+        });
+        setPhotos(allPhotos);
+      }
     }
     setLoading(false);
   }
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
 
   if (!child) return null;
   const theme = themePalettes[child.theme_color] || themePalettes.neutral;
 
   return (
-    <div className={`min-h-screen ${theme.bg} bg-texture flex flex-col`}>
-      <header className="px-4 py-3 flex items-center justify-between bg-white/70 backdrop-blur-xl sticky top-0 z-50 border-b border-white/60">
-        <div className="flex items-center gap-3">
-          <AppButton
-            variant="secondary"
-            size="icon"
-            onClick={() => router.push(`/dashboard/child/${child.id}`)}
-            icon={<ChevronLeft size={20} className={theme.text} />}
-          />
-          <h1 className={`font-outfit font-black ${theme.text} text-lg md:text-xl tracking-tight flex items-center gap-2`}>
-            <BookOpen size={24} /> Álbum 3D
-          </h1>
-        </div>
-      </header>
+    <div className={`${isFullscreen ? 'fixed inset-0 z-[100] bg-stone-900' : `min-h-screen ${theme.bg} bg-texture`} flex flex-col`}>
+      {!isFullscreen && (
+        <header className="px-4 py-3 flex items-center justify-between bg-white/70 backdrop-blur-xl sticky top-0 z-50 border-b border-white/60">
+          <div className="flex items-center gap-3">
+            <AppButton
+              variant="secondary"
+              size="icon"
+              onClick={() => router.push(`/dashboard/child/${child.id}`)}
+              icon={<ChevronLeft size={20} className={theme.text} />}
+            />
+            <h1 className={`font-outfit font-black ${theme.text} text-lg md:text-xl tracking-tight flex items-center gap-2`}>
+              <BookOpen size={24} /> Álbum 3D
+            </h1>
+          </div>
+        </header>
+      )}
 
-      <main className="flex-1 w-full flex items-center justify-center p-4 sm:p-8">
+      {isFullscreen && (
+        <button 
+          onClick={toggleFullscreen}
+          className="absolute top-6 left-6 z-[110] bg-white/20 hover:bg-white/40 backdrop-blur-md p-3 rounded-full text-white transition-colors"
+        >
+          <ChevronLeft size={24} />
+        </button>
+      )}
+
+      <main className="flex-1 w-full flex flex-col items-center justify-center p-4 sm:p-8">
+        {!isFullscreen && (
+          <div className="w-full max-w-5xl flex justify-end mb-4">
+            <AppButton 
+              variant="primary" 
+              theme={theme} 
+              size="sm" 
+              onClick={toggleFullscreen}
+            >
+              Ver en Pantalla Completa
+            </AppButton>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center font-bold text-stone-400 animate-pulse">
             Buscando recuerdos...
           </div>
         ) : (
-          <div className="w-full h-full max-w-5xl flex items-center justify-center">
-            {/* Si estamos en mobile, le damos unas medidas, si es desktop, otras */}
-            <div className="hidden md:block w-full h-[600px]">
-              <PhotoBookViewer photos={photos} width={400} height={550} />
-            </div>
-            <div className="block md:hidden w-full h-[400px]">
-              <PhotoBookViewer photos={photos} width={280} height={400} />
+          <div className={`w-full flex items-center justify-center ${isFullscreen ? 'h-[90vh]' : 'h-full max-w-5xl'}`}>
+            <div className="w-full h-[60vh] sm:h-[600px] md:h-[600px] flex items-center justify-center">
+              <PhotoBookViewer 
+                photos={photos} 
+                width={isFullscreen ? (window.innerWidth > 768 ? 500 : 300) : 400} 
+                height={isFullscreen ? (window.innerWidth > 768 ? 600 : 400) : 550} 
+                isFullscreen={isFullscreen} 
+              />
             </div>
           </div>
         )}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, use } from "react";
-import { ChevronLeft, Share2, Trash2, TreeDeciduous, Mail } from "lucide-react";
+import { ChevronLeft, Share2, Trash2, TreeDeciduous, Mail, Maximize2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
@@ -19,6 +19,7 @@ export default function LoveTreeParentPage({ params }: LoveTreeProps) {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const resolvedParams = use(params);
 
   useEffect(() => {
@@ -99,14 +100,34 @@ export default function LoveTreeParentPage({ params }: LoveTreeProps) {
       </header>
 
       <main className="flex-1 w-full max-w-4xl mx-auto py-8 px-4">
-        <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-4 sm:p-8 shadow-xl border border-white mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className={`text-2xl font-black ${theme.text}`}>Previsualización del Árbol</h2>
-          </div>
-          <div className="w-full h-[50vh] sm:h-[60vh] rounded-[2rem] overflow-hidden border-4 border-[#2f8f7a]/20 relative">
+        <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-8 shadow-xl border border-white mb-8 text-center">
+          <h2 className={`text-2xl font-black ${theme.text} mb-4`}>Interactúa con el Árbol</h2>
+          <p className="text-stone-500 font-bold text-sm mb-8">
+            Abre el árbol en pantalla completa para poder navegar mejor, ver cada hoja detalladamente y leer los mensajes de tus seres queridos.
+          </p>
+          <AppButton
+            variant="primary"
+            theme={theme}
+            size="lg"
+            onClick={() => setIsFullscreen(true)}
+            icon={<Maximize2 size={20} />}
+            className="w-full md:w-auto"
+          >
+            Abrir Árbol Interactivo
+          </AppButton>
+        </div>
+
+        {isFullscreen && (
+          <div className="fixed inset-0 z-[100] bg-black">
+            <button 
+              onClick={() => setIsFullscreen(false)}
+              className="absolute top-6 left-6 z-[110] bg-white/20 hover:bg-white/40 backdrop-blur-md p-3 rounded-full text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
             <LoveTreeCanvas child={child} />
           </div>
-        </div>
+        )}
 
         <div className="space-y-4">
           <h3 className={`font-outfit font-black ${theme.text} text-lg px-2 flex items-center gap-2`}>
