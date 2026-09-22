@@ -31,24 +31,30 @@ export default function PhotoBookPage({ params }: PhotoBookPageProps) {
     if (childData) {
       setChild(childData);
       
-      const [memoriesRes, mediaRes] = await Promise.all([
+      const [memoriesRes, generalRes, mediaRes] = await Promise.all([
         supabase.from("pregnancy_memories").select("media_urls").eq("child_id", id).not("media_urls", "is", null),
+        supabase.from("general_memories").select("media_urls").eq("child_id", id).not("media_urls", "is", null),
         supabase.from("media").select("url").eq("child_id", id).eq("type", "image")
       ]);
 
       let allPhotos: string[] = [];
       
-      if (memoriesRes.data) {
-        memoriesRes.data.forEach(m => {
-          if (Array.isArray(m.media_urls)) {
-            m.media_urls.forEach(url => {
-              if (url && (url.includes(".jpg") || url.includes(".jpeg") || url.includes(".png") || url.includes(".webp"))) {
-                allPhotos.push(url);
-              }
-            });
-          }
-        });
-      }
+      const addMediaUrls = (res: any) => {
+        if (res.data) {
+          res.data.forEach((m: any) => {
+            if (Array.isArray(m.media_urls)) {
+              m.media_urls.forEach((url: string) => {
+                if (url && (url.includes(".jpg") || url.includes(".jpeg") || url.includes(".png") || url.includes(".webp"))) {
+                  if (!allPhotos.includes(url)) allPhotos.push(url);
+                }
+              });
+            }
+          });
+        }
+      };
+
+      addMediaUrls(memoriesRes);
+      addMediaUrls(generalRes);
 
       if (mediaRes.data) {
         mediaRes.data.forEach(m => {

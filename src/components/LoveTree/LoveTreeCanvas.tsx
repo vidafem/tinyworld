@@ -44,21 +44,23 @@ const TARGET_COUNT = 96;
 
 function candidateFromDistribution() {
   const roll = rnd();
-  if (roll < 0.62) {
+  if (roll < 0.70) {
+    // Uniform in ellipse but pushed slightly outward
     const ang = rnd() * Math.PI * 2;
-    const rad = Math.sqrt(rnd()) * 0.9;
+    const rad = Math.pow(rnd(), 0.4) * 0.95; // pow(x, 0.4) pushes values closer to 1
     return [CANOPY_CX + Math.cos(ang) * CANOPY_RX * rad, CANOPY_CY + Math.sin(ang) * CANOPY_RY * rad];
   }
-  if (roll < 0.88) {
+  if (roll < 0.90) {
+    // Uniform spread in a wider area
     const ang = rnd() * Math.PI * 2;
-    const rad = rnd() * 0.62;
+    const rad = Math.sqrt(rnd()) * 0.8;
     return [CANOPY_CX + Math.cos(ang) * CANOPY_RX * rad, CANOPY_CY + Math.sin(ang) * CANOPY_RY * rad];
   }
   const forks = [[50, 48], [40, 47], [60, 46]];
   const f = forks[Math.floor(rnd() * forks.length)];
   const ang = rnd() * Math.PI * 2;
-  const rad = rnd();
-  return [f[0] + Math.cos(ang) * 8, f[1] + Math.sin(ang) * 6 * rad];
+  const rad = rnd() * 0.8;
+  return [f[0] + Math.cos(ang) * 9, f[1] + Math.sin(ang) * 7 * rad];
 }
 
 function samplePoints() {
@@ -85,14 +87,19 @@ const INITIAL_NODES = samplePoints().map((pt, idx) => {
 
   const id = "leaf-" + i;
   const color = LEAF_COLORS[Math.floor(rnd() * LEAF_COLORS.length)];
-  const size = between(40, 66) * (1 - Math.min(distFromCenter, 1) * 0.18);
+  // Hojas ligeramente más pequeñas
+  const size = between(32, 56) * (1 - Math.min(distFromCenter, 1) * 0.12);
   const rot = between(-30, 30);
   const erot = between(-3, 3);
   const envMain = color;
   const envLight = lighten(color, 0.55);
   const baseZ = Math.round((y + rnd() * 6) * 10);
+  
+  // Animación asíncrona
+  const floatDelay = rnd() * -4;
+  const floatDur = between(3, 5);
 
-  return { id, x, y, size, rot, erot, envMain, envLight, color, baseZ };
+  return { id, x, y, size, rot, erot, envMain, envLight, color, baseZ, floatDelay, floatDur };
 });
 
 
@@ -148,8 +155,8 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
         
         const dist = Math.hypot(nodeCx - cx, nodeCy - cy);
         
-        let dynamicScale = 1.3 - (dist / maxDist) * 0.8;
-        dynamicScale = Math.max(0.4, Math.min(1.3, dynamicScale));
+        let dynamicScale = 1.4 - (dist / maxDist) * 0.9;
+        dynamicScale = Math.max(0.3, Math.min(1.4, dynamicScale));
         
         (node as HTMLElement).style.setProperty('--watch-scale', dynamicScale.toFixed(3));
       });
@@ -401,7 +408,9 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
                       width: node.size, height: node.size * 1.05, 
                       '--rot': `${node.rot}deg`, 
                       '--erot': `${node.erot}deg`,
-                      '--hover': isHovered ? 1.32 : 1 
+                      '--hover': isHovered ? 1.6 : 1,
+                      '--float-delay': `${node.floatDelay}s`,
+                      '--float-dur': `${node.floatDur}s`
                     } as any}
                     onClick={() => handleLeafClick(node.id)}
                     onPointerEnter={(e) => { if (e.pointerType !== "touch") setHoveredNode(node.id) }}

@@ -1638,7 +1638,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       snapLineY={snapLineY}
                     />
                   ) : !editMode ? (
-                    <div className="w-full h-full flex items-center justify-center transition-transform duration-300" style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}>
+                    <div className={`w-full flex items-center justify-center transition-transform duration-300 ${isMobile ? 'h-full' : 'max-w-5xl aspect-[3/2] mx-auto'}`} style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}>
                       {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
                       <HTMLFlipBook
                         width={isMobile ? 320 : 450}

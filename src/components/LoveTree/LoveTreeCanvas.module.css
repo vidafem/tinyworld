@@ -68,6 +68,11 @@
   perspective: 700px;
   cursor: pointer;
   outline: none;
+  animation: float-leaf var(--float-dur, 4s) ease-in-out infinite var(--float-delay, 0s);
+}
+@keyframes float-leaf {
+  0%, 100% { transform: scale(var(--hover,1)) translateY(0); }
+  50% { transform: scale(var(--hover,1)) translateY(-6px); }
 }
 .node:focus-visible { outline: 2px solid #2f8f7a; outline-offset: 4px; border-radius: 6px; }
 
