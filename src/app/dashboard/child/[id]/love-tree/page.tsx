@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import AppButton from "@/components/Common/AppButton";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import LoveTreeCanvas from "@/components/LoveTree/LoveTreeCanvas";
 
 interface LoveTreeProps {
   params: Promise<{ id: string }>;
@@ -98,23 +99,13 @@ export default function LoveTreeParentPage({ params }: LoveTreeProps) {
       </header>
 
       <main className="flex-1 w-full max-w-4xl mx-auto py-8 px-4">
-        
-        <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-8 shadow-xl border border-white mb-8 text-center">
-          <h2 className={`text-2xl font-black ${theme.text} mb-2`}>Mensajes de la Familia</h2>
-          <p className="text-stone-500 font-bold text-sm mb-6">
-            Comparte el enlace con tus seres queridos. Ellos verán un hermoso árbol interactivo donde podrán dejar mensajes en las hojas, que se transformarán en cartas.
-          </p>
-          
-          <AppButton
-            variant="primary"
-            theme={theme}
-            size="lg"
-            onClick={copyShareLink}
-            icon={<Share2 size={18} />}
-            className="w-full md:w-auto"
-          >
-            Copiar Enlace para Compartir
-          </AppButton>
+        <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-4 sm:p-8 shadow-xl border border-white mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className={`text-2xl font-black ${theme.text}`}>Previsualización del Árbol</h2>
+          </div>
+          <div className="w-full h-[50vh] sm:h-[60vh] rounded-[2rem] overflow-hidden border-4 border-[#2f8f7a]/20 relative">
+            <LoveTreeCanvas child={child} />
+          </div>
         </div>
 
         <div className="space-y-4">

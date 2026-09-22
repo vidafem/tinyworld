@@ -31,16 +31,26 @@ export default function PhotoBookPage({ params }: PhotoBookPageProps) {
 
   async function loadPhotos(childId: string) {
     setLoading(true);
-    // Asumimos que los archivos en "media" con type = 'image' son fotos
+    // Extraemos fotos desde los recuerdos de embarazo
     const { data } = await supabase
-      .from("media")
-      .select("url, type")
+      .from("pregnancy_memories")
+      .select("media_urls")
       .eq("child_id", childId)
-      .eq("type", "image")
-      .order("created_at", { ascending: true });
+      .order("memory_date", { ascending: true });
 
     if (data) {
-      setPhotos(data.map(d => d.url));
+      const allPhotos: string[] = [];
+      data.forEach(mem => {
+        if (mem.media_urls && Array.isArray(mem.media_urls)) {
+          mem.media_urls.forEach((url: string) => {
+            // Filtrar solo imágenes básicas
+            if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+              allPhotos.push(url);
+            }
+          });
+        }
+      });
+      setPhotos(allPhotos);
     }
     setLoading(false);
   }

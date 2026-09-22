@@ -130,10 +130,8 @@ export default function ChildHub({ childId }: ChildHubProps) {
     { id: "calendar", title: "Calendarios", desc: "Bóveda Mensual", iconName: "CalendarDays", route: `/dashboard/child/${child.id}/calendar`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.15, cardStyle: cardStyles.calendar },
     
     // -- NUEVAS OPCIONES MÁGICAS --
-    ...((child.preview_config || {}).show_magic_camera !== false ? [{ id: "magic-camera", title: "Cámara Mágica", desc: "Photo Booth con Stickers", iconName: "Camera", route: `/dashboard/child/${child.id}/magic-camera`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.20, cardStyle: cardStyles['magic-camera'] }] : []),
-    ...((child.preview_config || {}).show_babble !== false ? [{ id: "babble", title: "Balbuceos", desc: "Guardián de Voces", iconName: "Mic", route: `/dashboard/child/${child.id}/babble-visualizer`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.25, cardStyle: cardStyles.babble }] : []),
     ...((child.preview_config || {}).show_map !== false ? [{ id: "map", title: "Logros", desc: "Mapa Interactivo", iconName: "Map", route: `/dashboard/child/${child.id}/milestone-map`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.30, cardStyle: cardStyles.map }] : []),
-    ...((child.preview_config || {}).show_tree !== false ? [{ id: "tree", title: "Árbol de Amor", desc: "Mensajes Familiares", iconName: "TreeDeciduous", route: `/dashboard/child/${child.id}/love-tree`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.35, cardStyle: cardStyles.tree }] : []),
+    ...((child.preview_config || {}).show_tree !== false ? [{ id: "tree", title: "Árbolito de Mensajes", desc: "Mensajes Familiares", iconName: "TreeDeciduous", route: `/dashboard/child/${child.id}/love-tree`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.35, cardStyle: cardStyles.tree }] : []),
     ...((child.preview_config || {}).show_photobook !== false ? [{ id: "photo-book", title: "Álbum 3D", desc: "Libro de Fotos Real", iconName: "BookImage", route: `/dashboard/child/${child.id}/photo-book`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.40, cardStyle: { color: "bg-[#7a6448]", icon: "bg-[#d4c1a5]" } }] : []),
     // ----------------------------
 
