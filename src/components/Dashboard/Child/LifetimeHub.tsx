@@ -11,6 +11,7 @@ import { themePalettes } from "@/lib/themes";
 import PregnancyHub from "./Pregnancy/PregnancyHub";
 import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 import { renderCardIcon } from "@/lib/cardStyles";
+import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 
 interface LifetimeHubProps {
   childId: string;
@@ -153,6 +154,12 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
           >
             <ChevronLeft size={22} />
           </button>
+          <CardStyleHeaderButton
+            childId={childId}
+            cardKey="lifetime"
+            title="Toda una Vida"
+            theme={theme}
+          />
           <div>
             <h1 className={`font-outfit font-black text-lg md:text-xl ${theme.text} leading-tight`}>Toda una Vida</h1>
             <p className={`text-[10px] ${theme.text} opacity-50 uppercase tracking-wider font-bold`}>El diario de {child.nickname || child.name}</p>

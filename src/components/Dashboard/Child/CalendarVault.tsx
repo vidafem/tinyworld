@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
+import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 import dynamic from "next/dynamic";
 
 const PregnancyCalendar = dynamic(() => import("@/components/Dashboard/Child/Pregnancy/PregnancyCalendar"), {
@@ -89,6 +90,13 @@ export default function CalendarVault({ childId }: CalendarVaultProps) {
           >
             <ChevronLeft size={22} />
           </button>
+          <CardStyleHeaderButton
+            childId={childId}
+            cardKey="calendar"
+            title="Calendarios"
+            theme={theme}
+            isMobile={isMobile}
+          />
           <div className="relative">
             <button 
               onClick={() => setShowMasterMenu(!showMasterMenu)} 

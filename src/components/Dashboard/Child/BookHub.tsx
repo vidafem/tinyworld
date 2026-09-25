@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import PregnancyDigitalAlbum from "./Pregnancy/PregnancyDigitalAlbum";
+import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 
 const getProxiedUrl = (u: string | null | undefined) => {
   if (!u) return '';
@@ -200,6 +201,13 @@ export default function BookHub({ childId }: BookHubProps) {
           >
             <ChevronLeft size={22} />
           </button>
+          <CardStyleHeaderButton
+            childId={childId}
+            cardKey="book"
+            title="Libro"
+            theme={theme}
+            isMobile={isMobile}
+          />
           <div>
             <h1 className={`font-outfit font-black text-lg md:text-xl ${theme.text} leading-tight`}>Bóveda de Libros</h1>
             <p className={`text-[10px] ${theme.text} opacity-50 uppercase tracking-wider font-bold`}>Álbumes digitales de {child.nickname || child.name}</p>

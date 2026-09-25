@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { X } from "lucide-react";
 import { playActionSnap, triggerHaptic } from "@/lib/pageSound";
@@ -35,9 +36,11 @@ export default function ModernModal({
   children,
   hideCloseButton = false,
 }: ModernModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
@@ -77,10 +80,12 @@ export default function ModernModal({
   const themeText = theme?.text || "text-stone-800";
   const themeBgLight = theme?.bgLight || "bg-stone-100/50";
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-end md:items-center justify-center p-0 md:p-6 overflow-hidden">
+        <div className="fixed inset-0 z-[99999] flex items-end md:items-center justify-center p-0 md:p-6 overflow-hidden">
           {/* Backdrop Blur */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -183,6 +188,7 @@ export default function ModernModal({
           )}
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

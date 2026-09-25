@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import AppButton from "@/components/Common/AppButton";
+import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 import PhotoBookViewer from "@/components/PhotoBook/HTMLFlipBook";
 
 interface PhotoBookPageProps {
@@ -90,6 +91,12 @@ export default function PhotoBookPage({ params }: PhotoBookPageProps) {
               size="icon"
               onClick={() => router.push(`/dashboard/child/${child.id}`)}
               icon={<ChevronLeft size={20} className={theme.text} />}
+            />
+            <CardStyleHeaderButton
+              childId={child.id}
+              cardKey="photo-book"
+              title="Álbum 3D"
+              theme={theme}
             />
             <h1 className={`font-outfit font-black ${theme.text} text-lg md:text-xl tracking-tight flex items-center gap-2`}>
               <BookOpen size={24} /> Álbum 3D

@@ -171,9 +171,27 @@ export const CARD_ICON_MAP: Record<string, LucideIcon> = {
   Shirt, Snowflake, Tent, Timer, Train, Trophy, Umbrella, Video, Wand2
 };
 
+export function sanitizeHexColor(color?: string | null, fallback = "#8C7A6B"): string {
+  if (!color) return fallback;
+  let clean = color.trim();
+  if (clean.startsWith("bg-[")) {
+    clean = clean.replace("bg-[", "").replace("]", "");
+  }
+  if (!clean.startsWith("#")) {
+    clean = `#${clean}`;
+  }
+  if (/^#[0-9A-Fa-f]{6}$/.test(clean)) {
+    return clean;
+  }
+  if (/^#[0-9A-Fa-f]{3}$/.test(clean)) {
+    return `#${clean[1]}${clean[1]}${clean[2]}${clean[2]}${clean[3]}${clean[3]}`;
+  }
+  return fallback;
+}
+
 export function normalizeCardStyle(style?: CardStyle | null): CardStyle {
   return {
-    color: style?.color || null,
+    color: style?.color ? sanitizeHexColor(style.color) : null,
     icon: style?.icon || null,
     visible_items: style?.visible_items || null,
   };

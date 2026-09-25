@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import AppButton from "@/components/Common/AppButton";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 import LoveTreeCanvas from "@/components/LoveTree/LoveTreeCanvas";
 
 interface LoveTreeProps {
@@ -83,6 +84,12 @@ export default function LoveTreeParentPage({ params }: LoveTreeProps) {
             size="icon"
             onClick={() => router.push(`/dashboard/child/${child.id}`)}
             icon={<ChevronLeft size={20} className={theme.text} />}
+          />
+          <CardStyleHeaderButton
+            childId={child.id}
+            cardKey="tree"
+            title="Árbolito de Mensajes"
+            theme={theme}
           />
           <h1 className={`font-outfit font-black ${theme.text} text-lg md:text-xl tracking-tight flex items-center gap-2`}>
             <TreeDeciduous size={24} /> Árbol de Amor

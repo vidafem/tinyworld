@@ -24,7 +24,7 @@ import AppButton from "@/components/Common/AppButton";
 import ConfirmDialog from "@/components/Common/ConfirmDialog";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
 import CardStyleConfigurator from "@/components/Common/CardStyleConfigurator";
-import { CardStyle } from "@/lib/cardStyles";
+import { CardStyle, sanitizeHexColor } from "@/lib/cardStyles";
 import { playSoftPop, playActionSnap, playSuccessChime } from "@/lib/pageSound";
 
 const PregnancyCalendar = dynamic(() => import("./PregnancyCalendar"), {
@@ -216,13 +216,13 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
     const config = child?.preview_config?.card_styles?.[sectionId || 'pregnancy'] || {};
     if (sectionId) {
       return {
-        color: sectionCardStyle?.card_color || null,
+        color: sectionCardStyle?.card_color ? sanitizeHexColor(sectionCardStyle.card_color) : null,
         icon: sectionCardStyle?.card_icon || null,
         visible_items: config.visible_items || ['memories', 'calendars', 'gallery', 'album', 'baby_info', 'events'],
       };
     }
     return {
-      color: config.color || null,
+      color: config.color ? sanitizeHexColor(config.color) : null,
       icon: config.icon || null,
       visible_items: config.visible_items || ['memories', 'calendars', 'gallery', 'album', 'names', 'how_is_baby', 'events'],
     };
@@ -916,6 +916,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
         theme={theme}
         onSave={saveCurrentCardStyle}
         availableItems={availableItems}
+        cardTitle={sectionTitle || "Embarazo"}
       />
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
       <FloatingToast toast={toast} onClose={() => setToast(null)} theme={theme} />

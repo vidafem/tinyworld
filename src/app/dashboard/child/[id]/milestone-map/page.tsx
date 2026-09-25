@@ -8,6 +8,7 @@ import { themePalettes } from "@/lib/themes";
 import AppButton from "@/components/Common/AppButton";
 import confetti from "canvas-confetti";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MilestoneMapProps {
@@ -140,6 +141,13 @@ export default function MilestoneMapPage({ params }: MilestoneMapProps) {
             size="icon"
             onClick={() => router.push(`/dashboard/child/${child.id}`)}
             icon={<ChevronLeft size={20} className={theme.text} />}
+          />
+          <CardStyleHeaderButton
+            childId={child.id}
+            cardKey="map"
+            title="Logros"
+            theme={theme}
+            isMobile={isMobile}
           />
           <h1 className={`font-outfit font-black ${theme.text} text-lg md:text-xl tracking-tight`}>
             Camino Mágico 🗺️

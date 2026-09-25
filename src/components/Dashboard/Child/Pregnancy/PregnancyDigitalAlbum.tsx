@@ -504,7 +504,7 @@ function buildTemplateElements(templateId: TemplateId, page: Partial<AlbumPage>,
 
 const FlipPage = forwardRef<HTMLDivElement, { children: ReactNode; className?: string }>((props, ref) => {
   return (
-    <div ref={ref} className={`bg-[#FFFDF8] h-full overflow-hidden ${props.className || ''}`}>
+    <div ref={ref} className={`bg-[#FFFDF8] w-full h-full overflow-hidden ${props.className || ''}`}>
       {props.children}
     </div>
   );
@@ -526,6 +526,84 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
   const [selectedPageNumber, setSelectedPageNumber] = useState<number | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const flipBookRef = useRef<any>(null);
+  const isFlippingRef = useRef(false);
+
+  const [dimensions, setDimensions] = useState({ width: 450, height: 600, isLandscape: false });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      const isLand = window.innerWidth > window.innerHeight;
+      if (isLand) {
+        // Landscape (horizontal) mode: two-page spread that fits viewport height
+        const availH = Math.min(window.innerHeight - 110, 640);
+        const pageH = Math.max(availH, 280);
+        const pageW = Math.round(pageH * 0.75); // 3:4 aspect ratio per page
+        setDimensions({ width: pageW, height: pageH, isLandscape: true });
+      } else {
+        // Portrait (vertical) mode: single page
+        const availW = Math.min(window.innerWidth - 32, 440);
+        const pageW = Math.max(availW, 280);
+        const pageH = Math.round(pageW * (4 / 3));
+        setDimensions({ width: pageW, height: pageH, isLandscape: false });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    window.addEventListener("orientationchange", updateDimensions);
+    return () => {
+      window.removeEventListener("resize", updateDimensions);
+      window.removeEventListener("orientationchange", updateDimensions);
+    };
+  }, []);
+
+  const handleFlipNext = useCallback(() => {
+    if (isFlippingRef.current) return;
+    const pageFlip = flipBookRef.current?.pageFlip();
+    if (!pageFlip) return;
+    
+    isFlippingRef.current = true;
+    playPageTurnSound("forward");
+    pageFlip.flipNext();
+    setTimeout(() => {
+      isFlippingRef.current = false;
+    }, 550);
+  }, []);
+
+  const handleFlipPrev = useCallback(() => {
+    if (isFlippingRef.current) return;
+    const pageFlip = flipBookRef.current?.pageFlip();
+    if (!pageFlip) return;
+    
+    const current = pageFlip.getCurrentPageIndex();
+    if (current === 0) {
+      playBookOpenSound();
+      setBookOpened(false);
+      return;
+    }
+
+    isFlippingRef.current = true;
+    playPageTurnSound("backward");
+    pageFlip.flipPrev();
+    setTimeout(() => {
+      isFlippingRef.current = false;
+    }, 550);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (editMode) return;
+      if (e.key === "ArrowRight") {
+        handleFlipNext();
+      } else if (e.key === "ArrowLeft") {
+        handleFlipPrev();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editMode, handleFlipNext, handleFlipPrev]);
 
   const exportAlbumToPdf = async () => {
     setIsExportingPdf(true);
@@ -824,18 +902,37 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
     });
   }, [pages, savedPages]);
 
+  const coverPage = pageOverrides[0] || autoPages.find(p => p.page_number === 0)!;
+
   const orderedPages = useMemo(() => {
     if (pageSequence.length !== pages.length) return pages;
     return [...pages].sort((a, b) => pageSequence.indexOf(a.page_number) - pageSequence.indexOf(b.page_number));
   }, [pages, pageSequence]);
+
+  const flipBookPages = useMemo(() => {
+    const list = [...orderedPages];
+    if (list.length === 0 && coverPage) list.push(coverPage);
+    if (list.length % 2 !== 0) {
+      list.push({
+        child_id: childId,
+        page_number: 99999,
+        spread_number: 999,
+        page_kind: "custom",
+        side: "right",
+        template_id: "dedication",
+        content_json: [],
+        background_color: "#FFFDF8",
+        background_style: "solid"
+      });
+    }
+    return list;
+  }, [orderedPages, coverPage, childId]);
 
   const spreadStarts = useMemo(() => {
     const starts: number[] = [];
     for (let i = 0; i < orderedPages.length; i += isMobile ? 1 : 2) starts.push(i);
     return starts;
   }, [isMobile, orderedPages.length]);
-
-  const coverPage = pageOverrides[0] || autoPages.find(p => p.page_number === 0)!;
 
   const visiblePages = orderedPages.slice(spreadStarts[spreadIndex] || 0, (spreadStarts[spreadIndex] || 0) + (isMobile ? 1 : 2));
   const selectedPage = selectedPageNumber === 0 ? coverPage : orderedPages.find((page) => page.page_number === selectedPageNumber) || visiblePages[0];
@@ -1476,6 +1573,20 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
               {isMuted ? <VolumeX size={18} className="opacity-40" /> : <Volume2 size={18} />}
             </button>
 
+            {bookOpened && !editMode && (
+              <button
+                onClick={() => {
+                  playBookOpenSound();
+                  setBookOpened(false);
+                }}
+                className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 text-xs uppercase cursor-pointer`}
+                title="Cerrar libro y volver a la portada"
+              >
+                <BookOpen size={18} />
+                {!isMobile && <span>Portada</span>}
+              </button>
+            )}
+
             {!readOnly && (
               <>
                 <button
@@ -1638,48 +1749,104 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       snapLineY={snapLineY}
                     />
                   ) : !editMode ? (
-                    <div className="w-full h-full flex items-center justify-center relative perspective-1000">
+                    <div className="w-full h-full flex items-center justify-center relative perspective-1000 select-none">
+                      {/* Zonas Virtuales de Navegación Táctil (División virtual de pantalla para móviles y escritorio) */}
+                      <div className="absolute inset-0 z-30 pointer-events-none flex select-none">
+                        {/* Zona Izquierda: Pasar a la página anterior (retroceder) */}
+                        <div
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleFlipPrev();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFlipPrev();
+                          }}
+                          className="w-1/2 h-full pointer-events-auto cursor-pointer flex items-center justify-start pl-2 sm:pl-6 group"
+                          title="Toca del lado izquierdo para retroceder"
+                        >
+                          <div className="p-3 sm:p-4 rounded-full bg-stone-900/60 text-white backdrop-blur-md shadow-2xl border border-white/20 transition-all opacity-40 group-hover:opacity-100 group-hover:scale-110 active:scale-95">
+                            <ChevronLeft size={isMobile ? 26 : 36} />
+                          </div>
+                        </div>
+
+                        {/* Zona Derecha: Pasar a la página siguiente (avanzar) */}
+                        <div
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleFlipNext();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFlipNext();
+                          }}
+                          className="w-1/2 h-full pointer-events-auto cursor-pointer flex items-center justify-end pr-2 sm:pr-6 group"
+                          title="Toca del lado derecho para avanzar"
+                        >
+                          <div className="p-3 sm:p-4 rounded-full bg-stone-900/60 text-white backdrop-blur-md shadow-2xl border border-white/20 transition-all opacity-40 group-hover:opacity-100 group-hover:scale-110 active:scale-95">
+                            <ChevronRight size={isMobile ? 26 : 36} />
+                          </div>
+                        </div>
+                      </div>
+
                       <div 
-                        className="drop-shadow-2xl flex justify-center transition-all duration-300"
+                        className="drop-shadow-2xl flex justify-center transition-all duration-300 relative z-20"
                         style={{ 
-                          width: isMobile ? `${320 * zoom}px` : `${900 * zoom}px`, 
-                          height: isMobile ? `${450 * zoom}px` : `${600 * zoom}px`,
-                          maxWidth: '100%',
-                          maxHeight: '100%'
+                          width: `${(dimensions.isLandscape ? dimensions.width * 2 : dimensions.width) * zoom}px`, 
+                          height: `${dimensions.height * zoom}px`,
+                          maxWidth: '96vw',
+                          maxHeight: '85vh'
                         }}
                       >
                         {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
                         <HTMLFlipBook
-                          width={isMobile ? 320 : 450}
-                          height={isMobile ? 450 : 600}
-                          size="stretch"
-                          minWidth={280}
-                          maxWidth={1000}
-                          minHeight={400}
-                          maxHeight={1533}
+                          key={`${dimensions.isLandscape ? 'land' : 'port'}-${dimensions.width}-${dimensions.height}`}
+                          ref={flipBookRef}
+                          width={dimensions.width}
+                          height={dimensions.height}
+                          size="fixed"
+                          minWidth={dimensions.width}
+                          maxWidth={dimensions.width}
+                          minHeight={dimensions.height}
+                          maxHeight={dimensions.height}
                           maxShadowOpacity={0.5}
-                          showCover={true}
-                          mobileScrollSupport={true}
+                          showCover={false}
+                          flippingTime={500}
+                          useMouseEvents={false}
+                          clickEventForward={false}
+                          mobileScrollSupport={false}
                           className="album-flipbook"
-                          usePortrait={isMobile}
+                          usePortrait={!dimensions.isLandscape}
                         >
-                        {[coverPage, ...pages].map((page, index) => (
+                        {flipBookPages.map((page, index) => (
                           <FlipPage key={page.page_number || index}>
-                            <AlbumPageView
-                              page={page}
-                              isMobile={isMobile}
-                              isLeft={!isMobile && index > 0 && index % 2 !== 0}
-                              editMode={false}
-                              selectedPageNumber={null}
-                              selectedElementId={null}
-                              theme={theme}
-                              onSelectPage={() => {}}
-                              onSelectElement={() => {}}
-                              onStartDrag={startDrag}
-                              onStartResize={startResize}
-                              onDeletePage={() => {}}
-                              onMediaClick={setMediaModal}
-                            />
+                            {page.page_number === 99999 ? (
+                              <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
+                                <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
+                                  <Sparkles size={28} />
+                                </div>
+                                <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
+                                <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
+                              </div>
+                            ) : (
+                              <AlbumPageView
+                                page={page}
+                                isMobile={!dimensions.isLandscape}
+                                isLeft={dimensions.isLandscape && index % 2 === 0}
+                                editMode={false}
+                                selectedPageNumber={null}
+                                selectedElementId={null}
+                                theme={theme}
+                                onSelectPage={() => {}}
+                                onSelectElement={() => {}}
+                                onStartDrag={startDrag}
+                                onStartResize={startResize}
+                                onDeletePage={() => {}}
+                                onMediaClick={setMediaModal}
+                              />
+                            )}
                           </FlipPage>
                         ))}
                       </HTMLFlipBook>
@@ -2405,7 +2572,7 @@ function AlbumPageView({
         onSelectPage();
         onSelectElement(null);
       }}
-      className={`album-page-exportable relative ${isMobile ? "w-full h-full" : "w-1/2 h-full"} overflow-hidden bg-[#FFFDF8] ${isLeft ? "shadow-[inset_-18px_0_28px_rgba(0,0,0,0.055)]" : "shadow-[inset_18px_0_28px_rgba(0,0,0,0.045)]"} ${editMode && selectedPageNumber === page.page_number ? "z-10" : ""}`}
+      className={`album-page-exportable relative ${editMode && !isMobile ? "w-1/2" : "w-full"} h-full overflow-hidden bg-[#FFFDF8] ${isLeft ? "shadow-[inset_-18px_0_28px_rgba(0,0,0,0.055)]" : "shadow-[inset_18px_0_28px_rgba(0,0,0,0.045)]"} ${editMode && selectedPageNumber === page.page_number ? "z-10" : ""}`}
       style={{
         backgroundColor: page.background_color || "#FFFDF8",
         ...(editMode && selectedPageNumber === page.page_number ? { outline: `4px solid ${theme.hex}59`, outlineOffset: "-4px" } : {})

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from "lucide-react";
 import { playSuccessChime, triggerHaptic } from "@/lib/pageSound";
@@ -24,6 +25,12 @@ interface FloatingToastProps {
 }
 
 export default function FloatingToast({ toast, onClose, theme }: FloatingToastProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
 
@@ -43,7 +50,7 @@ export default function FloatingToast({ toast, onClose, theme }: FloatingToastPr
     return () => clearTimeout(timer);
   }, [toast, onClose]);
 
-  if (!toast) return null;
+  if (!toast || !mounted) return null;
 
   const type = toast.type || "success";
   const duration = toast.duration || 3200;
@@ -62,9 +69,9 @@ export default function FloatingToast({ toast, onClose, theme }: FloatingToastPr
     info: "border-sky-500/20",
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed top-5 inset-x-0 z-[9999] flex justify-center pointer-events-none px-4">
+      <div className="fixed top-5 inset-x-0 z-[99999] flex justify-center pointer-events-none px-4">
         <motion.div
           initial={{ opacity: 0, y: -25, scale: 0.9, filter: "blur(4px)" }}
           animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
@@ -107,6 +114,7 @@ export default function FloatingToast({ toast, onClose, theme }: FloatingToastPr
           />
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

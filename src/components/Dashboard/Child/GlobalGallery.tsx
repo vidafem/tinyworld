@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { themePalettes } from "@/lib/themes";
+import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 
 interface MediaItem {
   id: string;
@@ -342,10 +343,17 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
     <div className={`min-h-screen ${theme.bg} bg-texture transition-colors duration-500 flex flex-col pb-20`}>
       {/* Header */}
       <header className="px-4 md:px-10 py-3 flex items-center justify-between sticky top-0 z-[100] bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <button onClick={handleBack} className={`p-2 md:p-3 bg-white rounded-xl md:rounded-2xl shadow-sm ${theme.text} hover:scale-110 transition-all border ${theme.borderAccent}`}>
             <ChevronLeft size={20} />
           </button>
+          <CardStyleHeaderButton
+            childId={childId}
+            cardKey="gallery"
+            title="Galería"
+            theme={theme}
+            isMobile={isMobile}
+          />
           <h1 className={`hidden sm:block text-xl md:text-3xl font-black ${theme.text} tracking-tighter italic`}>
             {currentFolder ? currentFolder.name : "Galería Global"}
           </h1>

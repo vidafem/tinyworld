@@ -13,8 +13,7 @@ import { themePalettes } from "@/lib/themes";
 import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 import AppButton from "@/components/Common/AppButton";
-import { CardStyle, renderCardIcon } from "@/lib/cardStyles";
-import CardStyleConfigurator from "@/components/Common/CardStyleConfigurator";
+import { CardStyle, renderCardIcon, sanitizeHexColor } from "@/lib/cardStyles";
 
 interface ChildHubProps {
   childId: string;
@@ -46,8 +45,6 @@ export default function ChildHub({ childId }: ChildHubProps) {
   const [expandingCard, setExpandingCard] = useState<string | null>(null);
   const [showMasterMenu, setShowMasterMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
   useEffect(() => {
     const syncViewport = () => setIsMobile(window.innerWidth < 768);
@@ -73,19 +70,6 @@ export default function ChildHub({ childId }: ChildHubProps) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
-  };
-
-  const handleSaveCardStyle = async (style: CardStyle) => {
-    if (!editingCardId || !child) return;
-    const currentConfig = child.preview_config || {};
-    const newStyles = {
-      ...(currentConfig.card_styles || {}),
-      [editingCardId]: style,
-    };
-    const newConfig = { ...currentConfig, card_styles: newStyles };
-    
-    await supabase.from("children").update({ preview_config: newConfig }).eq("id", child.id);
-    setChild({ ...child, preview_config: newConfig });
   };
 
   if (loading) {
@@ -148,7 +132,21 @@ export default function ChildHub({ childId }: ChildHubProps) {
     // -- NUEVAS OPCIONES MÁGICAS --
     ...((child.preview_config || {}).show_map !== false ? [{ id: "map", title: "Logros", desc: "Mapa Interactivo", iconName: "Map", route: `/dashboard/child/${child.id}/milestone-map`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.30, cardStyle: cardStyles.map }] : []),
     ...((child.preview_config || {}).show_tree !== false ? [{ id: "tree", title: "Árbolito de Mensajes", desc: "Mensajes Familiares", iconName: "TreeDeciduous", route: `/dashboard/child/${child.id}/love-tree`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.35, cardStyle: cardStyles.tree }] : []),
-    ...((child.preview_config || {}).show_photobook !== false ? [{ id: "photo-book", title: "Álbum 3D", desc: "Libro de Fotos Real", iconName: "BookImage", route: `/dashboard/child/${child.id}/photo-book`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.40, cardStyle: { color: "bg-[#7a6448]", icon: "bg-[#d4c1a5]" } }] : []),
+    ...((child.preview_config || {}).show_photobook !== false ? (() => {
+      const pbStyle = cardStyles['photo-book'] || cardStyles.photobook;
+      return [{
+        id: "photo-book",
+        title: "Álbum 3D",
+        desc: "Libro de Fotos Real",
+        iconName: "BookImage",
+        route: `/dashboard/child/${child.id}/photo-book`,
+        delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.40,
+        cardStyle: {
+          color: pbStyle?.color ? sanitizeHexColor(pbStyle.color) : "#7a6448",
+          icon: pbStyle?.icon && !pbStyle.icon.startsWith("bg-") ? pbStyle.icon : "BookImage",
+        }
+      }];
+    })() : []),
     // ----------------------------
 
     { id: "preview", title: "Preview", desc: "Vista Pública / Invitado", iconName: "Eye", route: `/preview/${child.id}`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.40, cardStyle: cardStyles.preview }
@@ -224,14 +222,6 @@ export default function ChildHub({ childId }: ChildHubProps) {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3 z-[110]">
-          <AppButton
-            variant={isEditMode ? "primary" : "secondary"}
-            size="icon"
-            onClick={() => { playActionSnap(); setIsEditMode(!isEditMode); }}
-            icon={<Edit3 size={20} className={isEditMode ? "text-white" : theme.text} />}
-            className={`shadow-sm ${isEditMode ? theme.primaryBg : ""}`}
-            title="Editar Módulos"
-          />
           <AppButton
             variant="secondary"
             size="icon"
@@ -368,62 +358,57 @@ export default function ChildHub({ childId }: ChildHubProps) {
           })()}
         </motion.div>
 
-        {/* Las 6 Tarjetas de Acceso del Hub con Micro-Elevación y Sombras Teñidas */}
+        {/* Las Tarjetas de Acceso del Hub con Micro-Elevación y Sombras Teñidas */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3.5 md:gap-7 w-full max-w-6xl px-2">
-          {hubOptions.map((opt) => (
-            <motion.button
-              key={opt.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: opt.delay, type: "spring", stiffness: 350, damping: 22 }}
-              whileHover={{ y: -6, transition: { type: "spring", stiffness: 400, damping: 20 } }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                playSoftPop();
-                setExpandingCard(opt.id);
-                setTimeout(() => router.push(opt.route), 350);
-              }}
-              className={`
-                ${opt.cardStyle?.color || 'bg-white/75 dark:bg-stone-900/75 hover:bg-white dark:hover:bg-stone-900'} 
-                backdrop-blur-xl p-4 md:p-7 rounded-[2rem] md:rounded-[2.5rem] 
-                shadow-sm hover:shadow-2xl transition-all border border-white/70 dark:border-stone-800 
-                flex flex-col items-center gap-3 md:gap-5 group w-full text-center
-                relative overflow-hidden cursor-pointer
-              `}
-              style={{
-                boxShadow: `0 10px 25px -8px ${theme.hex}22, inset 0 1px 0 rgba(255,255,255,0.7)`,
-              }}
-            >
-              <div className={`
-                w-13 h-13 md:w-20 md:h-20 shrink-0 rounded-full ${opt.cardStyle?.color ? "bg-white/75" : theme.bg} 
-                flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner
-                border-2 md:border-3 border-white dark:border-stone-800
-              `}>
-                <div className={`${theme.text} h-7 w-7 md:h-10 md:w-10 flex items-center justify-center`}>
-                  {renderCardIcon(opt.cardStyle?.icon || opt.iconName, isMobile ? 22 : 32)}
+          {hubOptions.map((opt) => {
+            const cardBgHex = opt.cardStyle?.color ? sanitizeHexColor(opt.cardStyle.color) : null;
+            const hasCustomBg = Boolean(cardBgHex);
+
+            return (
+              <motion.button
+                key={opt.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: opt.delay, type: "spring", stiffness: 350, damping: 22 }}
+                whileHover={{ y: -6, transition: { type: "spring", stiffness: 400, damping: 20 } }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  playSoftPop();
+                  setExpandingCard(opt.id);
+                  setTimeout(() => router.push(opt.route), 350);
+                }}
+                className={`
+                  ${hasCustomBg ? "hover:brightness-95" : "bg-white/75 dark:bg-stone-900/75 hover:bg-white dark:hover:bg-stone-900"} 
+                  backdrop-blur-xl p-4 md:p-7 rounded-[2rem] md:rounded-[2.5rem] 
+                  shadow-sm hover:shadow-2xl transition-all border border-white/70 dark:border-stone-800 
+                  flex flex-col items-center gap-3 md:gap-5 group w-full text-center
+                  relative overflow-hidden cursor-pointer
+                `}
+                style={{
+                  ...(hasCustomBg ? { backgroundColor: cardBgHex! } : {}),
+                  boxShadow: `0 10px 25px -8px ${theme.hex}22, inset 0 1px 0 rgba(255,255,255,0.7)`,
+                }}
+              >
+                <div className={`
+                  w-13 h-13 md:w-20 md:h-20 shrink-0 rounded-full ${hasCustomBg ? "bg-white/80" : theme.bg} 
+                  flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-inner
+                  border-2 md:border-3 border-white dark:border-stone-800
+                `}>
+                  <div className={`${theme.text} h-7 w-7 md:h-10 md:w-10 flex items-center justify-center`}>
+                    {renderCardIcon(opt.cardStyle?.icon || opt.iconName, isMobile ? 22 : 32)}
+                  </div>
                 </div>
-              </div>
-              <div className="w-full relative">
-                <h2 className={`text-xs md:text-xl font-black ${theme.text} leading-tight tracking-tight uppercase md:normal-case font-outfit flex items-center justify-center gap-2`}>
-                  {opt.title}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setEditingCardId(opt.id);
-                    }}
-                    className={`opacity-60 hover:opacity-100 hover:scale-110 active:scale-95 transition-all cursor-pointer`}
-                    title="Personalizar tarjeta"
-                  >
-                    <Settings size={14} className={theme.text} />
-                  </button>
-                </h2>
-                <p className={`hidden md:block ${theme.text} opacity-50 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-0.5 font-quicksand`}>
-                  {opt.desc}
-                </p>
-              </div>
-            </motion.button>
-          ))}
+                <div className="w-full relative">
+                  <h2 className={`text-xs md:text-xl font-black ${theme.text} leading-tight tracking-tight uppercase md:normal-case font-outfit`}>
+                    {opt.title}
+                  </h2>
+                  <p className={`hidden md:block ${theme.text} opacity-50 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-0.5 font-quicksand`}>
+                    {opt.desc}
+                  </p>
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
       </main>
 
@@ -434,16 +419,6 @@ export default function ChildHub({ childId }: ChildHubProps) {
       </footer>
 
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
-
-      {editingCardId && (
-        <CardStyleConfigurator
-          isOpen={true}
-          onClose={() => setEditingCardId(null)}
-          theme={theme}
-          initialStyle={hubOptions.find(o => o.id === editingCardId)?.cardStyle}
-          onSave={handleSaveCardStyle}
-        />
-      )}
     </div>
   );
 }
