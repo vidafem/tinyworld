@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { themePalettes } from "@/lib/themes";
 import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
 import { useChild } from "@/context/ChildContext";
-import { getThumbnailUrl, getPreviewUrl } from "@/lib/optimizedImage";
+import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
 
 interface MediaItem {
   id: string;
@@ -600,14 +600,30 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
                       className="group relative aspect-square bg-white/70 rounded-[2.2rem] overflow-hidden shadow-sm hover:shadow-2xl border border-white transition-all cursor-pointer"
                     >
                       {item.type === 'image' ? (
-                        <img src={getThumbnailUrl(item.url)} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={item.title || "Foto"} />
+                        <img 
+                          src={getThumbnailUrl(item.url)} 
+                          loading="lazy" 
+                          decoding="async" 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                          alt={item.title || "Foto"} 
+                          onError={(e) => handleImageFallback(e, item.url)}
+                        />
                       ) : item.type === 'video' ? (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900">
-                          <Video className="text-white/40 mb-2" size={40} />
-                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-slate-900 shadow-xl group-hover:scale-110 transition-transform">
-                              <Play size={24} fill="currentColor" className="ml-1" />
+                        <div className="w-full h-full relative bg-slate-900 overflow-hidden flex items-center justify-center">
+                          <video
+                            src={`${item.url}#t=0.5`}
+                            className="w-full h-full object-cover pointer-events-none"
+                            preload="metadata"
+                            muted
+                            playsInline
+                          />
+                          <div className="absolute inset-0 bg-black/25 group-hover:bg-black/45 transition-colors flex items-center justify-center">
+                            <div className="w-12 h-12 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-900 shadow-xl group-hover:scale-110 transition-transform">
+                              <Play size={22} fill="currentColor" className="ml-0.5" />
                             </div>
+                          </div>
+                          <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <Video size={10} /> Video
                           </div>
                         </div>
                       ) : (
@@ -697,6 +713,7 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
                       style={{ transform: `scale(${zoom})`, transformOrigin: "center center", cursor: zoom > 1 ? "zoom-out" : "zoom-in" }}
                       alt="Vista previa"
                       onDoubleClick={toggleZoom}
+                      onError={(e) => handleImageFallback(e, previewItem.url)}
                     />
                     {zoom === 1 && (
                       <button 

@@ -13,6 +13,7 @@ import {
   Ruler, Scale, Home, ZoomIn, ZoomOut
 } from "lucide-react";
 import { themePalettes } from "@/lib/themes";
+import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
 import dynamic from "next/dynamic";
 
 const getProxiedUrl = (u: string | null | undefined) => {
@@ -889,9 +890,10 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
               className="relative w-full max-w-4xl h-[70vh] flex items-center justify-center"
             >
               <img 
-                src={lightboxImages[activeImageIndex]} 
+                src={getPreviewUrl(lightboxImages[activeImageIndex])} 
                 alt="Memory Slide" 
                 className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl border border-white/10"
+                onError={(e) => handleImageFallback(e, lightboxImages[activeImageIndex])}
               />
             </motion.div>
             
@@ -2048,7 +2050,7 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
                                       className="relative cursor-pointer w-28 h-40 md:w-36 md:h-52 rounded-r-xl shadow-2xl flex flex-col justify-between overflow-hidden group perspective"
                                       style={{
                                         background: book.coverImage
-                                          ? `url('${getProxiedUrl(book.coverImage)}') center/cover no-repeat`
+                                          ? `url('${getThumbnailUrl(book.coverImage)}') center/cover no-repeat`
                                           : `linear-gradient(135deg, ${bookColor}dd 0%, ${bookColor} 100%)`,
                                         boxShadow: "5px 15px 35px rgba(0,0,0,0.25), -2px 0 5px rgba(255,255,255,0.15) inset"
                                       }}
@@ -2545,13 +2547,12 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
                         <div key={index} className="relative group rounded-3xl overflow-hidden shadow-sm border border-gray-100 aspect-video md:aspect-[4/3] bg-gray-50">
                           {isVideo ? (
                             <video 
-                              src={getProxiedUrl(url) + "#t=0.5"} 
+                              src={url + "#t=0.5"} 
                               controls 
                               className="w-full h-full object-cover" 
                               muted 
                               playsInline 
                               preload="metadata"
-                              crossOrigin="anonymous"
                             />
                           ) : isAudio ? (
                             <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-sage/5 gap-3">
@@ -2563,9 +2564,11 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
                           ) : (
                             <>
                               <img 
-                                src={getProxiedUrl(url)} 
+                                src={getThumbnailUrl(url)} 
                                 alt={selectedPreviewMemory.title} 
                                 className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform duration-500" 
+                                loading="lazy"
+                                onError={(e) => handleImageFallback(e, url)}
                                 onClick={() => openLightbox(selectedPreviewMemory.media_urls.filter(Boolean), index)}
                               />
                               <button

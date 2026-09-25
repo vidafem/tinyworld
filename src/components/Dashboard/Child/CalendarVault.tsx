@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
+import { getThumbnailUrl, handleImageFallback } from "@/lib/optimizedImage";
 import dynamic from "next/dynamic";
 
 const PregnancyCalendar = dynamic(() => import("@/components/Dashboard/Child/Pregnancy/PregnancyCalendar"), {
@@ -204,9 +205,11 @@ export default function CalendarVault({ childId }: CalendarVaultProps) {
             >
                {cal.layout_config?.thumbnail_url ? (
                  <img 
-                   src={cal.layout_config.thumbnail_url} 
+                   src={getThumbnailUrl(cal.layout_config.thumbnail_url)} 
                    alt={cal.title}
                    className="w-full h-full object-cover transition-all duration-500"
+                   loading="lazy"
+                   onError={(e) => handleImageFallback(e, cal.layout_config.thumbnail_url)}
                  />
                ) : (
                  <div className="w-full h-full flex items-center justify-center overflow-hidden bg-white/20">

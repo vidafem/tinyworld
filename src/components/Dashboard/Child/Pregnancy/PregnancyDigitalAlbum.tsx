@@ -248,10 +248,15 @@ const COLLAGE_PRESETS: Record<number, Partial<AlbumElement>[]> = {
   ],
 };
 
-function getProxiedUrl(url?: string | null) {
+function getProxiedUrl(url?: string | null, isSticker = false) {
   if (!url) return "";
   
   if (url.startsWith("data:") || url.startsWith("blob:") || url.includes("localhost") || url.includes("127.0.0.1")) {
+    return url;
+  }
+
+  // Videos, stickers y audios no deben pasar por el optimizador de fotos
+  if (isSticker || url.includes("/stickers/") || url.endsWith(".svg") || url.match(/\.(mp4|mov|webm|m4v|avi|mp3|wav|ogg|m4a)$/i) || url.includes("/video/") || url.includes("/audio/")) {
     return url;
   }
 
@@ -1978,7 +1983,17 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                       </button>
                     </div>
                     {mediaModal.type === "image" ? (
-                      <img src={getPreviewUrl(mediaModal.url)} className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" alt="Pantalla completa" onClick={(e) => e.stopPropagation()} />
+                      <img 
+                        src={getPreviewUrl(mediaModal.url)} 
+                        className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" 
+                        alt="Pantalla completa" 
+                        onClick={(e) => e.stopPropagation()} 
+                        onError={(e) => {
+                          if (mediaModal.url && e.currentTarget.src !== mediaModal.url) {
+                            e.currentTarget.src = mediaModal.url;
+                          }
+                        }}
+                      />
                     ) : (
                       <video src={mediaModal.url} controls autoPlay className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
                     )}
@@ -2424,7 +2439,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
               <div className="grid grid-cols-4 sm:grid-cols-5 gap-4 overflow-y-auto flex-1 custom-scrollbar pr-2">
                 {stickerAssets.filter(s => s.type === stickerModalTab).map((s: any) => (
                   <button key={s.id} onClick={() => { addSticker(s.url); setShowStickerModal(false); }} className="aspect-square rounded-xl hover:scale-105 transition-all p-2 flex items-center justify-center" style={{ backgroundColor: `${theme.hex}0d` }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = `${theme.hex}1a`)} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = `${theme.hex}0d`)}>
-                    <img src={getProxiedUrl(s.url)} className="w-full h-full object-contain" alt="" />
+                    <img src={s.url} className="w-full h-full object-contain" alt="" loading="lazy" />
                   </button>
                 ))}
                 {stickerAssets.filter(s => s.type === stickerModalTab).length === 0 && <p className="col-span-full text-center text-sm py-10 font-bold" style={{ color: `${theme.hex}59` }}>No hay elementos disponibles en esta categoría.</p>}
@@ -2827,7 +2842,7 @@ function AlbumElementView({
       ) : element.type === "video" ? (
         <div className="w-full h-full bg-black rounded-[inherit] overflow-hidden shadow-md relative pointer-events-none">
           {element.url ? (
-            <video src={getProxiedUrl(element.url)} className="w-full h-full object-cover" muted playsInline loop autoPlay={!editMode} />
+            <video src={element.url} className="w-full h-full object-cover" muted playsInline loop autoPlay={!editMode} />
           ) : null}
           {editMode && (
           <div className="absolute inset-0 flex items-center justify-center text-white bg-black/20">
@@ -2900,10 +2915,15 @@ function AlbumElementView({
       })() : (
         element.url ? (
           <img
-            src={getProxiedUrl(element.url)}
+            src={getProxiedUrl(element.url, element.type === "sticker")}
             alt=""
             draggable={false}
             className={`w-full h-full ${element.fit === "contain" || element.type === "sticker" ? "object-contain" : "object-cover"} rounded-[inherit] ${element.type === "sticker" ? "drop-shadow-lg" : ""}`}
+            onError={(e) => {
+              if (element.url && e.currentTarget.src !== element.url) {
+                e.currentTarget.src = element.url;
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center rounded-[inherit] border-2 border-dashed" style={{ backgroundColor: `${theme.hex}0d`, borderColor: `${theme.hex}33` }}>

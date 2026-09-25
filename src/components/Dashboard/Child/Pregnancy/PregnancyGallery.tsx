@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import MediaEditor from "@/components/Common/MediaEditor";
+import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
 
 interface GalleryItem {
   id: string; // memoryId-url
@@ -126,10 +127,13 @@ export default function PregnancyGallery({
 
   const getProxiedUrl = (url: string) => {
     if (!url) return '';
-    if (url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && url.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
-      return `/api/download?url=${encodeURIComponent(url)}&inline=true`;
+    if (url.match(/\.(mp4|mov|webm|avi|mkv)$/i) || url.includes('/video/')) {
+      if (url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com')) {
+        return `/api/download?url=${encodeURIComponent(url)}&inline=true`;
+      }
+      return url;
     }
-    return url;
+    return getThumbnailUrl(url);
   };
 
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -772,7 +776,17 @@ export default function PregnancyGallery({
                   return (
                     <motion.button key={m} whileHover={{ y: -5 }} onClick={() => { setView('items'); setCurrentFolder({id: `month-${m}`, name: monthName, filterMonth: m, isCustom: false}); }} className={`group bg-white/60 hover:bg-white p-3 md:p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all border ${theme.borderAccent} flex flex-col gap-4`}>
                       <div className={`w-full aspect-square rounded-2xl ${theme.bg} overflow-hidden shadow-inner flex items-center justify-center`}>
-                        {firstItem ? <img src={getProxiedUrl(firstItem.url)} crossOrigin="anonymous" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" /> : <BookOpen className={theme.text} size={32} />}
+                        {firstItem ? (
+                          <img 
+                            src={getThumbnailUrl(firstItem.url)} 
+                            crossOrigin="anonymous" 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                            onError={(e) => handleImageFallback(e, firstItem.url)}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <BookOpen className={theme.text} size={32} />
+                        )}
                       </div>
                       <div className="text-left px-1">
                         <h4 className={`text-sm md:text-xl font-black ${theme.text} leading-tight`}>{monthName}</h4>
@@ -818,7 +832,13 @@ export default function PregnancyGallery({
                   >
                     <div className={`aspect-square ${theme.bgLight} overflow-hidden rounded-[1.5rem] relative flex items-center justify-center`}>
                       {item.type === 'image' ? (
-                        <img src={getProxiedUrl(item.url)} crossOrigin="anonymous" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <img 
+                          src={getThumbnailUrl(item.url)} 
+                          crossOrigin="anonymous" 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                          onError={(e) => handleImageFallback(e, item.url)}
+                          loading="lazy"
+                        />
                       ) : item.type === 'video' ? (
                         <div className="w-full h-full relative">
                           <video 
@@ -908,7 +928,12 @@ export default function PregnancyGallery({
                           `}
                           style={selectedItems.includes(item.id) ? { outline: `4px solid ${theme.hex}`, transform: 'scale(0.95)' } : {}}
                         >
-                          <img src={getProxiedUrl(item.url)} className="w-full h-full object-cover" />
+                          <img 
+                            src={getThumbnailUrl(item.url)} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => handleImageFallback(e, item.url)}
+                            loading="lazy"
+                          />
                           {selectedItems.includes(item.id) && <div className="absolute inset-0 flex items-center justify-center shadow-inner" style={{ backgroundColor: `${theme.hex}33` }}><CheckCircle2 className="text-white drop-shadow-md" size={isMobile ? 32 : 40} /></div>}
                           {isAlreadyInFolder && <div className="absolute inset-0 flex items-center justify-center"><div className={`p-2 bg-white/80 rounded-full ${theme.text} shadow-sm`}><Check size={20} /></div></div>}
                         </div>
@@ -1016,12 +1041,13 @@ export default function PregnancyGallery({
                 {previewItem.type === 'image' ? (
                   <>
                     <img 
-                      src={getProxiedUrl(previewItem.url)} 
+                      src={getPreviewUrl(previewItem.url)} 
                       crossOrigin="anonymous" 
                       className="max-w-full max-h-[82vh] rounded-lg object-contain shadow-2xl transition-transform duration-300 select-none" 
                       style={{ transform: `scale(${zoom})`, transformOrigin: "center center", cursor: zoom > 1 ? "zoom-out" : "zoom-in" }}
                       alt="Vista previa"
                       onDoubleClick={toggleZoom}
+                      onError={(e) => handleImageFallback(e, previewItem.url)}
                     />
                     {zoom === 1 && (
                       <div className="absolute bottom-4 right-4 z-30" onClick={(e) => e.stopPropagation()}>

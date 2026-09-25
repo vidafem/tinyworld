@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import JSZip from "jszip";
+import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
 
 interface PregnancyEventsProps {
   childId: string;
@@ -765,7 +766,13 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                               </div>
                             </div>
                           ) : (
-                            <img src={item.url} alt="Invitado" className="w-full h-full object-cover" loading="lazy" />
+                            <img 
+                              src={getThumbnailUrl(item.url)} 
+                              alt="Invitado" 
+                              className="w-full h-full object-cover" 
+                              loading="lazy" 
+                              onError={(e) => handleImageFallback(e, item.url)}
+                            />
                           )}
 
                           {/* Checkbox de Selección */}
@@ -1665,9 +1672,10 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
                     />
                   ) : (
                     <img
-                      src={previewItem.url}
+                      src={getPreviewUrl(previewItem.url)}
                       className="max-w-full max-h-[80vh] block object-contain"
                       alt="Vista previa"
+                      onError={(e) => handleImageFallback(e, previewItem.url)}
                     />
                   )}
 

@@ -10,8 +10,10 @@ import {
   History, Bookmark, Video, Mic
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 import { themePalettes } from "@/lib/themes";
+import { useChild } from "@/context/ChildContext";
+import { useRouter } from "next/navigation";
+import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
 
 interface Memory {
   id: string;
@@ -26,8 +28,9 @@ interface Memory {
 
 export default function MemoryHub({ childId }: { childId: string }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [child, setChild] = useState<any>(null);
+  const childCtx = useChild();
+  const [loading, setLoading] = useState(!childCtx?.child);
+  const [child, setChild] = useState<any>(childCtx?.child || null);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [stages, setStages] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -60,7 +63,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
     setLoading(true);
     try {
       const [childRes, pregMems, genMems, lifeSectionsRes] = await Promise.all([
-        supabase.from("children").select("*").eq("id", childId).single(),
+        !childCtx?.child ? supabase.from("children").select("*").eq("id", childId).single() : Promise.resolve({ data: childCtx.child }),
         supabase.from("pregnancy_memories").select("*").eq("child_id", childId),
         supabase.from("general_memories").select("*").eq("child_id", childId).order('memory_date', { ascending: false }),
         supabase.from("life_sections").select("*").eq("child_id", childId)
@@ -274,9 +277,9 @@ export default function MemoryHub({ childId }: { childId: string }) {
                           if (isVideo) {
                             return (
                               <video 
-                                src={getProxiedUrl(url) + "#t=0.5"} 
+                                src={url + "#t=0.5"} 
                                 crossOrigin="anonymous" 
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 pointer-events-none" 
                                 muted 
                                 playsInline 
                                 preload="metadata"
@@ -288,9 +291,11 @@ export default function MemoryHub({ childId }: { childId: string }) {
                           }
                           return (
                             <img 
-                              src={getProxiedUrl(url)} 
+                              src={getThumbnailUrl(url)} 
                               crossOrigin="anonymous" 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                              loading="lazy"
+                              onError={(e) => handleImageFallback(e, url)}
                             />
                           );
                         })()
@@ -410,10 +415,11 @@ export default function MemoryHub({ childId }: { childId: string }) {
                             </div>
                           ) : (
                             <img 
-                              src={getProxiedUrl(url)} 
+                              src={getPreviewUrl(url)} 
                               crossOrigin="anonymous" 
                               className="w-full h-full object-cover" 
                               alt="Media" 
+                              onError={(e) => handleImageFallback(e, url)}
                             />
                           )}
                         </div>

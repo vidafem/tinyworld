@@ -10,13 +10,11 @@ import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import PregnancyDigitalAlbum from "./Pregnancy/PregnancyDigitalAlbum";
 import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
+import { getThumbnailUrl } from "@/lib/optimizedImage";
 
 const getProxiedUrl = (u: string | null | undefined) => {
   if (!u) return '';
-  if (u.includes('.r2.dev') || u.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && u.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
-    return `/api/download?url=${encodeURIComponent(u)}&inline=true`;
-  }
-  return u;
+  return getThumbnailUrl(u);
 };
 
 interface BookHubProps {

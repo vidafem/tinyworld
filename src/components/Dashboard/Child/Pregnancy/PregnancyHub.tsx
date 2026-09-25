@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
+import { getThumbnailUrl, handleImageFallback } from "@/lib/optimizedImage";
 import MemoryForm from "./MemoryForm";
 import PregnancyGallery from "./PregnancyGallery";
 import FutureNames from "./FutureNames";
@@ -677,19 +678,10 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                         const isVideo = lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.webm') || lower.endsWith('.ogg') || lower.endsWith('.m4v') || lower.includes('video/');
                         const isAudio = lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.m4a') || lower.endsWith('.aac') || lower.includes('audio/');
                         
-                        const getProxiedUrl = (u: string) => {
-                          if (!u) return '';
-                          if (u.includes('.r2.dev') || u.includes('.r2.cloudflarestorage.com') || (process.env.NEXT_PUBLIC_R2_PUBLIC_URL && u.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL))) {
-                            return `/api/download?url=${encodeURIComponent(u)}&inline=true`;
-                          }
-                          return u;
-                        };
-
                         if (isVideo) {
                           return (
                             <video 
-                              src={getProxiedUrl(url) + "#t=0.5"} 
-                              crossOrigin="anonymous" 
+                              src={url + "#t=0.5"} 
                               className="w-full h-full object-cover" 
                               muted 
                               playsInline 
@@ -702,10 +694,11 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                         }
                         return (
                           <img 
-                            src={getProxiedUrl(url)} 
-                            crossOrigin="anonymous" 
+                            src={getThumbnailUrl(url)} 
                             className="w-full h-full object-cover" 
                             alt={mem.title} 
+                            loading="lazy"
+                            onError={(e) => handleImageFallback(e, url)}
                           />
                         );
                       })()
