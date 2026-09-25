@@ -149,3 +149,22 @@
 @media (prefers-reduced-motion: reduce) {
   .node, .nodeInner, .viewport { transition: none !important; animation: none !important; }
 }
+
+.cardScrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #ddd3ba transparent;
+}
+.cardScrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.cardScrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cardScrollbar::-webkit-scrollbar-thumb {
+  background: #ddd3ba;
+  border-radius: 9999px;
+}
+.cardScrollbar::-webkit-scrollbar-thumb:hover {
+  background: #c9862a;
+}
+

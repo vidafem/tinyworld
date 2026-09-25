@@ -476,14 +476,14 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
       {/* MODAL ESCRIBIR MENSAJE */}
       <AnimatePresence>
         {activeLeaf && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-[#fffdf7] rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl"
+              className="bg-[#fffdf7] rounded-[2.5rem] p-6 sm:p-8 max-w-md w-full shadow-2xl max-h-[90vh] flex flex-col"
             >
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex justify-between items-center mb-6 shrink-0">
                 <h2 className="text-xl font-black text-[#3a3221] flex items-center gap-2 font-outfit">
                   <Leaf className="text-[#2f8f7a]" /> Nueva Hoja
                 </h2>
@@ -492,7 +492,7 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
                 <div>
                   <label className="text-[10px] font-black uppercase text-stone-400 tracking-widest">¿Quién escribe?</label>
                   <input
@@ -515,7 +515,7 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
                 </div>
               </div>
 
-              <div className="mt-8">
+              <div className="mt-6 shrink-0">
                 <AppButton
                   variant="primary"
                   className="w-full bg-[#2f8f7a] hover:bg-[#267a68] border-none text-white shadow-lg"
@@ -535,36 +535,54 @@ export default function LoveTreeCanvas({ child }: LoveTreeCanvasProps) {
       {/* MODAL LEER MENSAJE */}
       <AnimatePresence>
         {viewMessage && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setViewMessage(null)}>
+          <div 
+            className="fixed inset-0 z-[200] bg-black/65 backdrop-blur-md flex items-center justify-center p-4 sm:p-6" 
+            onClick={() => setViewMessage(null)}
+          >
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, rotate: -5 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              exit={{ scale: 0.9, opacity: 0, rotate: 5 }}
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#FFFDF8] rounded-[1.5rem] p-8 max-w-sm w-full shadow-2xl relative border-2 border-[#ddd3ba]"
+              className="bg-[#FFFDF8] rounded-[2rem] p-6 sm:p-8 max-w-sm sm:max-w-md w-full shadow-2xl relative border-2 border-[#ddd3ba] flex flex-col max-h-[82vh] sm:max-h-[85vh]"
             >
               {/* Sello de cera simulado */}
-              <div className="absolute -top-4 -right-4 w-12 h-12 bg-[#c9862a] rounded-full shadow-lg border-2 border-[#e2a63d] flex items-center justify-center text-white rotate-12">
-                <Heart size={20} fill="currentColor" />
-              </div>
-              
-              <div className="text-center mb-6">
-                <Mail size={32} className="mx-auto text-amber-500 mb-2 opacity-50" />
-                <h3 className="font-outfit font-black text-2xl text-stone-800">{viewMessage.author_name}</h3>
+              <div className="absolute -top-3 -right-3 w-11 h-11 bg-[#c9862a] rounded-full shadow-lg border-2 border-[#e2a63d] flex items-center justify-center text-white rotate-12 z-20 pointer-events-none">
+                <Heart size={18} fill="currentColor" />
               </div>
 
-              <div className="relative">
-                <p className="font-quicksand font-bold text-lg text-stone-700 italic leading-relaxed text-center">
+              {/* Botón X de cierre superior rápido */}
+              <button 
+                onClick={() => setViewMessage(null)}
+                className="absolute top-4 left-4 p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-full transition-colors z-20"
+                title="Cerrar carta"
+              >
+                <X size={18} />
+              </button>
+              
+              {/* Encabezado fijo */}
+              <div className="text-center pt-2 mb-3 shrink-0">
+                <Mail size={32} className="mx-auto text-amber-500 mb-1.5 opacity-60" />
+                <h3 className="font-outfit font-black text-2xl text-stone-800 tracking-tight px-6 truncate">{viewMessage.author_name}</h3>
+                <span className="text-[9px] uppercase tracking-widest text-stone-400 font-bold block mt-0.5">Mensaje en el Árbol</span>
+              </div>
+
+              {/* Contenedor del mensaje con scroll si es largo */}
+              <div className={`flex-1 min-h-0 overflow-y-auto px-2 py-2 my-1 ${styles.cardScrollbar}`}>
+                <p className="font-quicksand font-bold text-base sm:text-lg text-stone-700 italic leading-relaxed text-center whitespace-pre-wrap">
                   "{viewMessage.message}"
                 </p>
               </div>
 
-              <button 
-                onClick={() => setViewMessage(null)}
-                className="mt-8 w-full p-4 bg-stone-100 hover:bg-stone-200 text-[#a15a3a] font-black text-xs uppercase tracking-widest rounded-xl transition-colors"
-              >
-                Cerrar Carta
-              </button>
+              {/* Pie fijo: Botón de cerrar siempre accesible */}
+              <div className="shrink-0 mt-4 pt-3 border-t border-[#f0ebd9]/80">
+                <button 
+                  onClick={() => setViewMessage(null)}
+                  className="w-full py-3.5 px-4 bg-stone-100 hover:bg-stone-200 active:scale-[0.98] text-[#a15a3a] font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  Cerrar Carta
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
