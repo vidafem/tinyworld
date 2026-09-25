@@ -14,6 +14,7 @@ import BabyAvatar from "./BabyAvatar";
 import AppButton from "@/components/Common/AppButton";
 import ModernModal from "@/components/Common/ModernModal";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import { notifyChildUpdated } from "@/context/ChildContext";
 
 export default function ChildProfile({ childId }: { childId: string }) {
   const router = useRouter();
@@ -232,6 +233,7 @@ export default function ChildProfile({ childId }: { childId: string }) {
     if (!error) {
       setToast({ type: "success", message: "¡Perfil guardado con éxito!" });
       setChild({ ...child, ...formData });
+      notifyChildUpdated(childId, dataToSave);
     } else {
       setToast({ type: "error", message: "Error al guardar el perfil" });
       console.error(error);

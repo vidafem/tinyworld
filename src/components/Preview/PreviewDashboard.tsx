@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { themePalettes } from "@/lib/themes";
 import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
+import { notifyChildUpdated } from "@/context/ChildContext";
 import dynamic from "next/dynamic";
 
 const getProxiedUrl = (u: string | null | undefined) => {
@@ -658,6 +659,7 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
     if (!error) {
       setToastMessage("¡Configuraciones espejo guardadas!");
       setChild({ ...child, ...formData });
+      notifyChildUpdated(childId, formData);
       setTimeout(() => setToastMessage(""), 3000);
     } else {
       setToastMessage("Error al guardar");

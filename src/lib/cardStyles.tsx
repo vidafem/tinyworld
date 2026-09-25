@@ -218,6 +218,11 @@ export function renderCardIcon(iconName: string | null | undefined, size: number
         alt=""
         className="h-full w-full object-contain"
         crossOrigin="anonymous"
+        onError={(e) => {
+          if (iconName && e.currentTarget.src !== iconName) {
+            e.currentTarget.src = iconName;
+          }
+        }}
       />
     );
   }

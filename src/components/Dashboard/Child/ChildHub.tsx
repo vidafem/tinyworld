@@ -73,11 +73,14 @@ export default function ChildHub({ childId }: ChildHubProps) {
     
     async function loadChild() {
       const [childRes, stagesRes] = await Promise.all([
-        !childCtx?.child ? supabase.from("children").select("*").eq("id", childId).single() : Promise.resolve({ data: childCtx.child }),
+        supabase.from("children").select("*").eq("id", childId).single(),
         supabase.from("life_sections").select("*").eq("child_id", childId).order("created_at", { ascending: true }),
       ]);
 
-      if (childRes.data) setChild(childRes.data);
+      if (childRes.data) {
+        setChild(childRes.data);
+        childCtx?.updateChildLocally(childRes.data);
+      }
       if (stagesRes.data) {
         setFavoriteStages((stagesRes.data as FavoriteLifeSection[]).filter((stage) => Boolean(stage.is_favorite)));
       }
@@ -85,7 +88,40 @@ export default function ChildHub({ childId }: ChildHubProps) {
     }
     loadChild();
     return () => window.removeEventListener('resize', syncViewport);
-  }, [childId, childCtx?.child]);
+  }, [childId]);
+
+  // Escuchar actualizaciones instantáneas de tarjetas y etapas sin recargar la página
+  useEffect(() => {
+    const handleChildUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ childId: string; data?: Partial<any> }>;
+      if (customEvent.detail?.childId === childId && customEvent.detail?.data) {
+        setChild((prev: any) => ({ ...prev, ...customEvent.detail.data }));
+      }
+    };
+
+    const handleStagesUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ childId: string }>;
+      if (customEvent.detail?.childId === childId) {
+        supabase
+          .from("life_sections")
+          .select("*")
+          .eq("child_id", childId)
+          .order("created_at", { ascending: true })
+          .then(({ data }) => {
+            if (data) {
+              setFavoriteStages((data as FavoriteLifeSection[]).filter((stage) => Boolean(stage.is_favorite)));
+            }
+          });
+      }
+    };
+
+    window.addEventListener("tw:child-updated", handleChildUpdate);
+    window.addEventListener("tw:stages-updated", handleStagesUpdate);
+    return () => {
+      window.removeEventListener("tw:child-updated", handleChildUpdate);
+      window.removeEventListener("tw:stages-updated", handleStagesUpdate);
+    };
+  }, [childId]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

@@ -15,6 +15,7 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import { getThumbnailUrl, handleImageFallback } from "@/lib/optimizedImage";
+import { notifyChildUpdated } from "@/context/ChildContext";
 import MemoryForm from "./MemoryForm";
 import PregnancyGallery from "./PregnancyGallery";
 import FutureNames from "./FutureNames";
@@ -280,6 +281,11 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
 
       if (childError) throw childError;
       setChild({ ...child, preview_config: nextConfig });
+      notifyChildUpdated(childId, { preview_config: nextConfig });
+    }
+
+    if (sectionId && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("tw:stages-updated", { detail: { childId } }));
     }
 
     playSuccessChime();

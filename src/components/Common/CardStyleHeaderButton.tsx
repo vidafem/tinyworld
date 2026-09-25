@@ -7,6 +7,7 @@ import { playSoftPop, playSuccessChime } from "@/lib/pageSound";
 import CardStyleConfigurator from "@/components/Common/CardStyleConfigurator";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
 import { CardStyle, normalizeCardStyle, sanitizeHexColor } from "@/lib/cardStyles";
+import { notifyChildUpdated } from "@/context/ChildContext";
 
 interface CardStyleHeaderButtonProps {
   childId: string;
@@ -95,6 +96,7 @@ export default function CardStyleHeaderButton({
       if (updateErr) throw updateErr;
 
       setCurrentStyle(newStyle);
+      notifyChildUpdated(childId, { preview_config: nextConfig });
       playSuccessChime();
       setToast({ type: "success", message: `¡Tarjeta de "${title}" actualizada!` });
       onSaved?.(newStyle);
