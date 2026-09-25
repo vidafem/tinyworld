@@ -26,6 +26,7 @@ import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
 import CardStyleConfigurator from "@/components/Common/CardStyleConfigurator";
 import { CardStyle, sanitizeHexColor } from "@/lib/cardStyles";
 import { playSoftPop, playActionSnap, playSuccessChime } from "@/lib/pageSound";
+import { useChild } from "@/context/ChildContext";
 
 const PregnancyCalendar = dynamic(() => import("./PregnancyCalendar"), {
   loading: () => (
@@ -91,8 +92,9 @@ interface SectionCardStyle {
 
 export default function PregnancyHub({ childId, sectionId = null, sectionTitle, onBack }: PregnancyHubProps) {
   const router = useRouter();
-  const [child, setChild] = useState<ChildProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const childCtx = useChild();
+  const [child, setChild] = useState<ChildProfile | null>((childCtx?.child as ChildProfile) || null);
+  const [loading, setLoading] = useState(!childCtx?.child);
   const [calendars, setCalendars] = useState<CalendarSummary[]>([]);
   const [memories, setMemories] = useState<PregnancyMemory[]>([]);
   const [showCardStyleModal, setShowCardStyleModal] = useState(false);
@@ -163,7 +165,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
       }
 
       const [childRes, calsRes, sectionRes] = await Promise.all([
-        supabase.from("children").select("*").eq("id", childId).single(),
+        !childCtx?.child ? supabase.from("children").select("*").eq("id", childId).single() : Promise.resolve({ data: childCtx.child }),
         query.order('created_at', { ascending: false }),
         sectionId
           ? supabase.from("life_sections").select("id,title,card_color,card_icon").eq("id", sectionId).single()
@@ -177,7 +179,7 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
       setLoading(false);
     }
     loadData();
-  }, [childId, sectionId]);
+  }, [childId, sectionId, childCtx?.child]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

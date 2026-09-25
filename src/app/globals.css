@@ -11,8 +11,8 @@
   --gold: #D7B98E;
   --font-quicksand: 'Quicksand', sans-serif;
   --font-outfit: 'Outfit', sans-serif;
-  /* Textura de Fibras de Papel Orgánicas (SVG Suave) */
-  --paper-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 800 800' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paperFibers'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paperFibers)'/%3E%3C/svg%3E");
+  /* Textura de Fibras de Papel Orgánicas Optimizada para GPU Móvil (Cero impacto en CPU) */
+  --paper-texture: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='1' result='noise'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.55  0 0 0 0 0.48  0 0 0 0 0.42  0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
 }
 
 @theme inline {
@@ -26,9 +26,15 @@
   --font-outfit: 'Outfit', sans-serif;
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 body {
   background-color: var(--background);
   background-image: var(--paper-texture);
+  background-repeat: repeat;
   color: var(--taupe);
   font-family: var(--font-quicksand);
   overflow-x: hidden;
@@ -37,8 +43,7 @@ body {
 
 .bg-texture {
   background-image: var(--paper-texture);
-  /* Mezclar suavemente la textura con el color de fondo dinámico */
-  background-blend-mode: multiply;
+  background-repeat: repeat;
 }
 
 /* Efecto de líneas de cuaderno */
@@ -54,12 +59,37 @@ body {
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
 }
 
-/* Glassmorphism para Sidebar */
+/* Glassmorphism Acelerado por GPU para Móvil */
 .glass-panel {
-  background: rgba(248, 243, 236, 0.7);
-  backdrop-filter: blur(10px);
+  background: rgba(248, 243, 236, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-left: 1px solid rgba(184, 153, 122, 0.2);
   transition: background 0.8s ease-in-out, border-color 0.8s ease-in-out;
+}
+
+@media (max-width: 768px) {
+  .glass-panel {
+    background: rgba(248, 243, 236, 0.95);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+/* Animación de Onda del Título en GPU (Compositor Thread - 0% uso de JS) */
+@keyframes title-wave {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-title-wave {
+  display: inline-block;
+  animation: title-wave 1.8s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* Efectos Neon Universales */

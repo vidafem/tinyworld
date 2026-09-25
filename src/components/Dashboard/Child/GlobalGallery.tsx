@@ -11,6 +11,8 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { themePalettes } from "@/lib/themes";
 import CardStyleHeaderButton from "@/components/Common/CardStyleHeaderButton";
+import { useChild } from "@/context/ChildContext";
+import { getThumbnailUrl, getPreviewUrl } from "@/lib/optimizedImage";
 
 interface MediaItem {
   id: string;
@@ -34,10 +36,11 @@ interface GlobalGalleryProps {
 
 export default function GlobalGallery({ childId }: GlobalGalleryProps) {
   const router = useRouter();
+  const childCtx = useChild();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'image' | 'video' | 'audio'>('image');
   const [items, setItems] = useState<MediaItem[]>([]);
-  const [child, setChild] = useState<any>(null);
+  const [child, setChild] = useState<any>(childCtx?.child || null);
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
   const [zoom, setZoom] = useState(1);
   const toggleZoom = () => {
@@ -60,7 +63,7 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
     setLoading(true);
     try {
       const [childRes, pregRes, genRes, foldersRes, eventsRes] = await Promise.all([
-        supabase.from("children").select("*").eq("id", childId).single(),
+        !childCtx?.child ? supabase.from("children").select("*").eq("id", childId).single() : Promise.resolve({ data: childCtx.child }),
         supabase.from("pregnancy_memories").select("*").eq("child_id", childId).order('memory_date', { ascending: false }),
         supabase.from("general_memories").select("*").eq("child_id", childId).order('memory_date', { ascending: false }),
         supabase.from("pregnancy_folders").select("id, name").eq("child_id", childId),
@@ -597,7 +600,7 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
                       className="group relative aspect-square bg-white/70 rounded-[2.2rem] overflow-hidden shadow-sm hover:shadow-2xl border border-white transition-all cursor-pointer"
                     >
                       {item.type === 'image' ? (
-                        <img src={item.url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                        <img src={getThumbnailUrl(item.url)} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={item.title || "Foto"} />
                       ) : item.type === 'video' ? (
                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900">
                           <Video className="text-white/40 mb-2" size={40} />
@@ -687,7 +690,9 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
                 {previewItem.type === 'image' ? (
                   <>
                     <img 
-                      src={previewItem.url} 
+                      src={getPreviewUrl(previewItem.url)} 
+                      loading="eager"
+                      decoding="async"
                       className="max-w-full max-h-[82vh] rounded-lg object-contain shadow-2xl transition-transform duration-300 select-none" 
                       style={{ transform: `scale(${zoom})`, transformOrigin: "center center", cursor: zoom > 1 ? "zoom-out" : "zoom-in" }}
                       alt="Vista previa"

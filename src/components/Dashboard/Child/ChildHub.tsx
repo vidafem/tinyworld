@@ -14,6 +14,7 @@ import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
 import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 import AppButton from "@/components/Common/AppButton";
 import { CardStyle, renderCardIcon, sanitizeHexColor } from "@/lib/cardStyles";
+import { useChild } from "@/context/ChildContext";
 
 interface ChildHubProps {
   childId: string;
@@ -39,12 +40,31 @@ interface HubOption {
 
 export default function ChildHub({ childId }: ChildHubProps) {
   const router = useRouter();
-  const [child, setChild] = useState<any>(null);
+  const childCtx = useChild();
+  const [child, setChild] = useState<any>(childCtx?.child || null);
   const [favoriteStages, setFavoriteStages] = useState<FavoriteLifeSection[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!childCtx?.child);
   const [expandingCard, setExpandingCard] = useState<string | null>(null);
   const [showMasterMenu, setShowMasterMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (childCtx?.child) {
+      setChild(childCtx.child);
+      setLoading(false);
+    }
+  }, [childCtx?.child]);
+
+  // Precarga silenciosa de rutas clave para navegación táctil instantánea en móvil
+  useEffect(() => {
+    router.prefetch(`/dashboard/child/${childId}/pregnancy`);
+    router.prefetch(`/dashboard/child/${childId}/gallery`);
+    router.prefetch(`/dashboard/child/${childId}/book`);
+    router.prefetch(`/dashboard/child/${childId}/photo-book`);
+    router.prefetch(`/dashboard/child/${childId}/calendar`);
+    router.prefetch(`/dashboard/child/${childId}/love-tree`);
+    router.prefetch(`/dashboard/child/${childId}/lifetime`);
+  }, [childId, router]);
 
   useEffect(() => {
     const syncViewport = () => setIsMobile(window.innerWidth < 768);
@@ -53,7 +73,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
     
     async function loadChild() {
       const [childRes, stagesRes] = await Promise.all([
-        supabase.from("children").select("*").eq("id", childId).single(),
+        !childCtx?.child ? supabase.from("children").select("*").eq("id", childId).single() : Promise.resolve({ data: childCtx.child }),
         supabase.from("life_sections").select("*").eq("child_id", childId).order("created_at", { ascending: true }),
       ]);
 
@@ -65,7 +85,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
     }
     loadChild();
     return () => window.removeEventListener('resize', syncViewport);
-  }, [childId]);
+  }, [childId, childCtx?.child]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -237,12 +257,30 @@ export default function ChildHub({ childId }: ChildHubProps) {
           <div className="flex flex-col md:flex-row justify-center items-center gap-y-1.5 md:gap-x-3.5">
             <div className="flex justify-center items-center gap-x-0.5 md:gap-x-1">
               {prefix.split("").map((letter, i) => (
-                <motion.span key={i} animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1.8, delay: i * 0.04, ease: "easeInOut" }} className={`font-outfit font-black inline-block ${letter === " " ? "w-2 md:w-3" : ""} ${theme.text} leading-none`} style={{ fontSize: isMobile ? 'clamp(1.8rem, 9vw, 2.8rem)' : 'clamp(2.8rem, 4.5vw, 5.5rem)' }}>{letter}</motion.span>
+                <span
+                  key={i}
+                  className={`animate-title-wave font-outfit font-black inline-block ${letter === " " ? "w-2 md:w-3" : ""} ${theme.text} leading-none`}
+                  style={{
+                    fontSize: isMobile ? 'clamp(1.8rem, 9vw, 2.8rem)' : 'clamp(2.8rem, 4.5vw, 5.5rem)',
+                    animationDelay: `${i * 0.04}s`,
+                  }}
+                >
+                  {letter}
+                </span>
               ))}
             </div>
             <div className="flex justify-center items-center gap-x-0.5 md:gap-x-1">
               {babyName.split("").map((letter: string, i: number) => (
-                <motion.span key={i} animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1.8, delay: (prefix.length + i) * 0.04, ease: "easeInOut" }} className={`font-outfit font-black inline-block ${letter === " " ? "w-2 md:w-3" : ""} ${theme.text} leading-none`} style={{ fontSize: isMobile ? 'clamp(1.8rem, 9vw, 2.8rem)' : 'clamp(2.8rem, 4.5vw, 5.5rem)' }}>{letter}</motion.span>
+                <span
+                  key={i}
+                  className={`animate-title-wave font-outfit font-black inline-block ${letter === " " ? "w-2 md:w-3" : ""} ${theme.text} leading-none`}
+                  style={{
+                    fontSize: isMobile ? 'clamp(1.8rem, 9vw, 2.8rem)' : 'clamp(2.8rem, 4.5vw, 5.5rem)',
+                    animationDelay: `${(prefix.length + i) * 0.04}s`,
+                  }}
+                >
+                  {letter}
+                </span>
               ))}
             </div>
           </div>
@@ -375,7 +413,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
                 onClick={() => {
                   playSoftPop();
                   setExpandingCard(opt.id);
-                  setTimeout(() => router.push(opt.route), 350);
+                  router.push(opt.route);
                 }}
                 className={`
                   ${hasCustomBg ? "hover:brightness-95" : "bg-white/75 dark:bg-stone-900/75 hover:bg-white dark:hover:bg-stone-900"} 

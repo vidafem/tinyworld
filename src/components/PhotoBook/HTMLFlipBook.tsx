@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, forwardRef, useCallback } from 'rea
 import HTMLFlipBook from 'react-pageflip';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { playPageTurnSound } from '@/lib/pageSound';
+import { getPreviewUrl } from '@/lib/optimizedImage';
 
 interface PhotoBookViewerProps {
   photos: string[];
@@ -23,7 +24,7 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
     if (count === 1) {
       return (
         <div className="w-full h-full p-6 md:p-10 flex items-center justify-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-          <img src={urls[0]} alt="Foto" className="w-full h-full object-cover" />
+          <img src={getPreviewUrl(urls[0])} alt="Foto" loading="lazy" decoding="async" className="w-full h-full object-cover" />
         </div>
       );
     }
@@ -35,7 +36,7 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
         <div className={`w-full h-full p-6 md:p-8 grid gap-4 md:gap-6 ${isVertical ? 'grid-rows-2' : 'grid-cols-2'}`}>
           {urls.map((url, idx) => (
             <div key={idx} className="w-full h-full bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-              <img src={url} alt={`Foto ${idx}`} className="w-full h-full object-cover" />
+              <img src={getPreviewUrl(url)} alt={`Foto ${idx}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
           ))}
         </div>
@@ -47,13 +48,13 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
       return (
         <div className="w-full h-full p-6 md:p-8 grid grid-cols-2 grid-rows-2 gap-4 md:gap-6">
           <div className="col-span-2 row-span-1 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-            <img src={urls[0]} alt="Foto principal" className="w-full h-full object-cover object-center" />
+            <img src={getPreviewUrl(urls[0])} alt="Foto principal" loading="lazy" decoding="async" className="w-full h-full object-cover object-center" />
           </div>
           <div className="col-span-1 row-span-1 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-            <img src={urls[1]} alt="Secundaria 1" className="w-full h-full object-cover" />
+            <img src={getPreviewUrl(urls[1])} alt="Secundaria 1" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           </div>
           <div className="col-span-1 row-span-1 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-            <img src={urls[2]} alt="Secundaria 2" className="w-full h-full object-cover" />
+            <img src={getPreviewUrl(urls[2])} alt="Secundaria 2" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           </div>
         </div>
       );
@@ -65,7 +66,7 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
         <div className="w-full h-full p-6 md:p-8 grid grid-cols-2 grid-rows-2 gap-4 md:gap-6">
           {urls.slice(0, 4).map((url, idx) => (
             <div key={idx} className="w-full h-full bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-              <img src={url} alt={`Cuadricula ${idx}`} className="w-full h-full object-cover" />
+              <img src={getPreviewUrl(url)} alt={`Cuadricula ${idx}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </div>
           ))}
         </div>

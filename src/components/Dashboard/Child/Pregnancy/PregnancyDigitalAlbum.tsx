@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { playPageTurnSound, playBookOpenSound, isAudioMuted, toggleAudioMuted } from "@/lib/pageSound";
+import { getPreviewUrl, getOriginalDownloadUrl } from "@/lib/optimizedImage";
 
 type TemplateId =
   | "cover_soft"
@@ -250,19 +251,11 @@ const COLLAGE_PRESETS: Record<number, Partial<AlbumElement>[]> = {
 function getProxiedUrl(url?: string | null) {
   if (!url) return "";
   
-  if (url.startsWith("data:") || url.startsWith("/") || url.includes("localhost") || url.includes("127.0.0.1")) {
+  if (url.startsWith("data:") || url.startsWith("blob:") || url.includes("localhost") || url.includes("127.0.0.1")) {
     return url;
   }
 
-  if (url.includes("/api/download?url=")) {
-    return url;
-  }
-
-  if (url.includes("cloudflarestorage.com") || url.includes("r2.dev")) {
-    return `/api/download?url=${encodeURIComponent(url)}&inline=true`;
-  }
-
-  return url;
+  return getPreviewUrl(url);
 }
 
 function detectMediaType(url: string, fallback?: string | null): AlbumElementType {
@@ -1966,12 +1959,28 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                 </AnimatePresence>
 
                 {mediaModal && (
-                  <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md flex items-center justify-center" onClick={() => setMediaModal(null)}>
-                    <button className="absolute top-6 right-6 text-white/50 hover:text-white p-2" onClick={() => setMediaModal(null)}><X size={32} /></button>
+                  <div className="fixed inset-0 z-[99999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setMediaModal(null)}>
+                    <div className="absolute top-6 right-6 flex items-center gap-3 z-50">
+                      <a 
+                        href={getOriginalDownloadUrl(mediaModal.url)}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer hover:scale-110 active:scale-95 flex items-center gap-2 border border-white/20"
+                        title="Descargar Foto Original (100% Calidad)"
+                      >
+                        <FileDown size={22} />
+                        <span className="hidden sm:inline text-xs font-bold">Descargar Original</span>
+                      </a>
+                      <button className="text-white/50 hover:text-white p-2 cursor-pointer" onClick={() => setMediaModal(null)}>
+                        <X size={32} />
+                      </button>
+                    </div>
                     {mediaModal.type === "image" ? (
-                      <img src={getProxiedUrl(mediaModal.url)} className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" alt="Pantalla completa" onClick={(e) => e.stopPropagation()} />
+                      <img src={getPreviewUrl(mediaModal.url)} className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" alt="Pantalla completa" onClick={(e) => e.stopPropagation()} />
                     ) : (
-                      <video src={getProxiedUrl(mediaModal.url)} controls autoPlay className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+                      <video src={mediaModal.url} controls autoPlay className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
                     )}
                   </div>
                 )}
