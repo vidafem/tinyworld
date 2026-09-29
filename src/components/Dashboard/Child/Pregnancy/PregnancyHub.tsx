@@ -151,6 +151,10 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
       if (params.get("openVisualizer") === "true") {
         setShouldOpenVisualizer(true);
       }
+      if (params.get("action") === "new-memory" || params.get("openMemory") === "true") {
+        setSelectedMemory(null);
+        setCurrentView('memory-form');
+      }
     }
   }, []);
 

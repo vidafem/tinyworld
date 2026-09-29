@@ -29,6 +29,26 @@ export default function MemoryForm({ childId, sectionId = null, memory, theme, i
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!memory && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlTitle = params.get("title");
+      const urlWeek = params.get("week");
+      const urlMonth = params.get("month");
+      if (urlTitle) {
+        setTitle(decodeURIComponent(urlTitle));
+      } else if (urlWeek) {
+        setTitle(`Semana ${urlWeek} de gestación`);
+      }
+      if (urlMonth && !isNaN(parseInt(urlMonth))) {
+        setMonthNumber(Math.min(12, Math.max(1, parseInt(urlMonth))));
+      } else if (urlWeek && !isNaN(parseInt(urlWeek))) {
+        const m = Math.min(9, Math.max(1, Math.ceil(parseInt(urlWeek) / 4.3)));
+        setMonthNumber(m);
+      }
+    }
+  }, [memory]);
   
   // Medios
   const [photos, setPhotos] = useState<string[]>(() => {

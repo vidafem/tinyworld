@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { themePalettes } from "@/lib/themes";
 import TinyAIAssistantModal from "@/components/Common/TinyAIAssistantModal";
+import MilestoneCelebrationModal from "@/components/Common/MilestoneCelebrationModal";
 import { playSoftPop, playActionSnap } from "@/lib/pageSound";
 import AppButton from "@/components/Common/AppButton";
 import { CardStyle, renderCardIcon, sanitizeHexColor } from "@/lib/cardStyles";
@@ -42,6 +43,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
   const router = useRouter();
   const childCtx = useChild();
   const [child, setChild] = useState<any>(childCtx?.child || null);
+  const [allStages, setAllStages] = useState<any[]>([]);
   const [favoriteStages, setFavoriteStages] = useState<FavoriteLifeSection[]>([]);
   const [loading, setLoading] = useState(!childCtx?.child);
   const [expandingCard, setExpandingCard] = useState<string | null>(null);
@@ -82,6 +84,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
         childCtx?.updateChildLocally(childRes.data);
       }
       if (stagesRes.data) {
+        setAllStages(stagesRes.data);
         setFavoriteStages((stagesRes.data as FavoriteLifeSection[]).filter((stage) => Boolean(stage.is_favorite)));
       }
       setLoading(false);
@@ -109,6 +112,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
           .order("created_at", { ascending: true })
           .then(({ data }) => {
             if (data) {
+              setAllStages(data);
               setFavoriteStages((data as FavoriteLifeSection[]).filter((stage) => Boolean(stage.is_favorite)));
             }
           });
@@ -493,6 +497,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
       </footer>
 
       <TinyAIAssistantModal theme={theme} childName={child?.name || "el Bebé"} child={child} />
+      <MilestoneCelebrationModal child={child} theme={theme} lifeSections={allStages} />
     </div>
   );
 }

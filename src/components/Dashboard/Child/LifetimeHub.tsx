@@ -50,13 +50,26 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
       if (childRes.data) setChild(childRes.data);
       if (stagesRes.data) {
         setStages(stagesRes.data);
-        const sectionParam = typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("section")
+        const searchParams = typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search)
           : null;
+        const sectionParam = searchParams?.get("section");
+        const actionParam = searchParams?.get("action");
+        const titleParam = searchParams?.get("title");
+
         const requestedStage = sectionParam
           ? (stagesRes.data as LifeSection[]).find((stage) => stage.id === sectionParam)
           : null;
-        if (requestedStage) setSelectedStage(requestedStage);
+
+        if (requestedStage) {
+          setSelectedStage(requestedStage);
+        } else if (actionParam === "new-memory" && stagesRes.data && stagesRes.data.length > 0) {
+          setSelectedStage(stagesRes.data[0]);
+        } else if (actionParam === "new-memory" && (!stagesRes.data || stagesRes.data.length === 0)) {
+          if (titleParam) setNewStageTitle(decodeURIComponent(titleParam));
+          else setNewStageTitle("Primer Año");
+          setShowAddModal(true);
+        }
       }
       setLoading(false);
     }

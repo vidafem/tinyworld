@@ -59,6 +59,24 @@ export default function MemoryHub({ childId }: { childId: string }) {
     loadData();
   }, [childId]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("action") === "new-memory") {
+        const urlTitle = params.get("title");
+        const urlCategory = params.get("category");
+        if (urlTitle || urlCategory) {
+          setNewMemory(prev => ({
+            ...prev,
+            title: urlTitle ? decodeURIComponent(urlTitle) : prev.title,
+            category: urlCategory ? decodeURIComponent(urlCategory) : prev.category
+          }));
+        }
+        setShowAddModal(true);
+      }
+    }
+  }, []);
+
   async function loadData() {
     setLoading(true);
     try {
