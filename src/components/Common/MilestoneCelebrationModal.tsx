@@ -86,10 +86,10 @@ export default function MilestoneCelebrationModal({
     const alreadyDismissedInSession = sessionStorage.getItem(sessionKey) === "dismissed";
 
     // Cargar o solicitar la celebración
-    async function initCelebration() {
+    async function initCelebration(activeMilestone: MilestoneInfo) {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const celeb = await fetchOrGenerateCelebration(child, todayMilestone, session?.access_token);
+      const celeb = await fetchOrGenerateCelebration(child, activeMilestone, session?.access_token);
       setCelebration(celeb);
       setLoading(false);
 
@@ -107,7 +107,7 @@ export default function MilestoneCelebrationModal({
       triggerSilentUpcomingGeneration(child, lifeSections, session?.access_token);
     }
 
-    initCelebration();
+    initCelebration(todayMilestone);
   }, [child, lifeSections, launchFestiveConfetti]);
 
   const handleDismiss = () => {
