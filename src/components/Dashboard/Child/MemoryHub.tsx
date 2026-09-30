@@ -14,6 +14,14 @@ import { themePalettes } from "@/lib/themes";
 import { useChild } from "@/context/ChildContext";
 import { useRouter } from "next/navigation";
 import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
+import {
+  getMemoryAuthor,
+  cleanMemoryText,
+  formatMemoryTextWithAuthor,
+  MemoryAuthorBadge,
+  MemoryAuthorSelector,
+  MemoryAuthor
+} from "@/lib/memoryAuthor";
 
 interface Memory {
   id: string;
@@ -24,6 +32,7 @@ interface Memory {
   media_urls?: string[];
   category?: string;
   section_id?: string | null;
+  author?: string | null;
 }
 
 export default function MemoryHub({ childId }: { childId: string }) {
@@ -34,7 +43,19 @@ export default function MemoryHub({ childId }: { childId: string }) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [stages, setStages] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newMemory, setNewMemory] = useState({ title: "", content: "", date: new Date().toISOString().split('T')[0], category: "General" });
+  const [newMemory, setNewMemory] = useState<{
+    title: string;
+    content: string;
+    date: string;
+    category: string;
+    author: MemoryAuthor;
+  }>({
+    title: "",
+    content: "",
+    date: new Date().toISOString().split('T')[0],
+    category: "General",
+    author: 'mom'
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -102,7 +123,8 @@ export default function MemoryHub({ childId }: { childId: string }) {
             date: m.memory_date,
             type: 'pregnancy',
             media_urls: m.media_urls,
-            section_id: m.section_id
+            section_id: m.section_id,
+            author: m.author
           });
         }
       });
@@ -117,7 +139,8 @@ export default function MemoryHub({ childId }: { childId: string }) {
             date: m.memory_date,
             type: 'general',
             media_urls: m.media_urls,
-            category: m.category
+            category: m.category,
+            author: m.author
           });
         });
       }
@@ -191,25 +214,31 @@ export default function MemoryHub({ childId }: { childId: string }) {
     if (!newMemory.title) return;
     setIsSaving(true);
     try {
-      const memoryData = {
+      const finalContent = formatMemoryTextWithAuthor(newMemory.content, newMemory.author);
+      const memoryData: any = {
         child_id: childId,
         title: newMemory.title,
-        content: newMemory.content,
+        content: finalContent,
         memory_date: newMemory.date,
         category: newMemory.category,
         media_urls: video ? [video] : audio ? [audio] : photos,
-        media_type: video ? 'video' : audio ? 'audio' : 'image'
+        media_type: video ? 'video' : audio ? 'audio' : 'image',
+        author: newMemory.author || 'mom'
       };
 
-      const { error } = await supabase.from("general_memories").insert(memoryData);
+      let result = await supabase.from("general_memories").insert(memoryData);
+      if (result.error && (result.error.message?.includes('author') || result.error.code === 'PGRST204')) {
+        delete memoryData.author;
+        result = await supabase.from("general_memories").insert(memoryData);
+      }
 
-      if (error) throw error;
+      if (result.error) throw result.error;
       setShowAddModal(false);
-      setNewMemory({ title: "", content: "", date: new Date().toISOString().split('T')[0], category: "General" });
+      setNewMemory({ title: "", content: "", date: new Date().toISOString().split('T')[0], category: "General", author: 'mom' });
       setPhotos([]); setVideo(null); setAudio(null);
       await loadData();
-    } catch (err) {
-      alert("Error al guardar. Verifica la conexión.");
+    } catch (err: any) {
+      alert("Error al guardar: " + (err.message || "Verifica la conexión."));
     } finally {
       setIsSaving(false);
     }
@@ -324,13 +353,16 @@ export default function MemoryHub({ childId }: { childId: string }) {
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${theme.text} opacity-40`}>
-                          {mem.type === 'pregnancy'
-                            ? (mem.section_id
-                                ? (stages.find(s => s.id === mem.section_id)?.title || 'Etapa')
-                                : 'Embarazo')
-                            : 'Hito Libre'}
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${theme.text} opacity-40`}>
+                            {mem.type === 'pregnancy'
+                              ? (mem.section_id
+                                  ? (stages.find(s => s.id === mem.section_id)?.title || 'Etapa')
+                                  : 'Embarazo')
+                              : 'Hito Libre'}
+                          </span>
+                          <MemoryAuthorBadge author={getMemoryAuthor(mem)} size="xs" />
+                        </div>
                         <span className={`text-[8px] font-bold ${theme.text} opacity-30 uppercase tracking-widest`}>
                           {new Date(mem.date).toLocaleDateString('es-ES', { day: 'numeric' })}
                         </span>
@@ -340,7 +372,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
                       </h3>
                       {!isMobile && (
                         <p className={`text-[10px] ${theme.text} opacity-50 font-medium line-clamp-2 mt-2 leading-relaxed italic`}>
-                          {mem.content || "Sin descripción..."}
+                          {cleanMemoryText(mem.content) || "Sin descripción..."}
                         </p>
                       )}
                     </div>
@@ -380,9 +412,12 @@ export default function MemoryHub({ childId }: { childId: string }) {
               {/* Header Modal */}
               <div className="px-8 pt-10 pb-4 flex items-center justify-between sticky top-0 bg-white z-10">
                 <div>
-                  <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${theme.text} opacity-30`}>
-                    {new Date(selectedMemory.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </span>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${theme.text} opacity-30`}>
+                      {new Date(selectedMemory.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                    <MemoryAuthorBadge author={getMemoryAuthor(selectedMemory)} size="sm" />
+                  </div>
                   <h2 className={`text-2xl md:text-3xl font-black ${theme.text} italic tracking-tighter leading-tight mt-1 pr-10`}>{selectedMemory.title}</h2>
                 </div>
               </div>
@@ -391,7 +426,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
               <div className="px-8 pb-12 overflow-y-auto custom-scrollbar flex-1">
                 <div className="h-px w-12 bg-current opacity-20 mb-6" style={{ color: theme.hex }} />
                 <p className={`font-medium leading-relaxed text-base md:text-lg whitespace-pre-wrap italic ${theme.text} opacity-70`}>
-                  {selectedMemory.content || "Sin descripción disponible."}
+                  {cleanMemoryText(selectedMemory.content) || "Sin descripción disponible."}
                 </p>
 
                 {selectedMemory.media_urls && selectedMemory.media_urls.length > 0 && (
@@ -476,6 +511,13 @@ export default function MemoryHub({ childId }: { childId: string }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Lado Izquierdo: Textos */}
                   <div className="space-y-6">
+                    <div>
+                      <MemoryAuthorSelector
+                        value={newMemory.author}
+                        onChange={a => setNewMemory({...newMemory, author: a})}
+                        theme={theme}
+                      />
+                    </div>
                     <div>
                       <label className={`text-[10px] font-black ${theme.text} opacity-40 uppercase tracking-[0.2em] mb-2 block ml-1`}>Título del momento</label>
                       <input value={newMemory.title} onChange={e => setNewMemory({...newMemory, title: e.target.value})} placeholder="Ej: Su primera sonrisa" className={`w-full p-4 ${theme.bgLight} rounded-2xl font-black ${theme.text} outline-none border-2 border-transparent focus:border-current transition-all shadow-inner`} />

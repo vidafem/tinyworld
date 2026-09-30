@@ -18,6 +18,7 @@ import { getThumbnailUrl, handleImageFallback } from "@/lib/optimizedImage";
 import { notifyChildUpdated } from "@/context/ChildContext";
 import MemoryForm from "./MemoryForm";
 import PregnancyGallery from "./PregnancyGallery";
+import { getMemoryAuthor, cleanMemoryText, MemoryAuthorBadge } from "@/lib/memoryAuthor";
 import FutureNames from "./FutureNames";
 import HowIsBabyCard from "../../../Preview/HowIsBabyCard";
 import PregnancyEvents from "./PregnancyEvents";
@@ -83,6 +84,7 @@ interface PregnancyMemory {
   month_number?: number | null;
   media_urls?: string[] | null;
   media_type?: string | null;
+  author?: string | null;
 }
 
 interface SectionCardStyle {
@@ -717,13 +719,14 @@ export default function PregnancyHub({ childId, sectionId = null, sectionTitle, 
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ backgroundColor: `${theme.hex}1a`, color: theme.hex }}>
                         Mes {mem.month_number || '?'}
                       </span>
+                      <MemoryAuthorBadge author={getMemoryAuthor(mem)} size="xs" />
                     </div>
                     <h3 className={`text-sm md:text-base font-black ${theme.text} truncate tracking-tighter`}>{mem.title}</h3>
-                    <p className={`text-[10px] ${theme.text} opacity-40 font-bold uppercase tracking-widest truncate`}>{mem.description || 'Sin descripción'}</p>
+                    <p className={`text-[10px] ${theme.text} opacity-40 font-bold uppercase tracking-widest truncate`}>{cleanMemoryText(mem.description) || 'Sin descripción'}</p>
                   </div>
                   <div className="flex gap-1 pr-2">
                     <button 

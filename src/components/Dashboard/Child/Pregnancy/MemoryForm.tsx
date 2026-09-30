@@ -11,6 +11,13 @@ import {
 import { supabase } from "@/lib/supabase";
 import MediaEditor from "@/components/Common/MediaEditor";
 import { useChild } from "@/context/ChildContext";
+import {
+  getMemoryAuthor,
+  cleanMemoryText,
+  formatMemoryTextWithAuthor,
+  MemoryAuthorSelector,
+  MemoryAuthor
+} from "@/lib/memoryAuthor";
 
 interface MemoryFormProps {
   childId: string;
@@ -188,8 +195,11 @@ export default function MemoryForm({
   });
 
   const [showCalendar, setShowCalendar] = useState(false);
+  const [author, setAuthor] = useState<MemoryAuthor>(() => {
+    return getMemoryAuthor(memory) || 'mom';
+  });
   const [title, setTitle] = useState(memory ? memory.title : "");
-  const [description, setDescription] = useState(memory ? memory.description : "");
+  const [description, setDescription] = useState(memory ? cleanMemoryText(memory.description) : "");
   const [monthNumber, setMonthNumber] = useState<number>(memory ? (memory.month_number || 1) : 1);
   const [gestationWeek, setGestationWeek] = useState<number>(1);
   const [isGestationMode, setIsGestationMode] = useState<boolean>(true);
@@ -420,14 +430,17 @@ export default function MemoryForm({
     // Formatear fecha local YYYY-MM-DD para evitar desfase de huso horario
     const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
+    const finalDescription = formatMemoryTextWithAuthor(description, author);
+
     const memoryData: any = {
       child_id: childId,
       title,
-      description,
+      description: finalDescription,
       month_number: monthNumber,
       memory_date: localDateStr,
       media_urls: allUrls,
-      media_type: finalType
+      media_type: finalType,
+      author: author || 'mom'
     };
     if (sectionId) {
       memoryData.section_id = sectionId;
@@ -436,8 +449,16 @@ export default function MemoryForm({
     let result;
     if (memory) {
       result = await supabase.from("pregnancy_memories").update(memoryData).eq("id", memory.id);
+      if (result.error && (result.error.message?.includes('author') || result.error.code === 'PGRST204')) {
+        delete memoryData.author;
+        result = await supabase.from("pregnancy_memories").update(memoryData).eq("id", memory.id);
+      }
     } else {
       result = await supabase.from("pregnancy_memories").insert(memoryData);
+      if (result.error && (result.error.message?.includes('author') || result.error.code === 'PGRST204')) {
+        delete memoryData.author;
+        result = await supabase.from("pregnancy_memories").insert(memoryData);
+      }
     }
 
     setLoading(false);
@@ -624,6 +645,15 @@ export default function MemoryForm({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
+          {/* Selector de Autor: Papá o Mamá */}
+          <div className={`bg-white p-4 md:p-5 rounded-[2rem] border ${theme.borderAccent} shadow-sm`}>
+            <MemoryAuthorSelector
+              value={author}
+              onChange={(newAuthor) => setAuthor(newAuthor)}
+              theme={theme}
+            />
+          </div>
+
           <div className={`bg-white p-5 md:p-6 rounded-[2rem] border ${theme.borderAccent} shadow-sm`}>
             <label className={`block text-[10px] font-black ${theme.text} opacity-40 uppercase mb-2`}>Título</label>
             <input
