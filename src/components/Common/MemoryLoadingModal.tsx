@@ -15,7 +15,8 @@ export default function MemoryLoadingModal({
   subtitle = "optimizando y preparando las imágenes...",
   theme,
 }: MemoryLoadingModalProps) {
-  const accentColor = theme?.hex || "#ec4899";
+  // Color del sistema según el tema activo del niño
+  const systemColor = theme?.hex || "#ec4899";
 
   return (
     <AnimatePresence>
@@ -27,57 +28,58 @@ export default function MemoryLoadingModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="absolute inset-0 bg-stone-950/65 backdrop-blur-md"
+            className="absolute inset-0 bg-stone-950/70 backdrop-blur-md"
           />
 
           {/* Contenido flotante completamente libre (sin tarjeta ni cuadro cerrado) */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            initial={{ opacity: 0, scale: 0.9, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            exit={{ opacity: 0, scale: 0.9, y: 12 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative z-10 flex flex-col items-center text-center max-w-xs w-full"
+            className="relative z-10 flex flex-col items-center text-center max-w-sm w-full"
           >
-            {/* 1. GIF Suelto (sin círculo, sin bordes, flotando libremente) */}
+            {/* 1. GIF Suelto y Grande (sin círculos ni bordes, recortado para destacar la ilustración) */}
             <motion.div
               animate={{
-                y: [0, -8, 0],
+                y: [0, -10, 0],
               }}
               transition={{
                 repeat: Infinity,
                 duration: 2.2,
                 ease: "easeInOut",
               }}
-              className="relative w-44 h-44 md:w-52 md:h-52 flex items-center justify-center mb-5"
+              className="relative w-56 h-56 md:w-72 md:h-72 flex items-center justify-center mb-4"
             >
               <img
                 src="/images/preggers/Vg1.gif"
                 alt="Cargando..."
-                className="w-full h-full object-contain filter drop-shadow-2xl pointer-events-none"
+                className="w-full h-full object-contain filter drop-shadow-2xl pointer-events-none select-none"
               />
             </motion.div>
 
-            {/* 2. Barra de Carga */}
-            <div className="w-52 md:w-60 h-2 bg-white/20 backdrop-blur-md rounded-full overflow-hidden relative shadow-inner mb-3">
+            {/* 2. Barra de Carga del Color del Sistema */}
+            <div className="w-56 md:w-64 h-2.5 bg-white/20 backdrop-blur-md rounded-full overflow-hidden relative shadow-inner mb-3">
               <motion.div
                 className="absolute top-0 bottom-0 rounded-full"
                 style={{
-                  background: `linear-gradient(90deg, #38bdf8, ${accentColor}, #f472b6)`,
+                  backgroundColor: systemColor,
+                  boxShadow: `0 0 14px ${systemColor}`,
                 }}
                 animate={{
                   left: ["-100%", "100%"],
-                  width: ["50%", "70%"],
+                  width: ["45%", "65%"],
                 }}
                 transition={{
                   repeat: Infinity,
-                  duration: 1.5,
+                  duration: 1.4,
                   ease: "easeInOut",
                 }}
               />
             </div>
 
-            {/* 3. Frase abajo de la barra de carga */}
-            <p className="text-white text-xs md:text-sm font-bold tracking-wide drop-shadow-md">
+            {/* 3. Frase abajo de la barra */}
+            <p className="text-white/95 text-xs md:text-sm font-extrabold tracking-wide drop-shadow-md">
               {subtitle || "optimizando y preparando las imágenes..."}
             </p>
           </motion.div>
