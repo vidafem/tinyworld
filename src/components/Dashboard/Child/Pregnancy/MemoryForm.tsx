@@ -18,6 +18,8 @@ import {
   MemoryAuthorSelector,
   MemoryAuthor
 } from "@/lib/memoryAuthor";
+import MemoryLoadingModal from "@/components/Common/MemoryLoadingModal";
+import { optimizeImagesBatch } from "@/lib/imageCompression";
 
 interface MemoryFormProps {
   childId: string;
@@ -206,6 +208,7 @@ export default function MemoryForm({
   const [stageBadge, setStageBadge] = useState<string>("");
   const [userEditedTitle, setUserEditedTitle] = useState<boolean>(!!memory?.title);
   const [loading, setLoading] = useState(false);
+  const [loadingModal, setLoadingModal] = useState<{ isOpen: boolean; title?: string; subtitle?: string }>({ isOpen: false });
   const [error, setError] = useState("");
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
 
@@ -334,27 +337,38 @@ export default function MemoryForm({
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+    if (e.target.files && e.target.files.length > 0) {
       const selected = Array.from(e.target.files);
+      // Resetear el input para permitir volver a elegir la misma foto si se desea
+      e.target.value = "";
+
       if (photos.length + selected.length > 3) {
         setError("Máximo 3 fotos.");
         return;
       }
       setLoading(true);
+      setLoadingModal({
+        isOpen: true,
+        title: "Subiendo tus fotitos mágicas... ✨",
+        subtitle: "Optimizando y preparando las imágenes con amor...",
+      });
       try {
-        const urls = await uploadFiles(selected, 'image');
+        const optimizedFiles = await optimizeImagesBatch(selected);
+        const urls = await uploadFiles(optimizedFiles, 'image');
         setPhotos(prev => [...prev, ...urls].slice(0, 3));
         setError("");
       } catch (err: any) {
         setError("Error al subir fotos: " + err.message);
       } finally {
         setLoading(false);
+        setLoadingModal({ isOpen: false });
       }
     }
   };
 
   const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (file) {
       setFileToEdit(file);
     }
@@ -363,6 +377,11 @@ export default function MemoryForm({
   const onEditComplete = async (processedFile: File, type: 'video' | 'audio') => {
     setLoading(true);
     setFileToEdit(null);
+    setLoadingModal({
+      isOpen: true,
+      title: type === 'video' ? "Subiendo tu video... 🎬" : "Subiendo tu audio... 🎵",
+      subtitle: "Guardando archivo multimedia en la nube...",
+    });
     try {
       const [url] = await uploadFiles([processedFile], type);
       if (type === 'video') {
@@ -375,11 +394,13 @@ export default function MemoryForm({
       setError("Error al procesar archivo: " + err.message);
     } finally {
       setLoading(false);
+      setLoadingModal({ isOpen: false });
     }
   };
 
   const handleAudioChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (file) {
       const audioEl = new Audio();
       audioEl.preload = 'metadata';
@@ -388,6 +409,11 @@ export default function MemoryForm({
           setError("El audio no puede durar más de 30 segundos.");
         } else {
           setLoading(true);
+          setLoadingModal({
+            isOpen: true,
+            title: "Subiendo nota de voz... 🎵",
+            subtitle: "Guardando audio en la nube...",
+          });
           try {
             const [url] = await uploadFiles([file], 'audio');
             setAudio(url);
@@ -396,6 +422,7 @@ export default function MemoryForm({
             setError("Error al subir audio: " + err.message);
           } finally {
             setLoading(false);
+            setLoadingModal({ isOpen: false });
           }
         }
       };
@@ -409,6 +436,11 @@ export default function MemoryForm({
       return;
     }
     setLoading(true);
+    setLoadingModal({
+      isOpen: true,
+      title: memory ? "Actualizando recuerdo... ✨" : "Sellando tu recuerdo... 🍼",
+      subtitle: "Guardando este momento especial en la cápsula del tiempo...",
+    });
 
     const allUrls = [...photos];
     if (video) allUrls.push(video);
@@ -447,21 +479,24 @@ export default function MemoryForm({
     }
 
     let result;
-    if (memory) {
-      result = await supabase.from("pregnancy_memories").update(memoryData).eq("id", memory.id);
-      if (result.error && (result.error.message?.includes('author') || result.error.code === 'PGRST204')) {
-        delete memoryData.author;
+    try {
+      if (memory) {
         result = await supabase.from("pregnancy_memories").update(memoryData).eq("id", memory.id);
-      }
-    } else {
-      result = await supabase.from("pregnancy_memories").insert(memoryData);
-      if (result.error && (result.error.message?.includes('author') || result.error.code === 'PGRST204')) {
-        delete memoryData.author;
+        if (result.error && (result.error.message?.includes('author') || result.error.code === 'PGRST204')) {
+          delete memoryData.author;
+          result = await supabase.from("pregnancy_memories").update(memoryData).eq("id", memory.id);
+        }
+      } else {
         result = await supabase.from("pregnancy_memories").insert(memoryData);
+        if (result.error && (result.error.message?.includes('author') || result.error.code === 'PGRST204')) {
+          delete memoryData.author;
+          result = await supabase.from("pregnancy_memories").insert(memoryData);
+        }
       }
+    } finally {
+      setLoading(false);
+      setLoadingModal({ isOpen: false });
     }
-
-    setLoading(false);
     if (!result.error) {
       onComplete(memory ? "¡Recuerdo actualizado con éxito!" : "¡Recuerdo creado con éxito!");
     } else {
@@ -766,6 +801,14 @@ export default function MemoryForm({
           />
         )}
       </AnimatePresence>
+
+      {/* Modal de animación con Vg1.gif */}
+      <MemoryLoadingModal
+        isOpen={loadingModal.isOpen}
+        title={loadingModal.title}
+        subtitle={loadingModal.subtitle}
+        theme={theme}
+      />
     </div>
   );
 }

@@ -15,6 +15,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import MediaEditor from "@/components/Common/MediaEditor";
 import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
+import MemoryLoadingModal from "@/components/Common/MemoryLoadingModal";
+import { optimizeImageForUpload } from "@/lib/imageCompression";
 
 interface GalleryItem {
   id: string; // memoryId-url
@@ -529,6 +531,7 @@ export default function PregnancyGallery({
 
   async function handleFileUpload(e: any) {
     const files = Array.from(e.target.files || []) as File[]; 
+    if (e.target) e.target.value = '';
     if (files.length === 0) return;
     
     // Si hay un video, abrimos el editor primero (tomamos el primero si hay varios)
@@ -548,7 +551,8 @@ export default function PregnancyGallery({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No hay sesión activa");
 
-      for (const file of files) {
+      for (const rawFile of files) {
+        const file = await optimizeImageForUpload(rawFile);
         const formData = new FormData();
         const detectedType = file.type.startsWith('video') ? 'video' : file.type.startsWith('audio') ? 'audio' : 'image';
         const mediaType = forcedType || detectedType;
@@ -1204,6 +1208,14 @@ export default function PregnancyGallery({
           />
         )}
       </AnimatePresence>
+
+      {/* Modal de animación con Vg1.gif */}
+      <MemoryLoadingModal
+        isOpen={isUploading}
+        title="Subiendo a tu galería mágica... ✨"
+        subtitle="Optimizando y guardando tus recuerdos con amor..."
+        theme={theme}
+      />
     </div>
   );
 }

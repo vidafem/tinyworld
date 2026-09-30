@@ -22,6 +22,8 @@ import {
   MemoryAuthorSelector,
   MemoryAuthor
 } from "@/lib/memoryAuthor";
+import MemoryLoadingModal from "@/components/Common/MemoryLoadingModal";
+import { optimizeImagesBatch } from "@/lib/imageCompression";
 
 interface Memory {
   id: string;
@@ -57,6 +59,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
     author: 'mom'
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [loadingModal, setLoadingModal] = useState<{ isOpen: boolean; title?: string; subtitle?: string }>({ isOpen: false });
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -176,43 +179,76 @@ export default function MemoryHub({ childId }: { childId: string }) {
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+    if (e.target.files && e.target.files.length > 0) {
       const selected = Array.from(e.target.files);
+      e.target.value = "";
       if (photos.length + selected.length > 3) { setError("Máximo 3 fotos."); return; }
       setLoading(true);
+      setLoadingModal({
+        isOpen: true,
+        title: "Subiendo tus fotitos mágicas... ✨",
+        subtitle: "Optimizando y guardando tus recuerdos con amor...",
+      });
       try {
-        const urls = await uploadFiles(selected, 'image');
+        const optimizedFiles = await optimizeImagesBatch(selected);
+        const urls = await uploadFiles(optimizedFiles, 'image');
         setPhotos(prev => [...prev, ...urls].slice(0, 3));
         setVideo(null); setAudio(null); setError("");
-      } catch (err: any) { setError("Error: " + err.message); } finally { setLoading(false); }
+      } catch (err: any) { setError("Error: " + err.message); } finally {
+        setLoading(false);
+        setLoadingModal({ isOpen: false });
+      }
     }
   };
 
   const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (file) {
       setLoading(true);
+      setLoadingModal({
+        isOpen: true,
+        title: "Subiendo video mágico... 🎬",
+        subtitle: "Guardando video en la nube...",
+      });
       try {
         const [url] = await uploadFiles([file], 'video');
         setVideo(url); setPhotos([]); setAudio(null); setError("");
-      } catch (err: any) { setError("Error video: " + err.message); } finally { setLoading(false); }
+      } catch (err: any) { setError("Error video: " + err.message); } finally {
+        setLoading(false);
+        setLoadingModal({ isOpen: false });
+      }
     }
   };
 
   const handleAudioChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (file) {
       setLoading(true);
+      setLoadingModal({
+        isOpen: true,
+        title: "Subiendo audio mágico... 🎵",
+        subtitle: "Guardando audio en la nube...",
+      });
       try {
         const [url] = await uploadFiles([file], 'audio');
         setAudio(url); setPhotos([]); setVideo(null); setError("");
-      } catch (err: any) { setError("Error audio: " + err.message); } finally { setLoading(false); }
+      } catch (err: any) { setError("Error audio: " + err.message); } finally {
+        setLoading(false);
+        setLoadingModal({ isOpen: false });
+      }
     }
   };
 
   async function handleSaveMemory() {
     if (!newMemory.title) return;
     setIsSaving(true);
+    setLoadingModal({
+      isOpen: true,
+      title: "Sellando recuerdo permanente... ✨",
+      subtitle: "Asegurando este momento especial en la cápsula del tiempo...",
+    });
     try {
       const finalContent = formatMemoryTextWithAuthor(newMemory.content, newMemory.author);
       const memoryData: any = {
@@ -241,6 +277,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
       alert("Error al guardar: " + (err.message || "Verifica la conexión."));
     } finally {
       setIsSaving(false);
+      setLoadingModal({ isOpen: false });
     }
   }
 
@@ -595,6 +632,14 @@ export default function MemoryHub({ childId }: { childId: string }) {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal de animación con Vg1.gif */}
+      <MemoryLoadingModal
+        isOpen={loadingModal.isOpen}
+        title={loadingModal.title}
+        subtitle={loadingModal.subtitle}
+        theme={theme}
+      />
     </div>
   );
 }
