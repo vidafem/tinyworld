@@ -206,6 +206,7 @@ export default function MemoryForm({
   const [gestationWeek, setGestationWeek] = useState<number>(1);
   const [isGestationMode, setIsGestationMode] = useState<boolean>(true);
   const [stageBadge, setStageBadge] = useState<string>("");
+  const userEditedTitleRef = useRef<boolean>(!!memory?.title);
   const [userEditedTitle, setUserEditedTitle] = useState<boolean>(!!memory?.title);
   const [loading, setLoading] = useState(false);
   const [loadingModal, setLoadingModal] = useState<{ isOpen: boolean; title?: string; subtitle?: string }>({ isOpen: false });
@@ -239,12 +240,12 @@ export default function MemoryForm({
     if (!memory || isUserDateChange) {
       setMonthNumber(stage.month);
 
-      // Sugerir título automático si el usuario no ha puesto uno personalizado
-      if ((!userEditedTitle || title === "" || title.startsWith("Semana ") || title.startsWith("Mes ")) && stage.suggestedTitle) {
+      // Sugerir título automático ÚNICAMENTE si el usuario NO ha editado el título y no es edición de recuerdo
+      if (!userEditedTitleRef.current && !memory && stage.suggestedTitle) {
         setTitle(stage.suggestedTitle);
       }
     }
-  }, [sectionId, sectionTitle, memory, userEditedTitle, title]);
+  }, [sectionId, sectionTitle, memory]);
 
   // Recalcular al cargar el perfil del niño
   useEffect(() => {
@@ -262,6 +263,7 @@ export default function MemoryForm({
       const urlMonth = params.get("month");
       if (urlTitle) {
         setTitle(decodeURIComponent(urlTitle));
+        userEditedTitleRef.current = true;
         setUserEditedTitle(true);
       } else if (urlWeek) {
         setTitle(`Semana ${urlWeek} de gestación`);
@@ -349,8 +351,7 @@ export default function MemoryForm({
       setLoading(true);
       setLoadingModal({
         isOpen: true,
-        title: "Subiendo tus fotitos mágicas... ✨",
-        subtitle: "Optimizando y preparando las imágenes con amor...",
+        subtitle: "optimizando y preparando las imágenes...",
       });
       try {
         const optimizedFiles = await optimizeImagesBatch(selected);
@@ -438,8 +439,7 @@ export default function MemoryForm({
     setLoading(true);
     setLoadingModal({
       isOpen: true,
-      title: memory ? "Actualizando recuerdo... ✨" : "Sellando tu recuerdo... 🍼",
-      subtitle: "Guardando este momento especial en la cápsula del tiempo...",
+      subtitle: memory ? "guardando cambios..." : "guardando tu recuerdo...",
     });
 
     const allUrls = [...photos];
@@ -633,7 +633,7 @@ export default function MemoryForm({
                 else if (w <= 35) m = 8;
                 else m = 9;
                 setMonthNumber(m);
-                if (!userEditedTitle && !memory) {
+                if (!userEditedTitleRef.current && !memory) {
                   setTitle(`Semana ${w} de gestación`);
                 }
               }}
@@ -695,6 +695,7 @@ export default function MemoryForm({
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
+                userEditedTitleRef.current = true;
                 setUserEditedTitle(true);
               }}
               placeholder={isGestationMode ? `Ej. Semana ${gestationWeek} de gestación...` : "Ej. Su primer diente, primera sonrisa..."}

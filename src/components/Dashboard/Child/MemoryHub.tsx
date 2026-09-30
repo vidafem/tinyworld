@@ -186,8 +186,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
       setLoading(true);
       setLoadingModal({
         isOpen: true,
-        title: "Subiendo tus fotitos mágicas... ✨",
-        subtitle: "Optimizando y guardando tus recuerdos con amor...",
+        subtitle: "optimizando y preparando las imágenes...",
       });
       try {
         const optimizedFiles = await optimizeImagesBatch(selected);
@@ -208,8 +207,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
       setLoading(true);
       setLoadingModal({
         isOpen: true,
-        title: "Subiendo video mágico... 🎬",
-        subtitle: "Guardando video en la nube...",
+        subtitle: "guardando video en la nube...",
       });
       try {
         const [url] = await uploadFiles([file], 'video');
@@ -228,8 +226,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
       setLoading(true);
       setLoadingModal({
         isOpen: true,
-        title: "Subiendo audio mágico... 🎵",
-        subtitle: "Guardando audio en la nube...",
+        subtitle: "guardando audio en la nube...",
       });
       try {
         const [url] = await uploadFiles([file], 'audio');
@@ -246,8 +243,7 @@ export default function MemoryHub({ childId }: { childId: string }) {
     setIsSaving(true);
     setLoadingModal({
       isOpen: true,
-      title: "Sellando recuerdo permanente... ✨",
-      subtitle: "Asegurando este momento especial en la cápsula del tiempo...",
+      subtitle: "guardando recuerdo permanente...",
     });
     try {
       const finalContent = formatMemoryTextWithAuthor(newMemory.content, newMemory.author);
