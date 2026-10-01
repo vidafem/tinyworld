@@ -299,12 +299,6 @@ export default function MemoryHub({ childId }: { childId: string }) {
             <h1 className={`text-lg md:text-2xl font-black ${theme.text} tracking-tighter italic`}>Baúl de Recuerdos</h1>
           </div>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className={`w-9 h-9 ${theme.primaryBg} ${theme.textActive} hover:${theme.hoverBg} rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all flex items-center justify-center`}
-        >
-          <Plus size={18} />
-        </button>
       </header>
 
       <main className="max-w-6xl mx-auto w-full px-4 py-8">

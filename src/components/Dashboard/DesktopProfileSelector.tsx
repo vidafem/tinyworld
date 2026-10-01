@@ -10,6 +10,7 @@ import BabyAvatar from "./Child/BabyAvatar";
 import AppButton from "@/components/Common/AppButton";
 import ModernModal from "@/components/Common/ModernModal";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import CreateChildWizardModal from "./CreateChildWizardModal";
 
 interface DesktopProfileSelectorProps {
   onOpenProfile: () => void;
@@ -22,11 +23,7 @@ export default function DesktopProfileSelector({ onOpenProfile }: DesktopProfile
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState<ToastData | null>(null);
 
-  // Formulario para nuevo bebé
-  const [newName, setNewName] = useState("");
-  const [newBirthDate, setNewBirthDate] = useState("");
-  const [newTheme, setNewTheme] = useState("neutral");
-  const [creating, setCreating] = useState(false);
+
 
   useEffect(() => {
     fetchChildren();
@@ -58,40 +55,11 @@ export default function DesktopProfileSelector({ onOpenProfile }: DesktopProfile
     router.push("/login");
   };
 
-  const handleCreateChild = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
-    setCreating(true);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    const { error } = await supabase.from("children").insert([{
-      parent_id: session.user.id,
-      name: newName.trim(),
-      birth_date: newBirthDate || null,
-      theme_color: newTheme
-    }]);
-
-    setCreating(false);
-    if (!error) {
-      setShowModal(false);
-      setNewName("");
-      setNewBirthDate("");
-      setNewTheme("neutral");
-      setToast({ type: "success", message: `¡Perfil de ${newName} creado con éxito!` });
-      fetchChildren();
-    } else {
-      setToast({ type: "error", message: "Error al crear el perfil" });
-      console.error(error);
-    }
-  };
-
   const handleSelect = (id: string) => {
     router.push(`/dashboard/child/${id}`);
   };
 
-  const selectedThemeObj = themePalettes[newTheme] || themePalettes.neutral;
+  const selectedThemeObj = themePalettes.neutral;
 
   if (loading) {
     return (
@@ -237,86 +205,17 @@ export default function DesktopProfileSelector({ onOpenProfile }: DesktopProfile
         TinyWorld™ Creative Studio
       </p>
 
-      {/* Modal Crear Perfil con ModernModal */}
-      <ModernModal
+      <CreateChildWizardModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Nuevo Perfil de Bebé"
-        subtitle="Crea un espacio mágico y privado para sus recuerdos."
-        icon={<Baby size={22} className={selectedThemeObj.text} />}
-        theme={selectedThemeObj}
-        maxWidth="md"
-      >
-        <form onSubmit={handleCreateChild} className="space-y-5">
-          <div>
-            <label className="block text-[11px] font-bold text-taupe/70 uppercase tracking-wider mb-1.5">
-              Nombre o Apodo
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="Ej. Mateo, Sofía, Mi Bebé..."
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full p-3.5 bg-stone-50 dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700/60 rounded-2xl outline-none focus:ring-2 focus:ring-gold/40 text-stone-800 dark:text-stone-100 font-outfit text-base transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-taupe/70 uppercase tracking-wider mb-1.5">
-              Fecha de Nacimiento (o Fecha Prevista)
-            </label>
-            <input
-              type="date"
-              value={newBirthDate}
-              onChange={(e) => setNewBirthDate(e.target.value)}
-              className="w-full p-3.5 bg-stone-50 dark:bg-stone-800/60 border border-stone-200/70 dark:border-stone-700/60 rounded-2xl outline-none focus:ring-2 focus:ring-gold/40 text-stone-800 dark:text-stone-100 font-outfit text-sm transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-taupe/70 uppercase tracking-wider mb-2.5">
-              Paleta de Color Personalizada
-            </label>
-            <div className="grid grid-cols-4 gap-2.5">
-              {Object.entries(themePalettes)
-                .filter(([key]) => !key.startsWith('c'))
-                .map(([key, theme]: [string, any]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setNewTheme(key)}
-                    className={`p-3 rounded-2xl ${theme.bg} border-2 transition-all flex items-center justify-center gap-2 ${
-                      newTheme === key
-                        ? "border-stone-800 dark:border-white scale-105 shadow-md ring-2 ring-gold/20"
-                        : "border-transparent hover:scale-102 opacity-80 hover:opacity-100"
-                    }`}
-                  >
-                    <Baby size={18} className={theme.text} />
-                    <span className={`text-[10px] font-bold capitalize ${theme.text}`}>
-                      {key}
-                    </span>
-                  </button>
-                ))}
-            </div>
-          </div>
-
-          <div className="pt-3">
-            <AppButton
-              type="submit"
-              variant="primary"
-              size="lg"
-              theme={selectedThemeObj}
-              loading={creating}
-              glare
-              className="w-full py-4 text-xs tracking-widest uppercase"
-              icon={<Plus size={18} />}
-            >
-              Crear Espacio Mágico
-            </AppButton>
-          </div>
-        </form>
-      </ModernModal>
+        onSuccess={(newId) => {
+          fetchChildren();
+          setToast({ type: "success", message: "¡Perfil de bebé creado con éxito!" });
+          if (newId) {
+            router.push(`/dashboard/child/${newId}`);
+          }
+        }}
+      />
     </div>
   );
 }

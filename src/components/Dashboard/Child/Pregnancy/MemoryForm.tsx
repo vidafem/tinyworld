@@ -20,6 +20,7 @@ import {
 } from "@/lib/memoryAuthor";
 import MemoryLoadingModal from "@/components/Common/MemoryLoadingModal";
 import { optimizeImagesBatch } from "@/lib/imageCompression";
+import { playSoftPop } from "@/lib/pageSound";
 
 interface MemoryFormProps {
   childId: string;
@@ -212,6 +213,7 @@ export default function MemoryForm({
   const [loadingModal, setLoadingModal] = useState<{ isOpen: boolean; title?: string; subtitle?: string }>({ isOpen: false });
   const [error, setError] = useState("");
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
+  const [isMilestone, setIsMilestone] = useState(false);
 
   // Cargar datos del niño si no vienen por props ni en contexto inicial
   useEffect(() => {
@@ -498,6 +500,40 @@ export default function MemoryForm({
       setLoadingModal({ isOpen: false });
     }
     if (!result.error) {
+      if (isMilestone) {
+        try {
+          const currentChild = childData || child || childCtx?.child;
+          const currentConfig = currentChild?.preview_config || {};
+          const existingMilestones: any[] = currentConfig.custom_milestones || [];
+          const existingProgress: any[] = currentConfig.milestones_progress || [];
+
+          const newMilestoneId = Date.now();
+          const newMilestoneObj = {
+            id: newMilestoneId,
+            title: title,
+            subtitle: cleanMemoryText(description) || "Momento mágico registrado",
+            date: localDateStr,
+            photo_url: allUrls?.[0] || null,
+            category: "🌟"
+          };
+
+          const updatedMilestones = [...existingMilestones, newMilestoneObj];
+          const updatedProgress = Array.from(new Set([...existingProgress, newMilestoneId]));
+
+          localStorage.setItem(`custom_milestones_${childId}`, JSON.stringify(updatedMilestones));
+          localStorage.setItem(`milestones_progress_${childId}`, JSON.stringify(updatedProgress));
+
+          await supabase.from("children").update({
+            preview_config: {
+              ...currentConfig,
+              custom_milestones: updatedMilestones,
+              milestones_progress: updatedProgress
+            }
+          }).eq("id", childId);
+        } catch (mErr) {
+          console.warn("Could not auto-add milestone:", mErr);
+        }
+      }
       onComplete(memory ? "¡Recuerdo actualizado con éxito!" : "¡Recuerdo creado con éxito!");
     } else {
       setError("Error: " + result.error.message);
@@ -711,6 +747,37 @@ export default function MemoryForm({
               placeholder="Escribe aquí..."
               className={`w-full text-sm md:text-base ${theme.text} opacity-80 outline-none resize-none`}
             />
+          </div>
+
+          {/* Opción para registrarlo como Logro en el Camino Mágico */}
+          <div 
+            onClick={() => { playSoftPop(); setIsMilestone(!isMilestone); }}
+            className={`p-4 md:p-5 rounded-[2rem] border transition-all cursor-pointer flex items-center justify-between shadow-sm ${
+              isMilestone 
+                ? "bg-amber-50/90 border-amber-300 shadow-amber-100" 
+                : "bg-white border-stone-200 hover:border-stone-300"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
+                isMilestone ? "bg-amber-100 text-amber-600 shadow-inner" : "bg-stone-100 text-stone-400"
+              }`}>
+                ⭐
+              </div>
+              <div>
+                <h4 className="font-outfit font-black text-xs md:text-sm text-stone-800">
+                  ¿Marcar como logro en el Camino Mágico?
+                </h4>
+                <p className="text-[10px] text-stone-400 font-bold font-quicksand">
+                  Se creará un hito desbloqueado en el mapa de logros con su fotito.
+                </p>
+              </div>
+            </div>
+            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+              isMilestone ? "bg-amber-500 border-amber-500 text-white" : "border-stone-300"
+            }`}>
+              {isMilestone && <Check size={14} strokeWidth={3} />}
+            </div>
           </div>
         </div>
 

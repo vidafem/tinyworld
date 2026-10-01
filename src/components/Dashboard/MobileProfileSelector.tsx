@@ -10,6 +10,7 @@ import BabyAvatar from "./Child/BabyAvatar";
 import AppButton from "@/components/Common/AppButton";
 import ModernModal from "@/components/Common/ModernModal";
 import FloatingToast, { ToastData } from "@/components/Common/FloatingToast";
+import CreateChildWizardModal from "./CreateChildWizardModal";
 
 interface MobileProfileSelectorProps {
   onOpenProfile: () => void;
@@ -21,11 +22,6 @@ export default function MobileProfileSelector({ onOpenProfile }: MobileProfileSe
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState<ToastData | null>(null);
-
-  const [newName, setNewName] = useState("");
-  const [newBirthDate, setNewBirthDate] = useState("");
-  const [newTheme, setNewTheme] = useState("neutral");
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchChildren();
@@ -57,40 +53,11 @@ export default function MobileProfileSelector({ onOpenProfile }: MobileProfileSe
     router.push("/login");
   };
 
-  const handleCreateChild = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
-    setCreating(true);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    const { error } = await supabase.from("children").insert([{
-      parent_id: session.user.id,
-      name: newName.trim(),
-      birth_date: newBirthDate || null,
-      theme_color: newTheme
-    }]);
-
-    setCreating(false);
-    if (!error) {
-      setShowModal(false);
-      setNewName("");
-      setNewBirthDate("");
-      setNewTheme("neutral");
-      setToast({ type: "success", message: `¡Perfil de ${newName} creado!` });
-      fetchChildren();
-    } else {
-      setToast({ type: "error", message: "Error al crear el perfil" });
-      console.error(error);
-    }
-  };
-
   const handleSelect = (id: string) => {
     router.push(`/dashboard/child/${id}`);
   };
 
-  const selectedThemeObj = themePalettes[newTheme] || themePalettes.neutral;
+  const selectedThemeObj = themePalettes.neutral;
 
   if (loading) {
     return (
@@ -232,86 +199,17 @@ export default function MobileProfileSelector({ onOpenProfile }: MobileProfileSe
         </p>
       </footer>
 
-      {/* Modal Crear Perfil (Bottom Sheet deslizable) */}
-      <ModernModal
+      <CreateChildWizardModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Nuevo Perfil de Bebé"
-        subtitle="Comienza una nueva historia mágica."
-        icon={<Baby size={20} className={selectedThemeObj.text} />}
-        theme={selectedThemeObj}
-        maxWidth="sm"
-      >
-        <form onSubmit={handleCreateChild} className="space-y-4 pt-1">
-          <div>
-            <label className="block text-[10px] font-black text-taupe/60 uppercase tracking-widest mb-1.5 ml-1">
-              Nombre o Apodo
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="Ej. Mateo, Sofía..."
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full p-3.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200/80 dark:border-stone-700/80 rounded-2xl outline-none focus:ring-2 focus:ring-gold/30 text-stone-800 dark:text-stone-100 font-outfit text-base"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-black text-taupe/60 uppercase tracking-widest mb-1.5 ml-1">
-              Fecha de Nacimiento (Opcional)
-            </label>
-            <input
-              type="date"
-              value={newBirthDate}
-              onChange={(e) => setNewBirthDate(e.target.value)}
-              className="w-full p-3.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200/80 dark:border-stone-700/80 rounded-2xl outline-none focus:ring-2 focus:ring-gold/30 text-stone-800 dark:text-stone-100 font-outfit text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-black text-taupe/60 uppercase tracking-widest mb-2 ml-1">
-              Color del Tema
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {Object.entries(themePalettes)
-                .filter(([key]) => !key.startsWith('c'))
-                .map(([key, theme]: [string, any]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setNewTheme(key)}
-                    className={`p-2.5 rounded-2xl ${theme.bg} border-2 transition-all flex items-center justify-center gap-1.5 ${
-                      newTheme === key
-                        ? "border-stone-800 dark:border-white scale-105 shadow-md"
-                        : "border-transparent opacity-80"
-                    }`}
-                  >
-                    <Baby size={15} className={theme.text} />
-                    <span className={`text-[9px] font-bold capitalize ${theme.text}`}>
-                      {key}
-                    </span>
-                  </button>
-                ))}
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <AppButton
-              type="submit"
-              variant="primary"
-              size="lg"
-              theme={selectedThemeObj}
-              loading={creating}
-              glare
-              className="w-full py-4 text-xs uppercase tracking-widest font-black"
-              icon={<Plus size={16} />}
-            >
-              Crear Perfil
-            </AppButton>
-          </div>
-        </form>
-      </ModernModal>
+        onSuccess={(newId) => {
+          fetchChildren();
+          setToast({ type: "success", message: "¡Mundo creado con éxito!" });
+          if (newId) {
+            router.push(`/dashboard/child/${newId}`);
+          }
+        }}
+      />
     </div>
   );
 }

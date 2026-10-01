@@ -286,7 +286,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
             variant="secondary"
             size="icon"
             onClick={() => { playActionSnap(); router.push(`/dashboard/child/${child.id}/profile`); }}
-            icon={<Settings2 size={20} className={theme.text} />}
+            icon={<Settings size={20} className={theme.text} />}
             className="shadow-sm"
           />
         </div>
@@ -400,13 +400,18 @@ export default function ChildHub({ childId }: ChildHubProps) {
             } else if (!isPregnancy && child.birth_date) {
               const ageStr = calculateAge(child.birth_date);
               if (ageStr) {
-                label = `Edad: ${ageStr}`;
+                label = ageStr === "Recién nacido" ? "Tu bebé es recién nacido" : `Tu bebé tiene ${ageStr}`;
+              }
+            } else if (child.birth_date) {
+              const ageStr = calculateAge(child.birth_date);
+              if (ageStr) {
+                label = ageStr === "Recién nacido" ? "Tu bebé es recién nacido" : `Tu bebé tiene ${ageStr}`;
               }
             }
 
             if (!label) return null;
 
-            const isClickable = isPregnancy && config.fum;
+            const isClickable = isPregnancy && Boolean(config.fum);
 
             return (
               <motion.div 
