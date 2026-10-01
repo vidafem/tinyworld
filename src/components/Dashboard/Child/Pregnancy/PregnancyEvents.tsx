@@ -182,10 +182,12 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
 
       const urls: string[] = [];
       [...(pregRes.data || []), ...(genRes.data || [])].forEach(m => {
-        if (m.media_urls) {
-          m.media_urls.forEach((url: string) => {
+        if (m.media_urls && Array.isArray(m.media_urls)) {
+          m.media_urls.forEach((rawUrl: any) => {
+            const url = typeof rawUrl === 'string' ? rawUrl.trim() : (rawUrl?.url ? String(rawUrl.url).trim() : '');
+            if (!url) return;
             const lowerUrl = url.toLowerCase();
-            if (url && !urls.includes(url) &&
+            if (!urls.includes(url) &&
               !lowerUrl.endsWith(".mp4") && !lowerUrl.endsWith(".mov") && !lowerUrl.endsWith(".webm") &&
               !lowerUrl.endsWith(".mp3") && !lowerUrl.endsWith(".wav") && !lowerUrl.endsWith(".m4a")) {
               urls.push(url);
@@ -1681,10 +1683,10 @@ export default function PregnancyEvents({ childId, sectionId = null, theme, isMo
 
                   {/* Botón de descarga elegante superpuesto sobre la foto */}
                   {(() => {
-                    const urlWithoutQuery = previewItem.url.split("?")[0];
+                    const urlWithoutQuery = (previewItem?.url || "").split("?")[0] || "";
                     const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
-                    const isVideo = previewItem.type === "video" || (match && ["mp4", "mov", "webm"].includes(match[1].toLowerCase()));
-                    const ext = match ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
+                    const isVideo = previewItem.type === "video" || Boolean(match && ["mp4", "mov", "webm"].includes(match[1]?.toLowerCase()));
+                    const ext = match?.[1] ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
                     const filename = `TinyWorld_${isVideo ? "Video" : "Foto"}_${Date.now()}.${ext}`;
                     const downloadUrl = `/api/download?url=${encodeURIComponent(previewItem.url)}&filename=${encodeURIComponent(filename)}`;
 

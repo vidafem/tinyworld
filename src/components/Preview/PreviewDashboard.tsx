@@ -204,11 +204,12 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
 
   const downloadMedia = async (url: string, title: string) => {
     try {
-      const urlWithoutQuery = url.split("?")[0];
+      if (!url || typeof url !== 'string') return;
+      const urlWithoutQuery = url.split("?")[0] || "";
       const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
-      const isVideo = previewMediaItem?.type === 'video' || (match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1].toLowerCase()));
-      const isAudio = previewMediaItem?.type === 'audio' || (match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1].toLowerCase()));
-      const ext = match ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'jpeg');
+      const isVideo = previewMediaItem?.type === 'video' || Boolean(match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1]?.toLowerCase()));
+      const isAudio = previewMediaItem?.type === 'audio' || Boolean(match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1]?.toLowerCase()));
+      const ext = match?.[1] ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'jpeg');
 
       const cleanTitle = (title || (isVideo ? 'Video' : isAudio ? 'Audio' : 'Foto')).replace(/[\r\n\s]+/g, '_');
       const filename = `TinyWorld-${cleanTitle}-${new Date().getTime()}.${ext}`;
@@ -287,9 +288,10 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
     });
 
     allPregnancyMemories.forEach(mem => {
-      if (mem.media_urls) {
-        mem.media_urls.forEach((url: string) => {
-          if (url && url.trim() !== "") {
+      if (mem.media_urls && Array.isArray(mem.media_urls)) {
+        mem.media_urls.forEach((rawUrl: any) => {
+          const url = typeof rawUrl === 'string' ? rawUrl.trim() : (rawUrl?.url ? String(rawUrl.url).trim() : '');
+          if (url) {
             // For visitors, allow if global gallery is enabled OR if associated with an active custom folder
             if (!isParent && !isGlobalGalleryEnabled) {
               const isAllowed = allowedUrls.has(url) || allowedUrls.has(getProxiedUrl(url)) || (mem.id && allowedMemoryIds.has(mem.id));
@@ -319,9 +321,10 @@ export default function PreviewDashboard({ childId, initialChild, onClose }: Pre
     });
 
     generalMemories.forEach(mem => {
-      if (mem.media_urls) {
-        mem.media_urls.forEach((url: string) => {
-          if (url && url.trim() !== "") {
+      if (mem.media_urls && Array.isArray(mem.media_urls)) {
+        mem.media_urls.forEach((rawUrl: any) => {
+          const url = typeof rawUrl === 'string' ? rawUrl.trim() : (rawUrl?.url ? String(rawUrl.url).trim() : '');
+          if (url) {
             // For visitors, allow if global gallery is enabled OR if associated with an active custom folder
             if (!isParent && !isGlobalGalleryEnabled) {
               const isAllowed = allowedUrls.has(url) || allowedUrls.has(getProxiedUrl(url)) || (mem.id && allowedMemoryIds.has(mem.id));

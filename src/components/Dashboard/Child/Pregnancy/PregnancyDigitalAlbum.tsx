@@ -249,24 +249,25 @@ const COLLAGE_PRESETS: Record<number, Partial<AlbumElement>[]> = {
 };
 
 function getProxiedUrl(url?: string | null, isSticker = false) {
-  if (!url) return "";
+  if (!url || typeof url !== 'string') return "";
   
   if (url.startsWith("data:") || url.startsWith("blob:") || url.includes("localhost") || url.includes("127.0.0.1")) {
     return url;
   }
 
   // Videos, stickers y audios no deben pasar por el optimizador de fotos
-  if (isSticker || url.includes("/stickers/") || url.endsWith(".svg") || url.match(/\.(mp4|mov|webm|m4v|avi|mp3|wav|ogg|m4a)$/i) || url.includes("/video/") || url.includes("/audio/")) {
+  if (isSticker || url.includes("/stickers/") || url.endsWith(".svg") || (typeof url === 'string' && url.match(/\.(mp4|mov|webm|m4v|avi|mp3|wav|ogg|m4a)(\?.*)?$/i)) || url.includes("/video/") || url.includes("/audio/")) {
     return url;
   }
 
   return getPreviewUrl(url);
 }
 
-function detectMediaType(url: string, fallback?: string | null): AlbumElementType {
+function detectMediaType(url?: string | null, fallback?: string | null): AlbumElementType {
+  if (!url || typeof url !== 'string') return (fallback as AlbumElementType) || "image";
   const lower = url.toLowerCase();
-  if (lower.match(/\.(mp4|mov|webm|m4v|avi)$/) || lower.includes("/video/") || fallback === "video") return "video";
-  if (lower.match(/\.(mp3|wav|ogg|m4a|aac)$/) || lower.includes("/audio/") || fallback === "audio") return "audio";
+  if (lower.match(/\.(mp4|mov|webm|m4v|avi)(\?.*)?$/) || lower.includes("/video/") || fallback === "video") return "video";
+  if (lower.match(/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/) || lower.includes("/audio/") || fallback === "audio") return "audio";
   return "image";
 }
 

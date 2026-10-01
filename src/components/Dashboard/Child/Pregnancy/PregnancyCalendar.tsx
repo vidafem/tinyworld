@@ -98,7 +98,7 @@ export default function PregnancyCalendar({ childId, calendarId, sectionId = nul
   };
 
   const getProxiedBg = (bgValue: string) => {
-    if (!bgValue) return "none";
+    if (!bgValue || typeof bgValue !== 'string') return "none";
     if (bgValue.startsWith("url")) {
       const match = bgValue.match(/url\(['"]?([^'"]+)['"]?\)/);
       if (match && match[1]) {

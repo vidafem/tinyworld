@@ -107,9 +107,10 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
       const allMedia: MediaItem[] = [];
 
       pregRes.data?.forEach(mem => {
-        if (mem.media_urls) {
-          mem.media_urls.forEach((url: string) => {
-            if (url && url.trim() !== "") {
+        if (mem.media_urls && Array.isArray(mem.media_urls)) {
+          mem.media_urls.forEach((rawUrl: any) => {
+            const url = typeof rawUrl === 'string' ? rawUrl.trim() : (rawUrl?.url ? String(rawUrl.url).trim() : '');
+            if (url) {
               let realType = mem.media_type || 'image';
               const lowerUrl = url.toLowerCase();
               if (lowerUrl.endsWith('.mp3') || lowerUrl.endsWith('.wav') || lowerUrl.endsWith('.m4a') || lowerUrl.endsWith('.ogg') || lowerUrl.includes('/audio/') || lowerUrl.includes('audio')) {
@@ -132,9 +133,10 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
       });
 
       genRes.data?.forEach(mem => {
-        if (mem.media_urls) {
-          mem.media_urls.forEach((url: string) => {
-            if (url && url.trim() !== "") {
+        if (mem.media_urls && Array.isArray(mem.media_urls)) {
+          mem.media_urls.forEach((rawUrl: any) => {
+            const url = typeof rawUrl === 'string' ? rawUrl.trim() : (rawUrl?.url ? String(rawUrl.url).trim() : '');
+            if (url) {
               let realType = mem.media_type || 'image';
               const lowerUrl = url.toLowerCase();
               if (lowerUrl.endsWith('.mp3') || lowerUrl.endsWith('.wav') || lowerUrl.endsWith('.m4a') || lowerUrl.endsWith('.ogg') || lowerUrl.includes('/audio/') || lowerUrl.includes('audio')) {
@@ -292,11 +294,12 @@ export default function GlobalGallery({ childId }: GlobalGalleryProps) {
 
   const downloadMedia = (url: string, title?: string) => {
     try {
-      const urlWithoutQuery = url.split("?")[0];
+      if (!url || typeof url !== 'string') return;
+      const urlWithoutQuery = url.split("?")[0] || '';
       const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
-      const isVideo = previewItem?.type === 'video' || (match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1].toLowerCase()));
-      const isAudio = previewItem?.type === 'audio' || (match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1].toLowerCase()));
-      const ext = match ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'jpg');
+      const isVideo = previewItem?.type === 'video' || Boolean(match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1]?.toLowerCase()));
+      const isAudio = previewItem?.type === 'audio' || Boolean(match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1]?.toLowerCase()));
+      const ext = match?.[1] ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'jpg');
       
       const cleanTitle = (title || (isVideo ? 'Video' : isAudio ? 'Audio' : 'Foto')).replace(/[\r\n\s]+/g, '_');
       const filename = `TinyWorld_${cleanTitle}_${Date.now()}.${ext}`;

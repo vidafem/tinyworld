@@ -292,23 +292,23 @@ export default function MemoryForm({
 
   // Medios
   const [photos, setPhotos] = useState<string[]>(() => {
-    if (!memory || !memory.media_urls) return [];
-    return memory.media_urls.filter((url: string) =>
-      url.match(/\.(jpg|jpeg|png|gif|webp)/i) || memory.media_type === 'image'
+    if (!memory || !memory.media_urls || !Array.isArray(memory.media_urls)) return [];
+    return memory.media_urls.filter((url: any) =>
+      typeof url === 'string' && (url.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i) || memory.media_type === 'image')
     ).slice(0, 3);
   });
 
   const [video, setVideo] = useState<string | null>(() => {
-    if (!memory || !memory.media_urls) return null;
-    return memory.media_urls.find((url: string) =>
-      url.match(/\.(mp4|webm|mov)/i) || memory.media_type === 'video'
+    if (!memory || !memory.media_urls || !Array.isArray(memory.media_urls)) return null;
+    return memory.media_urls.find((url: any) =>
+      typeof url === 'string' && (url.match(/\.(mp4|webm|mov)(\?.*)?$/i) || memory.media_type === 'video')
     ) || null;
   });
 
   const [audio, setAudio] = useState<string | null>(() => {
-    if (!memory || !memory.media_urls) return null;
-    return memory.media_urls.find((url: string) =>
-      url.match(/\.(mp3|wav|ogg|m4a)/i) || memory.media_type === 'audio'
+    if (!memory || !memory.media_urls || !Array.isArray(memory.media_urls)) return null;
+    return memory.media_urls.find((url: any) =>
+      typeof url === 'string' && (url.match(/\.(mp3|wav|ogg|m4a)(\?.*)?$/i) || memory.media_type === 'audio')
     ) || null;
   });
 

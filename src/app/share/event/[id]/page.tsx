@@ -1772,10 +1772,10 @@ export default function GuestEventPage({ params }: GuestEventPageProps) {
 
                 {/* Botón de descarga elegante superpuesto sobre la foto (oculto durante zoom para limpieza) */}
                 {zoom === 1 && (() => {
-                  const urlWithoutQuery = previewItem.url.split("?")[0];
+                  const urlWithoutQuery = (previewItem?.url || "").split("?")[0] || "";
                   const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
-                  const isVideo = previewItem.type === "video" || (match && ["mp4", "mov", "webm"].includes(match[1].toLowerCase()));
-                  const ext = match ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
+                  const isVideo = previewItem.type === "video" || Boolean(match && ["mp4", "mov", "webm"].includes(match[1]?.toLowerCase()));
+                  const ext = match?.[1] ? match[1].toLowerCase() : (isVideo ? "mp4" : "jpg");
                   const filename = `TinyWorld_${isVideo ? "Video" : "Foto"}_${Date.now()}.${ext}`;
                   const downloadUrl = `/api/download?url=${encodeURIComponent(previewItem.url)}&filename=${encodeURIComponent(filename)}`;
 

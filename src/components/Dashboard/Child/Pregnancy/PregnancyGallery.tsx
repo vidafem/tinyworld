@@ -127,15 +127,16 @@ export default function PregnancyGallery({
   const [isMobile, setIsMobile] = useState(false);
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
 
-  const getProxiedUrl = (url: string) => {
-    if (!url) return '';
-    if (url.match(/\.(mp4|mov|webm|avi|mkv)$/i) || url.includes('/video/')) {
-      if (url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com')) {
-        return `/api/download?url=${encodeURIComponent(url)}&inline=true`;
+  const getProxiedUrl = (url: any) => {
+    if (!url || typeof url !== 'string') return '';
+    const cleanUrl = url.trim();
+    if (cleanUrl.match(/\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i) || cleanUrl.includes('/video/')) {
+      if (cleanUrl.includes('.r2.dev') || cleanUrl.includes('.r2.cloudflarestorage.com')) {
+        return `/api/download?url=${encodeURIComponent(cleanUrl)}&inline=true`;
       }
-      return url;
+      return cleanUrl;
     }
-    return getThumbnailUrl(url);
+    return getThumbnailUrl(cleanUrl);
   };
 
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -212,13 +213,20 @@ export default function PregnancyGallery({
 
       const allItems: GalleryItem[] = [];
       memories?.forEach(mem => {
-        if (mem.media_urls) {
+        if (mem.media_urls && Array.isArray(mem.media_urls)) {
           const dateObj = new Date(mem.memory_date);
-          const realMonth = dateObj.getMonth() + 1;
-          mem.media_urls.forEach((url: string) => {
+          const realMonth = isNaN(dateObj.getTime()) ? 1 : dateObj.getMonth() + 1;
+          mem.media_urls.forEach((rawUrl: any) => {
+            const url = typeof rawUrl === 'string' ? rawUrl.trim() : (rawUrl?.url ? String(rawUrl.url).trim() : '');
+            if (!url) return;
+
             let detectedType: 'image' | 'video' | 'audio' = 'image';
-            if (url.match(/\.(mp4|webm|mov)/i)) detectedType = 'video';
-            else if (url.match(/\.(mp3|wav|ogg|m4a)/i)) detectedType = 'audio';
+            const lowerUrl = url.toLowerCase();
+            if (lowerUrl.match(/\.(mp4|webm|mov|mkv|avi)(\?.*)?$/i) || lowerUrl.includes('/video/')) {
+              detectedType = 'video';
+            } else if (lowerUrl.match(/\.(mp3|wav|ogg|m4a|aac)(\?.*)?$/i) || lowerUrl.includes('/audio/')) {
+              detectedType = 'audio';
+            }
             
             allItems.push({ 
               id: `${mem.id}-${url}`, 
@@ -278,7 +286,7 @@ export default function PregnancyGallery({
           } else {
             const { data: currentMemory } = await supabase.from("pregnancy_memories").select("media_urls").eq("id", item.memoryId).single();
             if (currentMemory) {
-              const newUrls = currentMemory.media_urls.filter((u: string) => u !== item.url);
+              const newUrls = (currentMemory.media_urls || []).filter((u: string) => u && u !== item.url);
               if (newUrls.length === 0) {
                 // Si no quedan más archivos, borramos el recuerdo completo
                 await supabase.from("pregnancy_memories").delete().eq("id", item.memoryId);
@@ -344,11 +352,12 @@ export default function PregnancyGallery({
   const downloadFile = async (url: string, withFrame: boolean) => {
     setShowDownloadChoice(false);
     try {
-      const urlWithoutQuery = url.split("?")[0];
+      if (!url || typeof url !== 'string') return;
+      const urlWithoutQuery = url.split("?")[0] || '';
       const match = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
-      const isVideo = previewItem?.type === 'video' || (match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1].toLowerCase()));
-      const isAudio = previewItem?.type === 'audio' || (match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1].toLowerCase()));
-      const ext = match ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'png');
+      const isVideo = previewItem?.type === 'video' || Boolean(match && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(match[1]?.toLowerCase()));
+      const isAudio = previewItem?.type === 'audio' || Boolean(match && ['mp3', 'wav', 'm4a', 'ogg'].includes(match[1]?.toLowerCase()));
+      const ext = match?.[1] ? match[1].toLowerCase() : (isVideo ? 'mp4' : isAudio ? 'mp3' : 'png');
 
       if (!withFrame || isVideo || isAudio) {
         const filename = `TinyWorld_${isVideo ? 'Video' : isAudio ? 'Audio' : 'Foto'}_${Date.now()}.${ext}`;
@@ -551,10 +560,21 @@ export default function PregnancyGallery({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No hay sesión activa");
 
+      const [y, m] = (uploadDate || "").split('-').map(Number);
+      const computedMonth = (!isNaN(m) && m >= 1 && m <= 12) ? m : (new Date().getMonth() + 1);
+
+      let successCount = 0;
+
       for (const rawFile of files) {
-        const file = await optimizeImageForUpload(rawFile);
+        let file = rawFile;
+        try {
+          file = await optimizeImageForUpload(rawFile);
+        } catch (optErr) {
+          console.warn("Optimización omitida:", optErr);
+        }
+
         const formData = new FormData();
-        const detectedType = file.type.startsWith('video') ? 'video' : file.type.startsWith('audio') ? 'audio' : 'image';
+        const detectedType = file.type?.startsWith('video') ? 'video' : file.type?.startsWith('audio') ? 'audio' : 'image';
         const mediaType = forcedType || detectedType;
         
         formData.append("childId", childId);
@@ -569,28 +589,38 @@ export default function PregnancyGallery({
           body: formData,
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Error al subir");
+        let payload: any = null;
+        try {
+          payload = await response.json();
+        } catch {
+          throw new Error("Respuesta no válida del servidor");
         }
 
-        const payload = await response.json();
-        const url = payload.uploaded?.[0]?.url;
+        if (!response.ok) {
+          throw new Error(payload?.error || `Error al subir (${response.status})`);
+        }
 
-        if (url) {
+        const url = payload?.uploaded?.[0]?.url;
+
+        if (url && typeof url === 'string') {
           const insertMemory: any = { 
             child_id: childId, 
             title: mediaType === 'video' ? "Video de Galería" : mediaType === 'audio' ? "Audio de Galería" : "Foto de Galería", 
             description: "Subido desde la galería",
-            memory_date: uploadDate, 
+            memory_date: uploadDate || new Date().toISOString().split('T')[0], 
             media_urls: [url], 
             media_type: mediaType,
-            month_number: new Date(uploadDate).getMonth() + 1
+            month_number: computedMonth
           };
           if (sectionId) {
             insertMemory.section_id = sectionId;
           }
-          await supabase.from("pregnancy_memories").insert(insertMemory);
+          const { error: insErr } = await supabase.from("pregnancy_memories").insert(insertMemory);
+          if (insErr) {
+            console.error("Error al registrar recuerdo en Supabase:", insErr);
+          } else {
+            successCount++;
+          }
         }
       }
 
@@ -598,10 +628,14 @@ export default function PregnancyGallery({
       setFileToEdit(null);
       await loadGalleryData();
       if (setToast) {
-        setToast({ type: "success", message: "¡Archivo subido con éxito!" });
+        setToast({ 
+          type: "success", 
+          message: successCount > 1 ? `¡${successCount} fotos subidas con éxito!` : "¡Archivo subido con éxito!" 
+        });
       }
     } catch (err: any) { 
-      alert("Error al subir: " + err.message); 
+      console.error("Error en processAndUpload:", err);
+      alert("Error al subir: " + (err.message || "Error desconocido")); 
     } finally { 
       setIsUploading(false); 
     }
