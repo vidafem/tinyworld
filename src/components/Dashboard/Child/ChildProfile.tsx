@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { 
   ChevronLeft, Baby, 
   QrCode, Copy, Share2, Eye, BookOpen, Heart, CalendarDays, Images, Sparkles,
-  Trash2, Save, Sparkle
+  Trash2, Save, Sparkle, Map, TreeDeciduous, BookImage, Shield
 } from "lucide-react";
 import { themePalettes } from "@/lib/themes";
 import BabyAvatar from "./BabyAvatar";
@@ -143,9 +143,13 @@ export default function ChildProfile({ childId }: { childId: string }) {
       show_gallery: true,
       show_calendars: true,
       show_album: true,
+      show_tree: true,
+      show_photobook: true,
+      show_lifetime: true,
+      show_map: false,
       status: "pregnancy",
       fum: ""
-    }
+    } as Record<string, any>
   });
 
   useEffect(() => {
@@ -195,14 +199,34 @@ export default function ChildProfile({ childId }: { childId: string }) {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleTogglePermission = (key: string) => {
+  const isGuestAccessEnabled = Boolean(
+    formData.preview_config?.guest_access_enabled ?? (formData.access_code ? true : false)
+  );
+
+  const handleToggleGuestAccess = () => {
     setFormData(prev => ({
       ...prev,
       preview_config: {
-        ...prev.preview_config,
-        [key]: !((prev.preview_config as any)[key])
+        ...(prev.preview_config || {}),
+        guest_access_enabled: !isGuestAccessEnabled
       }
     }));
+  };
+
+  const handleTogglePermission = (key: string, isDefaultFalse = false) => {
+    setFormData(prev => {
+      const currentConfig = prev.preview_config || {};
+      const currentVal = isDefaultFalse 
+        ? currentConfig[key] === true 
+        : currentConfig[key] !== false;
+      return {
+        ...prev,
+        preview_config: {
+          ...currentConfig,
+          [key]: !currentVal
+        }
+      };
+    });
   };
 
   const generateAccessCode = () => {
@@ -492,156 +516,309 @@ export default function ChildProfile({ childId }: { childId: string }) {
           </form>
         </motion.div>
 
-        {/* Sección: Compartir y Acceso Invitado */}
+        {/* Sección: Compartir y Acceso Invitado (Ocultable con switch) */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 350, damping: 25 }}
           className={`bg-white/95 dark:bg-stone-900/95 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-8 shadow-xl border ${theme.borderAccent}`}
         >
-          <div className="flex items-center gap-3 mb-6">
-            <div className={`p-3 rounded-2xl ${theme.bg} ${theme.text}`}>
-              <Share2 size={22} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-2xl ${theme.bg} ${theme.text}`}>
+                <Share2 size={22} />
+              </div>
+              <div>
+                <h3 className={`font-outfit font-black text-xl ${theme.text}`}>Acceso para Invitados</h3>
+                <p className={`text-xs ${theme.text} opacity-50 font-bold uppercase tracking-wider mt-0.5`}>
+                  Controla quién puede ver la historia de tu bebé sin registrarse
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className={`font-outfit font-black text-xl ${theme.text}`}>Compartir y Acceso Invitado</h3>
-              <p className={`text-xs ${theme.text} opacity-50 font-bold uppercase tracking-wider mt-0.5`}>Controla quién puede ver la historia de tu bebé sin registrarse</p>
+
+            {/* Switch para Activar / Ocultar Acceso Invitado */}
+            <div className="flex items-center gap-3 self-end sm:self-center bg-stone-100 dark:bg-stone-800/80 px-4 py-2 rounded-2xl border border-stone-200/60 dark:border-stone-700/60">
+              <span className="text-[11px] font-black uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                {isGuestAccessEnabled ? "Acceso Activo" : "Acceso Desactivado"}
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleGuestAccess}
+                style={{ backgroundColor: isGuestAccessEnabled ? theme.hex : '#CBD5E1' }}
+                className="w-11 h-6 rounded-full p-0.5 transition-colors duration-300 cursor-pointer flex items-center"
+              >
+                <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${isGuestAccessEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Generación de Código */}
-            <div className={`${theme.bgLight} rounded-3xl p-5 flex flex-col justify-between`}>
-              <div>
-                <h4 className={`font-outfit font-black text-sm ${theme.text} uppercase tracking-wider mb-2`}>Código de Acceso</h4>
-                <p className={`text-xs ${theme.text} opacity-60 mb-4 leading-relaxed font-quicksand`}>Con este código único, tus familiares podrán acceder directamente ingresándolo en la página principal.</p>
+          {!isGuestAccessEnabled ? (
+            <div className={`p-5 rounded-2xl ${theme.bgLight} border ${theme.borderAccent} flex items-center gap-3.5`}>
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-stone-800 flex items-center justify-center text-stone-400 shrink-0">
+                <Shield size={20} />
               </div>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={formData.access_code} 
-                  placeholder="Sin código generado"
-                  className={`flex-1 px-4 py-3 bg-white dark:bg-stone-800 border ${theme.borderAccent} rounded-2xl outline-none font-outfit text-sm font-black text-center tracking-[0.2em] ${theme.text}`} 
-                />
-                <AppButton 
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={generateAccessCode}
-                  className="shrink-0"
-                >
-                  Generar
-                </AppButton>
-              </div>
+              <p className={`text-xs ${theme.text} opacity-70 leading-relaxed font-quicksand font-bold`}>
+                El acceso para invitados está desactivado. Actívalo con el switch si deseas generar un código o enlace para compartir la historia de tu bebé con familiares.
+              </p>
             </div>
-
-            {/* URL Compartible */}
-            <div className={`${theme.bgLight} rounded-3xl p-5 flex flex-col justify-between`}>
-              <div>
-                <h4 className={`font-outfit font-black text-sm ${theme.text} uppercase tracking-wider mb-2`}>Enlace de Compartición</h4>
-                <p className={`text-xs ${theme.text} opacity-60 mb-4 leading-relaxed font-quicksand`}>Comparte este enlace directamente por WhatsApp o redes para dar acceso directo a la Preview.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              {/* Generación de Código */}
+              <div className={`${theme.bgLight} rounded-3xl p-5 flex flex-col justify-between`}>
+                <div>
+                  <h4 className={`font-outfit font-black text-sm ${theme.text} uppercase tracking-wider mb-2`}>Código de Acceso</h4>
+                  <p className={`text-xs ${theme.text} opacity-60 mb-4 leading-relaxed font-quicksand`}>Con este código único, tus familiares podrán acceder directamente ingresándolo en la página principal.</p>
+                </div>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={formData.access_code} 
+                    placeholder="Sin código generado"
+                    className={`flex-1 px-4 py-3 bg-white dark:bg-stone-800 border ${theme.borderAccent} rounded-2xl outline-none font-outfit text-sm font-black text-center tracking-[0.2em] ${theme.text}`} 
+                  />
+                  <AppButton 
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={generateAccessCode}
+                    className="shrink-0"
+                  >
+                    Generar
+                  </AppButton>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={formData.access_code ? shareUrl : "Genera un código primero"} 
-                  className={`flex-1 px-4 py-3 bg-white dark:bg-stone-800 border ${theme.borderAccent} rounded-2xl outline-none font-outfit text-xs ${theme.text} opacity-70 truncate`} 
-                />
-                <AppButton 
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  onClick={copyShareLink}
-                  icon={<Copy size={16} />}
-                  title="Copiar Enlace"
-                />
-                <AppButton 
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  onClick={() => {
-                    if (!formData.access_code) {
-                      setToast({ type: "warning", message: "¡Primero genera un código!" });
-                      return;
-                    }
-                    setShowQRModal(true);
-                  }}
-                  icon={<QrCode size={16} />}
-                  title="Ver Código QR"
-                />
-              </div>
-            </div>
 
-            {/* Permisos de Secciones */}
-            <div className={`${theme.bgLight} rounded-3xl p-5`}>
-              <h4 className={`font-outfit font-black text-sm ${theme.text} uppercase tracking-wider mb-2`}>Secciones Visibles</h4>
-              <p className={`text-xs ${theme.text} opacity-60 mb-3 leading-relaxed font-quicksand`}>Selecciona qué pestañas del diario podrán ver tus invitados.</p>
-              <div className="space-y-2.5">
-                <div className={`flex items-center justify-between p-2.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
-                  <div className={`flex items-center gap-2 ${theme.text}`}>
-                    <Heart size={15} style={{ color: theme.hex }} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Embarazo</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => handleTogglePermission("show_pregnancy")}
-                    style={{ backgroundColor: formData.preview_config?.show_pregnancy ? theme.hex : '#E5E7EB' }}
-                    className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_pregnancy ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </button>
+              {/* URL Compartible */}
+              <div className={`${theme.bgLight} rounded-3xl p-5 flex flex-col justify-between`}>
+                <div>
+                  <h4 className={`font-outfit font-black text-sm ${theme.text} uppercase tracking-wider mb-2`}>Enlace de Compartición</h4>
+                  <p className={`text-xs ${theme.text} opacity-60 mb-4 leading-relaxed font-quicksand`}>Comparte este enlace directamente por WhatsApp o redes para dar acceso directo a la Preview.</p>
                 </div>
-
-                <div className={`flex items-center justify-between p-2.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
-                  <div className={`flex items-center gap-2 ${theme.text}`}>
-                    <Images size={15} style={{ color: theme.hex }} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Galería</span>
-                  </div>
-                  <button 
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={formData.access_code ? shareUrl : "Genera un código primero"} 
+                    className={`flex-1 px-4 py-3 bg-white dark:bg-stone-800 border ${theme.borderAccent} rounded-2xl outline-none font-outfit text-xs ${theme.text} opacity-70 truncate`} 
+                  />
+                  <AppButton 
                     type="button"
-                    onClick={() => handleTogglePermission("show_gallery")}
-                    style={{ backgroundColor: formData.preview_config?.show_gallery ? theme.hex : '#E5E7EB' }}
-                    className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_gallery ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-
-                <div className={`flex items-center justify-between p-2.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
-                  <div className={`flex items-center gap-2 ${theme.text}`}>
-                    <CalendarDays size={15} style={{ color: theme.hex }} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Calendarios</span>
-                  </div>
-                  <button 
+                    variant="secondary"
+                    size="icon"
+                    onClick={copyShareLink}
+                    icon={<Copy size={16} />}
+                    title="Copiar Enlace"
+                  />
+                  <AppButton 
                     type="button"
-                    onClick={() => handleTogglePermission("show_calendars")}
-                    style={{ backgroundColor: formData.preview_config?.show_calendars ? theme.hex : '#E5E7EB' }}
-                    className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_calendars ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-
-                <div className={`flex items-center justify-between p-2.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
-                  <div className={`flex items-center gap-2 ${theme.text}`}>
-                    <BookOpen size={15} style={{ color: theme.hex }} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Libro / Álbum</span>
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => handleTogglePermission("show_album")}
-                    style={{ backgroundColor: formData.preview_config?.show_album ? theme.hex : '#E5E7EB' }}
-                    className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_album ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </button>
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => {
+                      if (!formData.access_code) {
+                        setToast({ type: "warning", message: "¡Primero genera un código!" });
+                        return;
+                      }
+                      setShowQRModal(true);
+                    }}
+                    icon={<QrCode size={16} />}
+                    title="Ver Código QR"
+                  />
                 </div>
               </div>
             </div>
+          )}
+        </motion.div>
 
+        {/* Sección: Permisos de Secciones Visibles en Hub y Preview */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, type: "spring", stiffness: 350, damping: 25 }}
+          className={`bg-white/95 dark:bg-stone-900/95 backdrop-blur-2xl rounded-[2.5rem] p-6 md:p-8 shadow-xl border ${theme.borderAccent}`}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-3 rounded-2xl ${theme.bg} ${theme.text}`}>
+              <Eye size={22} />
+            </div>
+            <div>
+              <h3 className={`font-outfit font-black text-xl ${theme.text}`}>Secciones Visibles</h3>
+              <p className={`text-xs ${theme.text} opacity-50 font-bold uppercase tracking-wider mt-0.5`}>
+                Personaliza qué tarjetas y módulos aparecen activos en el panel y la vista compartida
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+            {/* 1. Logros (Camino Mágico) - Desactivado por defecto */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500">
+                  <Map size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Logros (Camino Mágico)</span>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold font-quicksand">
+                    {formData.preview_config?.show_map === true ? "Visible en el panel" : "Oculto por defecto"}
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_map", true)}
+                style={{ backgroundColor: formData.preview_config?.show_map === true ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_map === true ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* 2. Árbolito de Mensajes */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500">
+                  <TreeDeciduous size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Árbolito de Mensajes</span>
+                  <p className="text-[10px] text-stone-400 font-bold font-quicksand">Mensajes familiares y dedicatorias</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_tree")}
+                style={{ backgroundColor: formData.preview_config?.show_tree !== false ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_tree !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* 3. Álbum 3D (Fotolibro) */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-500">
+                  <BookImage size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Álbum 3D Real</span>
+                  <p className="text-[10px] text-stone-400 font-bold font-quicksand">Libro interactivo con fotos</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_photobook")}
+                style={{ backgroundColor: formData.preview_config?.show_photobook !== false ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_photobook !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* 4. Toda una Vida */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-500">
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Toda una Vida</span>
+                  <p className="text-[10px] text-stone-400 font-bold font-quicksand">Etapas y recuerdos del bebé</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_lifetime")}
+                style={{ backgroundColor: formData.preview_config?.show_lifetime !== false ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_lifetime !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* 5. Embarazo */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500">
+                  <Heart size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Embarazo</span>
+                  <p className="text-[10px] text-stone-400 font-bold font-quicksand">La dulce espera y ecografías</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_pregnancy")}
+                style={{ backgroundColor: formData.preview_config?.show_pregnancy !== false ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_pregnancy !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* 6. Galería */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-500">
+                  <Images size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Galería</span>
+                  <p className="text-[10px] text-stone-400 font-bold font-quicksand">Fotos, videos y audios</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_gallery")}
+                style={{ backgroundColor: formData.preview_config?.show_gallery !== false ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_gallery !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* 7. Calendarios */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-500">
+                  <CalendarDays size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Calendarios</span>
+                  <p className="text-[10px] text-stone-400 font-bold font-quicksand">Bóvedas mensuales de recuerdos</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_calendars")}
+                style={{ backgroundColor: formData.preview_config?.show_calendars !== false ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_calendars !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            {/* 8. Libro / Álbum */}
+            <div className={`flex items-center justify-between p-3.5 bg-white dark:bg-stone-800/80 rounded-2xl border ${theme.borderAccent}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-500">
+                  <BookOpen size={16} />
+                </div>
+                <div>
+                  <span className={`text-xs font-black uppercase tracking-wider ${theme.text}`}>Libro / Álbum Digital</span>
+                  <p className="text-[10px] text-stone-400 font-bold font-quicksand">Álbumes temáticos ordenados</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => handleTogglePermission("show_album")}
+                style={{ backgroundColor: formData.preview_config?.show_album !== false ? theme.hex : '#CBD5E1' }}
+                className="w-10 h-6 rounded-full p-1 transition-colors duration-300 cursor-pointer"
+              >
+                <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${formData.preview_config?.show_album !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
           </div>
 
           <div className={`mt-6 flex justify-end border-t ${theme.borderAccent} pt-4`}>
@@ -655,7 +832,7 @@ export default function ChildProfile({ childId }: { childId: string }) {
               glare
               className="w-full md:w-72 py-3.5 text-xs uppercase tracking-widest"
             >
-              Guardar Compartibilidad
+              Guardar Preferencias
             </AppButton>
           </div>
         </motion.div>

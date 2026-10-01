@@ -151,6 +151,8 @@ export default function ChildHub({ childId }: ChildHubProps) {
   const theme = themePalettes[child.theme_color] || themePalettes.neutral;
   const cardStyles = child.preview_config?.card_styles || {};
 
+  const pConfig = child.preview_config || {};
+
   const lifetimeOption: HubOption = { 
     id: "lifetime", 
     title: "Toda una Vida", 
@@ -185,15 +187,17 @@ export default function ChildHub({ childId }: ChildHubProps) {
   }));
 
   const restHubOptions: HubOption[] = [
-    { id: "gallery", title: "Galería", desc: "Fotos, Videos y Audios", iconName: "Images", route: `/dashboard/child/${child.id}/gallery`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.05, cardStyle: cardStyles.gallery },
-    { id: "book", title: "Libro", desc: "Álbumes Digitales", iconName: "BookOpen", route: `/dashboard/child/${child.id}/book`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.1, cardStyle: cardStyles.book },
-    { id: "calendar", title: "Calendarios", desc: "Bóveda Mensual", iconName: "CalendarDays", route: `/dashboard/child/${child.id}/calendar`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.15, cardStyle: cardStyles.calendar },
+    ...(pConfig.show_gallery !== false ? [{ id: "gallery", title: "Galería", desc: "Fotos, Videos y Audios", iconName: "Images", route: `/dashboard/child/${child.id}/gallery`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.05, cardStyle: cardStyles.gallery }] : []),
+    ...(pConfig.show_album !== false ? [{ id: "book", title: "Libro", desc: "Álbumes Digitales", iconName: "BookOpen", route: `/dashboard/child/${child.id}/book`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.1, cardStyle: cardStyles.book }] : []),
+    ...(pConfig.show_calendars !== false ? [{ id: "calendar", title: "Calendarios", desc: "Bóveda Mensual", iconName: "CalendarDays", route: `/dashboard/child/${child.id}/calendar`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.15, cardStyle: cardStyles.calendar }] : []),
     
-    // -- NUEVAS OPCIONES MÁGICAS --
-    ...((child.preview_config || {}).show_map !== false ? [{ id: "map", title: "Logros", desc: "Mapa Interactivo", iconName: "Map", route: `/dashboard/child/${child.id}/milestone-map`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.30, cardStyle: cardStyles.map }] : []),
-    ...((child.preview_config || {}).show_tree !== false ? [{ id: "tree", title: "Árbolito de Mensajes", desc: "Mensajes Familiares", iconName: "TreeDeciduous", route: `/dashboard/child/${child.id}/love-tree`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.35, cardStyle: cardStyles.tree }] : []),
-    ...((child.preview_config || {}).show_photobook !== false ? (() => {
+    // -- OPCIONES MÁGICAS Y ADICIONALES --
+    // Logros: DESACTIVADO POR DEFECTO para todos los usuarios (solo si show_map === true)
+    ...(pConfig.show_map === true ? [{ id: "map", title: "Logros", desc: "Mapa Interactivo", iconName: "Map", route: `/dashboard/child/${child.id}/milestone-map`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.30, cardStyle: cardStyles.map }] : []),
+    ...(pConfig.show_tree !== false ? [{ id: "tree", title: "Árbolito de Mensajes", desc: "Mensajes Familiares", iconName: "TreeDeciduous", route: `/dashboard/child/${child.id}/love-tree`, delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.35, cardStyle: cardStyles.tree }] : []),
+    ...(pConfig.show_photobook !== false ? (() => {
       const pbStyle = cardStyles['photo-book'] || cardStyles.photobook;
+      const isMudBrown = pbStyle?.color === "#7a6448";
       return [{
         id: "photo-book",
         title: "Álbum 3D",
@@ -202,7 +206,7 @@ export default function ChildHub({ childId }: ChildHubProps) {
         route: `/dashboard/child/${child.id}/photo-book`,
         delay: 0.15 + favoriteHubOptions.length * 0.05 + 0.40,
         cardStyle: {
-          color: pbStyle?.color ? sanitizeHexColor(pbStyle.color) : "#7a6448",
+          color: (pbStyle?.color && !isMudBrown) ? sanitizeHexColor(pbStyle.color) : undefined,
           icon: pbStyle?.icon && !pbStyle.icon.startsWith("bg-") ? pbStyle.icon : "BookImage",
         }
       }];
@@ -213,8 +217,8 @@ export default function ChildHub({ childId }: ChildHubProps) {
   ];
 
   const hubOptions = [
-    lifetimeOption,
-    pregnancyOption,
+    ...(pConfig.show_lifetime !== false ? [lifetimeOption] : []),
+    ...(pConfig.show_pregnancy !== false ? [pregnancyOption] : []),
     ...favoriteHubOptions,
     ...restHubOptions
   ];

@@ -181,31 +181,7 @@ export default function LifetimeHub({ childId }: LifetimeHubProps) {
 
       </header>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 md:py-8 flex flex-col gap-6">
-        {/* Switcher para alternar entre Etapas y Camino de Logros */}
-        <div className="flex items-center justify-center">
-          <div className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-md p-1.5 rounded-full border border-white/60 dark:border-stone-800 shadow-sm flex items-center gap-1">
-            <button
-              type="button"
-              className={`px-5 py-2 rounded-full font-outfit font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 ${theme.primaryBg} text-white shadow-sm`}
-            >
-              <Sparkles size={14} />
-              <span>Etapas de Vida</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playActionSnap();
-                router.push(`/dashboard/child/${childId}/milestone-map`);
-              }}
-              className="px-5 py-2 rounded-full font-outfit font-black text-xs uppercase tracking-wider text-stone-500 hover:text-stone-800 transition-all flex items-center gap-2 hover:bg-white/60"
-            >
-              <Map size={14} />
-              <span>Camino de Logros</span>
-            </button>
-          </div>
-        </div>
-
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 md:py-12 flex flex-col gap-8">
         {/* Life Stages list */}
         <div>
           <h3 className={`font-outfit font-black text-xs ${theme.text} opacity-40 uppercase tracking-[0.2em] mb-4`}>Etapas de la Vida</h3>
