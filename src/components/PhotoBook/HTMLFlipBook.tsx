@@ -1,54 +1,84 @@
 "use client";
 
-import React, { useEffect, useRef, useState, forwardRef, useCallback } from 'react';
-import HTMLFlipBook from 'react-pageflip';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { playPageTurnSound } from '@/lib/pageSound';
-import { getPreviewUrl, handleImageFallback } from '@/lib/optimizedImage';
+import React, { useEffect, useRef, useState, forwardRef, useCallback } from "react";
+import HTMLFlipBook from "react-pageflip";
+import { ChevronLeft, ChevronRight, X, Minus, Plus, Volume2, VolumeX, Maximize2 } from "lucide-react";
+import { playPageTurnSound, isAudioMuted, toggleAudioMuted } from "@/lib/pageSound";
+import { getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
 
 interface PhotoBookViewerProps {
   photos: string[];
   width?: number;
   height?: number;
   isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onClose?: () => void;
+  title?: string;
 }
 
 // Creamos la página individual del libro (Estructurada)
-const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover?: boolean }>((props, ref) => {
-  
+const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover?: boolean; isBackCover?: boolean }>((props, ref) => {
+  const { urls, index, isCover, isBackCover } = props;
+  const count = urls ? urls.length : 0;
+
+  if (isCover) {
+    return (
+      <div className="page w-full h-full bg-[#f4e8d3] flex flex-col items-center justify-center border-8 border-[#d4c1a5] relative select-none shadow-inner" ref={ref}>
+        <div className="p-6 text-center">
+          <span className="text-xs uppercase tracking-[0.3em] text-[#9b805d] font-bold block mb-2">Recuerdos Inolvidables</span>
+          <h2 className="font-outfit font-black text-2xl sm:text-3xl text-[#6b5539] uppercase tracking-wider text-center">
+            Álbum de Recuerdos
+          </h2>
+          <div className="mt-6 mx-auto w-20 h-1 bg-[#d4c1a5] rounded-full" />
+        </div>
+        <div className="absolute bottom-4 text-[10px] tracking-widest text-[#9b805d] uppercase font-bold">
+          TinyWorld 3D
+        </div>
+      </div>
+    );
+  }
+
+  if (isBackCover) {
+    return (
+      <div className="page w-full h-full bg-[#d4c1a5] flex flex-col items-center justify-center p-6 text-center select-none shadow-inner" ref={ref}>
+        <p className="text-white/80 font-black tracking-widest uppercase text-base sm:text-lg">Fin del Álbum</p>
+        <p className="text-white/60 text-xs mt-2 font-medium">Cada momento es eterno ✨</p>
+      </div>
+    );
+  }
+
   const renderLayout = () => {
-    const { urls, index } = props;
-    const count = urls.length;
-    
-    // Si es 1 foto: Sangría completa o gran margen central
+    // Si es 1 foto: Margen limpio y foto centrada
     if (count === 1) {
       return (
-        <div className="w-full h-full p-6 md:p-10 flex items-center justify-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]">
-          <img 
-            src={getPreviewUrl(urls[0])} 
-            alt="Foto" 
-            loading="lazy" 
-            decoding="async" 
-            className="w-full h-full object-cover" 
-            onError={(e) => handleImageFallback(e, urls[0])}
-          />
+        <div className="w-full h-full p-4 sm:p-6 flex items-center justify-center bg-white">
+          <div className="w-full h-full relative rounded-xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.08)] bg-stone-100 flex items-center justify-center">
+            <img
+              src={getPreviewUrl(urls[0])}
+              alt="Foto del recuerdo"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover object-center"
+              onError={(e) => handleImageFallback(e, urls[0])}
+            />
+          </div>
         </div>
       );
     }
-    
-    // Si son 2 fotos: Divididas horizontalmente
+
+    // Si son 2 fotos: Divididas horizontal o verticalmente
     if (count === 2) {
       const isVertical = index % 2 === 0;
       return (
-        <div className={`w-full h-full p-6 md:p-8 grid gap-4 md:gap-6 ${isVertical ? 'grid-rows-2' : 'grid-cols-2'}`}>
+        <div className={`w-full h-full p-3 sm:p-5 grid gap-3 ${isVertical ? "grid-rows-2" : "grid-cols-2"}`}>
           {urls.map((url, idx) => (
-            <div key={idx} className="w-full h-full bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-              <img 
-                src={getPreviewUrl(url)} 
-                alt={`Foto ${idx}`} 
-                loading="lazy" 
-                decoding="async" 
-                className="w-full h-full object-cover" 
+            <div key={idx} className="w-full h-full bg-white rounded-lg shadow-sm p-1.5 overflow-hidden flex items-center justify-center">
+              <img
+                src={getPreviewUrl(url)}
+                alt={`Foto ${idx + 1}`}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover object-center rounded"
                 onError={(e) => handleImageFallback(e, url)}
               />
             </div>
@@ -57,37 +87,37 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
       );
     }
 
-    // Si son 3 fotos: 1 grande y 2 pequeñas
+    // Si son 3 fotos: 1 principal y 2 secundarias
     if (count === 3) {
       return (
-        <div className="w-full h-full p-6 md:p-8 grid grid-cols-2 grid-rows-2 gap-4 md:gap-6">
-          <div className="col-span-2 row-span-1 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-            <img 
-              src={getPreviewUrl(urls[0])} 
-              alt="Foto principal" 
-              loading="lazy" 
-              decoding="async" 
-              className="w-full h-full object-cover object-center" 
+        <div className="w-full h-full p-3 sm:p-4 grid grid-cols-2 grid-rows-2 gap-2.5">
+          <div className="col-span-2 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+            <img
+              src={getPreviewUrl(urls[0])}
+              alt="Foto principal"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover object-center rounded"
               onError={(e) => handleImageFallback(e, urls[0])}
             />
           </div>
-          <div className="col-span-1 row-span-1 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-            <img 
-              src={getPreviewUrl(urls[1])} 
-              alt="Secundaria 1" 
-              loading="lazy" 
-              decoding="async" 
-              className="w-full h-full object-cover" 
+          <div className="col-span-1 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+            <img
+              src={getPreviewUrl(urls[1])}
+              alt="Secundaria 1"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover object-center rounded"
               onError={(e) => handleImageFallback(e, urls[1])}
             />
           </div>
-          <div className="col-span-1 row-span-1 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-            <img 
-              src={getPreviewUrl(urls[2])} 
-              alt="Secundaria 2" 
-              loading="lazy" 
-              decoding="async" 
-              className="w-full h-full object-cover" 
+          <div className="col-span-1 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+            <img
+              src={getPreviewUrl(urls[2])}
+              alt="Secundaria 2"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover object-center rounded"
               onError={(e) => handleImageFallback(e, urls[2])}
             />
           </div>
@@ -98,15 +128,15 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
     // Si son 4 fotos: Cuadrícula 2x2
     if (count >= 4) {
       return (
-        <div className="w-full h-full p-6 md:p-8 grid grid-cols-2 grid-rows-2 gap-4 md:gap-6">
+        <div className="w-full h-full p-3 sm:p-4 grid grid-cols-2 grid-rows-2 gap-2.5">
           {urls.slice(0, 4).map((url, idx) => (
-            <div key={idx} className="w-full h-full bg-white shadow-[0_4px_10px_rgba(0,0,0,0.06)] p-2">
-              <img 
-                src={getPreviewUrl(url)} 
-                alt={`Cuadricula ${idx}`} 
-                loading="lazy" 
-                decoding="async" 
-                className="w-full h-full object-cover" 
+            <div key={idx} className="w-full h-full bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+              <img
+                src={getPreviewUrl(url)}
+                alt={`Foto cuadrícula ${idx + 1}`}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-cover object-center rounded"
                 onError={(e) => handleImageFallback(e, url)}
               />
             </div>
@@ -115,55 +145,94 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
       );
     }
 
-    return null;
+    return (
+      <div className="w-full h-full bg-[#f9f8f6] flex items-center justify-center p-6 text-stone-300 font-quicksand font-bold italic">
+        Página en blanco
+      </div>
+    );
   };
 
   return (
-    <div className="page bg-[#f9f8f6] shadow-inner flex flex-col items-center justify-center p-0 relative" ref={ref}>
-      {props.isCover ? (
-        <div className="w-full h-full bg-[#f4e8d3] flex flex-col items-center justify-center border-8 border-[#d4c1a5]">
-          <h2 className="font-outfit font-black text-2xl text-[#7a6448] uppercase tracking-widest text-center px-4">
-            Álbum de Recuerdos
-          </h2>
-          <div className="mt-8 w-24 h-1 bg-[#d4c1a5]" />
-        </div>
-      ) : (
-        <div className="w-full h-full relative overflow-hidden bg-stone-100 flex items-center justify-center">
-          {renderLayout()}
-        </div>
-      )}
+    <div className="page w-full h-full bg-[#f9f8f6] shadow-inner flex flex-col items-center justify-center p-0 relative select-none" ref={ref}>
+      <div className="w-full h-full relative overflow-hidden bg-stone-100 flex items-center justify-center">
+        {renderLayout()}
+      </div>
       {/* Sombra de la encuadernación central */}
-      <div className={`absolute top-0 bottom-0 w-12 pointer-events-none ${props.index % 2 === 0 ? 'left-0 bg-gradient-to-r from-black/20 to-transparent' : 'right-0 bg-gradient-to-l from-black/20 to-transparent'}`} />
+      <div
+        className={`absolute top-0 bottom-0 w-10 sm:w-14 pointer-events-none ${
+          index % 2 === 0
+            ? "left-0 bg-gradient-to-r from-black/20 via-black/5 to-transparent"
+            : "right-0 bg-gradient-to-l from-black/20 via-black/5 to-transparent"
+        }`}
+      />
     </div>
   );
 });
 
 Page.displayName = "Page";
 
-export default function PhotoBookViewer({ photos, width = 400, height = 500, isFullscreen = false }: PhotoBookViewerProps) {
+export default function PhotoBookViewer({
+  photos,
+  isFullscreen = false,
+  onToggleFullscreen,
+  onClose,
+  title = "Álbum 3D",
+}: PhotoBookViewerProps) {
   const [isClient, setIsClient] = useState(false);
   const flipBookRef = useRef<any>(null);
   const isFlippingRef = useRef(false);
 
-  const [dimensions, setDimensions] = useState({ width, height, isLandscape: false });
+  const [dimensions, setDimensions] = useState({ width: 340, height: 450, isLandscape: false });
+  const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isMuted, setIsMuted] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const panStartRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+
+  // Robust responsive dimensions calculation
+  const updateDimensions = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const isLand = w > h && w >= 640;
+
+    const reservedH = isFullscreen ? 110 : 130;
+    const reservedW = isFullscreen ? 36 : 48;
+    const maxAvailW = Math.max(w - reservedW, 260);
+    const maxAvailH = Math.max(h - reservedH, 260);
+    const pageAspect = 3 / 4; // 0.75 (w/h)
+
+    if (isLand) {
+      // Landscape: dual-page spread (aspect ratio 1.5)
+      const spreadAspect = 1.5;
+      let targetH = maxAvailH;
+      let targetW = Math.round(targetH * spreadAspect);
+      if (targetW > maxAvailW) {
+        targetW = maxAvailW;
+        targetH = Math.round(targetW / spreadAspect);
+      }
+      targetH = Math.min(targetH, 700);
+      targetW = Math.round(targetH * spreadAspect);
+      const pageW = Math.round(targetW / 2);
+      setDimensions({ width: Math.max(pageW, 220), height: Math.max(targetH, 280), isLandscape: true });
+    } else {
+      // Portrait: single page (aspect ratio 0.75)
+      let pageH = maxAvailH;
+      let pageW = Math.round(pageH * pageAspect);
+      if (pageW > maxAvailW) {
+        pageW = maxAvailW;
+        pageH = Math.round(pageW / pageAspect);
+      }
+      pageH = Math.min(pageH, 720);
+      pageW = Math.round(pageH * pageAspect);
+      setDimensions({ width: Math.max(pageW, 220), height: Math.max(pageH, 290), isLandscape: false });
+    }
+  }, [isFullscreen]);
 
   useEffect(() => {
     setIsClient(true);
-    const updateDimensions = () => {
-      const isLand = window.innerWidth > window.innerHeight;
-      if (isLand) {
-        const availH = Math.min(window.innerHeight - 110, 620);
-        const pageH = Math.max(availH, 280);
-        const pageW = Math.round(pageH * 0.75);
-        setDimensions({ width: pageW, height: pageH, isLandscape: true });
-      } else {
-        const availW = Math.min(window.innerWidth - 32, 420);
-        const pageW = Math.max(availW, 280);
-        const pageH = Math.round(pageW * (4 / 3));
-        setDimensions({ width: pageW, height: pageH, isLandscape: false });
-      }
-    };
-
+    setIsMuted(isAudioMuted());
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     window.addEventListener("orientationchange", updateDimensions);
@@ -171,13 +240,66 @@ export default function PhotoBookViewer({ photos, width = 400, height = 500, isF
       window.removeEventListener("resize", updateDimensions);
       window.removeEventListener("orientationchange", updateDimensions);
     };
-  }, [width, height]);
+  }, [updateDimensions]);
+
+  const handleToggleMute = () => {
+    const next = toggleAudioMuted();
+    setIsMuted(next);
+  };
+
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 2.5));
+  };
+
+  const handleZoomOut = () => {
+    setZoom((prev) => {
+      const next = Math.max(Number((prev - 0.25).toFixed(2)), 1);
+      if (next === 1) setPanOffset({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  // Pointer panning handler when zoomed in
+  const handleStagePointerDown = (e: React.PointerEvent) => {
+    if (zoom <= 1) return;
+    panStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: panOffset.x,
+      originY: panOffset.y,
+    };
+  };
+
+  const handleStagePointerMove = (e: React.PointerEvent) => {
+    if (!panStartRef.current || zoom <= 1) return;
+    const dx = e.clientX - panStartRef.current.startX;
+    const dy = e.clientY - panStartRef.current.startY;
+
+    const bookW = dimensions.width * (dimensions.isLandscape ? 2 : 1);
+    const bookH = dimensions.height;
+    const maxPanX = (bookW * (zoom - 1)) / 2;
+    const maxPanY = (bookH * (zoom - 1)) / 2;
+
+    const nextX = Math.max(-maxPanX, Math.min(maxPanX, panStartRef.current.originX + dx));
+    const nextY = Math.max(-maxPanY, Math.min(maxPanY, panStartRef.current.originY + dy));
+
+    setPanOffset({ x: nextX, y: nextY });
+  };
+
+  const handleStagePointerUp = () => {
+    panStartRef.current = null;
+  };
 
   const handleFlipNext = useCallback(() => {
     if (isFlippingRef.current) return;
     const pageFlip = flipBookRef.current?.pageFlip();
     if (!pageFlip) return;
-    
+
     isFlippingRef.current = true;
     playPageTurnSound("forward");
     pageFlip.flipNext();
@@ -190,7 +312,7 @@ export default function PhotoBookViewer({ photos, width = 400, height = 500, isF
     if (isFlippingRef.current) return;
     const pageFlip = flipBookRef.current?.pageFlip();
     if (!pageFlip) return;
-    
+
     isFlippingRef.current = true;
     playPageTurnSound("backward");
     pageFlip.flipPrev();
@@ -205,27 +327,30 @@ export default function PhotoBookViewer({ photos, width = 400, height = 500, isF
         handleFlipNext();
       } else if (e.key === "ArrowLeft") {
         handleFlipPrev();
+      } else if (e.key === "Escape" && isFullscreen && (onClose || onToggleFullscreen)) {
+        if (onClose) onClose();
+        else if (onToggleFullscreen) onToggleFullscreen();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleFlipNext, handleFlipPrev]);
+  }, [handleFlipNext, handleFlipPrev, isFullscreen, onClose, onToggleFullscreen]);
 
   if (!isClient) return <div className="animate-pulse w-full h-[60vh] bg-stone-100 rounded-3xl" />;
 
   if (photos.length === 0) {
     return (
-      <div className="text-center p-12 bg-white/50 rounded-3xl">
+      <div className="text-center p-12 bg-white/50 rounded-3xl text-stone-500 font-medium">
         No hay fotos en el álbum todavía.
       </div>
     );
   }
 
-  // Agrupamos las fotos usando diferentes plantillas (1 a 4 fotos por pág)
+  // Agrupamos las fotos usando plantillas
   const chunkedPhotos: string[][] = [];
   let currentIndex = 0;
   let p = 0;
-  
+
   while (currentIndex < photos.length) {
     const sizes = [1, 2, 3, 2, 4, 1, 2, 4];
     const take = Math.min(sizes[p % sizes.length], photos.length - currentIndex);
@@ -234,114 +359,185 @@ export default function PhotoBookViewer({ photos, width = 400, height = 500, isF
     p++;
   }
 
-  // Aseguramos que haya un número par de páginas agregando una en blanco si es necesario
+  // Aseguramos número par de páginas agregando una en blanco si es necesario
   const pages = [...chunkedPhotos];
   if (pages.length % 2 !== 0) {
-    pages.push([]); 
+    pages.push([]);
   }
 
-  const isDualPage = dimensions.isLandscape || isFullscreen;
+  const totalPages = pages.length + 2; // + portada y contraportada
 
-  return (
-    <div className="w-full h-full flex flex-col items-center justify-center relative perspective-1000 select-none">
-      
-      {/* Mensaje para rotar en móviles si está en portrait y no en fullscreen */}
-      {!dimensions.isLandscape && !isFullscreen && (
-        <div className="md:hidden text-center text-xs text-stone-500 mb-3 font-bold animate-pulse">
-          Gira tu celular de lado para ver doble página 📱🔄
-        </div>
+  const viewerContent = (
+    <div className="w-full h-full flex flex-col items-center justify-between relative select-none">
+      {/* Barra de Controles Superior en Pantalla Completa */}
+      {isFullscreen && (
+        <header className="w-full h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between z-50 bg-stone-900/60 backdrop-blur-xl border-b border-white/10 shrink-0">
+          {/* Botón de Cerrar */}
+          <button
+            onClick={onClose || onToggleFullscreen}
+            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white backdrop-blur-md border border-white/20 flex items-center gap-2 text-xs sm:text-sm font-black transition-all shadow-lg cursor-pointer"
+            title="Cerrar pantalla completa"
+          >
+            <X size={18} />
+            <span>Cerrar</span>
+          </button>
+
+          {/* Título & Número de Página */}
+          <div className="flex flex-col items-center text-center">
+            <span className="text-white text-xs sm:text-sm font-black tracking-tight line-clamp-1 max-w-[140px] sm:max-w-[280px]">
+              {title}
+            </span>
+            <span className="text-stone-300 text-[10px] sm:text-xs font-semibold">
+              Página {currentPage + 1} de {totalPages}
+            </span>
+          </div>
+
+          {/* Controles de Zoom y Audio */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={handleZoomOut}
+              disabled={zoom <= 1}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
+              title="Alejar zoom"
+            >
+              <Minus size={16} />
+            </button>
+            <button
+              onClick={handleResetZoom}
+              className="px-2 sm:px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] sm:text-xs font-mono font-bold active:scale-95 transition-all border border-white/20 cursor-pointer"
+              title="Restablecer zoom a 100%"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              onClick={handleZoomIn}
+              disabled={zoom >= 2.5}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
+              title="Acercar zoom"
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              onClick={handleToggleMute}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all ml-1 cursor-pointer"
+              title={isMuted ? "Activar sonido" : "Silenciar sonido"}
+            >
+              {isMuted ? <VolumeX size={16} className="opacity-40" /> : <Volume2 size={16} />}
+            </button>
+          </div>
+        </header>
       )}
 
-      {/* Zonas Virtuales Táctiles (División de la pantalla en dos mitades) */}
-      <div className="absolute inset-0 z-30 pointer-events-none flex select-none">
-        {/* Zona Izquierda: Pasar a la página anterior (retroceder) */}
-        <div
-          onTouchStart={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleFlipPrev();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleFlipPrev();
-          }}
-          className="w-1/2 h-full pointer-events-auto cursor-pointer flex items-center justify-start pl-2 sm:pl-6 group"
-          title="Toca del lado izquierdo para retroceder"
-        >
-          <div className="p-3 sm:p-4 rounded-full bg-stone-900/60 text-white backdrop-blur-md shadow-2xl border border-white/20 transition-all opacity-40 group-hover:opacity-100 group-hover:scale-110 active:scale-95">
-            <ChevronLeft size={28} />
-          </div>
-        </div>
-
-        {/* Zona Derecha: Pasar a la página siguiente (avanzar) */}
-        <div
-          onTouchStart={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleFlipNext();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleFlipNext();
-          }}
-          className="w-1/2 h-full pointer-events-auto cursor-pointer flex items-center justify-end pr-2 sm:pr-6 group"
-          title="Toca del lado derecho para avanzar"
-        >
-          <div className="p-3 sm:p-4 rounded-full bg-stone-900/60 text-white backdrop-blur-md shadow-2xl border border-white/20 transition-all opacity-40 group-hover:opacity-100 group-hover:scale-110 active:scale-95">
-            <ChevronRight size={28} />
-          </div>
-        </div>
-      </div>
-
-      <div 
-        className="drop-shadow-2xl flex justify-center transition-all duration-300 relative z-20"
-        style={{
-          width: `${(isDualPage ? dimensions.width * 2 : dimensions.width)}px`,
-          height: `${dimensions.height}px`,
-          maxWidth: '96vw',
-          maxHeight: '85vh',
+      {/* Botones Laterales Flotantes para Pasar Página */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleFlipPrev();
         }}
+        className="fixed left-2 sm:left-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+        title="Página anterior"
+        aria-label="Página anterior"
       >
-        {/* @ts-ignore */}
-        <HTMLFlipBook
-          key={`${dimensions.isLandscape ? 'land' : 'port'}-${dimensions.width}-${dimensions.height}`}
-          ref={flipBookRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          size="fixed"
-          minWidth={dimensions.width}
-          maxWidth={dimensions.width}
-          minHeight={dimensions.height}
-          maxHeight={dimensions.height}
-          maxShadowOpacity={0.5}
-          showCover={false}
-          flippingTime={500}
-          useMouseEvents={false}
-          clickEventForward={false}
-          mobileScrollSupport={false}
-          usePortrait={!isDualPage}
-          className="flipbook-container"
+        <ChevronLeft size={28} className="group-hover:-translate-x-0.5 transition-transform" />
+      </button>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleFlipNext();
+        }}
+        className="fixed right-2 sm:right-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+        title="Página siguiente"
+        aria-label="Página siguiente"
+      >
+        <ChevronRight size={28} className="group-hover:translate-x-0.5 transition-transform" />
+      </button>
+
+      {/* Escenario Central con Soporte de Zoom y Arrastre Pan */}
+      <div
+        className="flex-1 w-full flex items-center justify-center relative overflow-hidden"
+        style={{ cursor: zoom > 1 ? "grab" : "default" }}
+        onPointerDown={handleStagePointerDown}
+        onPointerMove={handleStagePointerMove}
+        onPointerUp={handleStagePointerUp}
+        onPointerCancel={handleStagePointerUp}
+      >
+        <div
+          className="transition-transform duration-75 ease-out select-none will-change-transform drop-shadow-2xl flex justify-center items-center"
+          style={{
+            transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
+            transformOrigin: "center center",
+            width: `${dimensions.isLandscape ? dimensions.width * 2 : dimensions.width}px`,
+            height: `${dimensions.height}px`,
+          }}
         >
-          {/* Portada */}
-          <Page urls={[]} index={0} isCover={true} />
-          
-          {/* Páginas interiores con collage */}
-          {pages.map((urls, i) => (
-            urls.length > 0 ? (
+          {/* @ts-ignore - react-pageflip typings */}
+          <HTMLFlipBook
+            key={`${dimensions.isLandscape ? "land" : "port"}-${dimensions.width}-${dimensions.height}`}
+            ref={flipBookRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            size="fixed"
+            minWidth={dimensions.width}
+            maxWidth={dimensions.width}
+            minHeight={dimensions.height}
+            maxHeight={dimensions.height}
+            maxShadowOpacity={0.5}
+            showCover={false}
+            flippingTime={500}
+            useMouseEvents={false}
+            clickEventForward={false}
+            mobileScrollSupport={false}
+            usePortrait={!dimensions.isLandscape}
+            onFlip={(e: any) => setCurrentPage(e.data)}
+            className="flipbook-container"
+          >
+            {/* Portada */}
+            <Page urls={[]} index={0} isCover={true} />
+
+            {/* Páginas interiores con fotos */}
+            {pages.map((urls, i) => (
               <Page key={i} urls={urls} index={i + 1} />
-            ) : (
-              <div key={i} className="page bg-[#f9f8f6] shadow-inner flex items-center justify-center">
-                <p className="text-stone-300 font-quicksand font-bold italic">Página en blanco</p>
-              </div>
-            )
-          ))}
-          
-          {/* Contraportada */}
-          <div className="page bg-[#d4c1a5] shadow-inner flex items-center justify-center">
-            <p className="text-white font-black opacity-50">Fin del Álbum</p>
+            ))}
+
+            {/* Contraportada */}
+            <Page urls={[]} index={pages.length + 1} isBackCover={true} />
+          </HTMLFlipBook>
+        </div>
+
+        {/* Indicador de ayuda cuando hay zoom activo */}
+        {zoom > 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-stone-900/80 text-white text-[11px] font-medium backdrop-blur-md border border-white/10 pointer-events-none shadow-lg z-30">
+            Arrastra para explorar fotos • Toca {Math.round(zoom * 100)}% para restablecer
           </div>
-        </HTMLFlipBook>
+        )}
       </div>
+
+      {/* Botón flotante para abrir pantalla completa si no está activa */}
+      {!isFullscreen && onToggleFullscreen && (
+        <div className="w-full flex justify-center pb-4 z-20">
+          <button
+            onClick={onToggleFullscreen}
+            className="px-5 py-2.5 rounded-full bg-stone-900 text-white shadow-xl flex items-center gap-2 text-xs font-black uppercase tracking-wider hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <Maximize2 size={16} /> Ver en Pantalla Completa
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-[1000] bg-stone-950/95 backdrop-blur-2xl flex flex-col justify-between overflow-hidden">
+        {viewerContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center relative perspective-1000">
+      {viewerContent}
     </div>
   );
 }

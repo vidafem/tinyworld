@@ -51,6 +51,7 @@ import {
   FileDown,
   ZoomIn,
   ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { playPageTurnSound, playBookOpenSound, isAudioMuted, toggleAudioMuted } from "@/lib/pageSound";
@@ -530,25 +531,99 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
   const isFlippingRef = useRef(false);
 
   const [dimensions, setDimensions] = useState({ width: 450, height: 600, isLandscape: false });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [currentFlipPageIndex, setCurrentFlipPageIndex] = useState(0);
+  const panStartRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 2.5));
+  };
+
+  const handleZoomOut = () => {
+    setZoom((prev) => {
+      const next = Math.max(Number((prev - 0.25).toFixed(2)), 1);
+      if (next === 1) setPanOffset({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handleStagePointerDown = (e: ReactPointerEvent<HTMLElement>) => {
+    if (zoom <= 1) return;
+    panStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: panOffset.x,
+      originY: panOffset.y,
+    };
+  };
+
+  const handleStagePointerMove = (e: ReactPointerEvent<HTMLElement>) => {
+    if (!panStartRef.current || zoom <= 1) return;
+    const dx = e.clientX - panStartRef.current.startX;
+    const dy = e.clientY - panStartRef.current.startY;
+
+    const bookW = dimensions.width * (dimensions.isLandscape ? 2 : 1);
+    const bookH = dimensions.height;
+    const maxPanX = (bookW * (zoom - 1)) / 2;
+    const maxPanY = (bookH * (zoom - 1)) / 2;
+
+    const nextX = Math.max(-maxPanX, Math.min(maxPanX, panStartRef.current.originX + dx));
+    const nextY = Math.max(-maxPanY, Math.min(maxPanY, panStartRef.current.originY + dy));
+
+    setPanOffset({ x: nextX, y: nextY });
+  };
+
+  const handleStagePointerUp = () => {
+    panStartRef.current = null;
+  };
+
+  const updateDimensions = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const isLand = w > h && w >= 640;
+
+    const reservedH = isFullscreen ? 110 : 130;
+    const reservedW = isFullscreen ? 36 : 48;
+    const maxAvailW = Math.max(w - reservedW, 260);
+    const maxAvailH = Math.max(h - reservedH, 260);
+    const pageAspect = 3 / 4; // 0.75 (w/h)
+
+    if (isLand) {
+      // Landscape: dual-page spread (aspect ratio 1.5)
+      const spreadAspect = 1.5;
+      let targetH = maxAvailH;
+      let targetW = Math.round(targetH * spreadAspect);
+      if (targetW > maxAvailW) {
+        targetW = maxAvailW;
+        targetH = Math.round(targetW / spreadAspect);
+      }
+      targetH = Math.min(targetH, 700);
+      targetW = Math.round(targetH * spreadAspect);
+      const pageW = Math.round(targetW / 2);
+      setDimensions({ width: Math.max(pageW, 220), height: Math.max(targetH, 280), isLandscape: true });
+    } else {
+      // Portrait: single page (aspect ratio 0.75)
+      let pageH = maxAvailH;
+      let pageW = Math.round(pageH * pageAspect);
+      if (pageW > maxAvailW) {
+        pageW = maxAvailW;
+        pageH = Math.round(pageW / pageAspect);
+      }
+      pageH = Math.min(pageH, 720);
+      pageW = Math.round(pageH * pageAspect);
+      setDimensions({ width: Math.max(pageW, 220), height: Math.max(pageH, 290), isLandscape: false });
+    }
+  }, [isFullscreen]);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      const isLand = window.innerWidth > window.innerHeight;
-      if (isLand) {
-        // Landscape (horizontal) mode: two-page spread that fits viewport height
-        const availH = Math.min(window.innerHeight - 110, 640);
-        const pageH = Math.max(availH, 280);
-        const pageW = Math.round(pageH * 0.75); // 3:4 aspect ratio per page
-        setDimensions({ width: pageW, height: pageH, isLandscape: true });
-      } else {
-        // Portrait (vertical) mode: single page
-        const availW = Math.min(window.innerWidth - 32, 440);
-        const pageW = Math.max(availW, 280);
-        const pageH = Math.round(pageW * (4 / 3));
-        setDimensions({ width: pageW, height: pageH, isLandscape: false });
-      }
-    };
-
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     window.addEventListener("orientationchange", updateDimensions);
@@ -556,7 +631,17 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
       window.removeEventListener("resize", updateDimensions);
       window.removeEventListener("orientationchange", updateDimensions);
     };
-  }, []);
+  }, [updateDimensions]);
+
+  // En celulares verticales, entrar automáticamente en pantalla completa al ver el libro
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isMobilePortrait = window.innerWidth <= 768 && window.innerHeight > window.innerWidth;
+      if (isMobilePortrait && bookOpened && !editMode) {
+        setIsFullscreen(true);
+      }
+    }
+  }, [bookOpened, editMode]);
 
   const handleFlipNext = useCallback(() => {
     if (isFlippingRef.current) return;
@@ -642,7 +727,6 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
   const [draggedMemoryId, setDraggedMemoryId] = useState<string | null>(null);
   const [dropPreview, setDropPreview] = useState<"left" | "right" | "spread" | null>(null);
-  const [zoom, setZoom] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [turnDirection, setTurnDirection] = useState<"forward" | "backward">("forward");
 
@@ -1549,18 +1633,35 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
             {!editMode && bookOpened && (
               <>
                 <button
-                  onClick={() => setZoom(prev => Math.max(prev - 0.2, 0.5))}
-                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer`}
-                  title="Alejar"
+                  onClick={handleZoomOut}
+                  disabled={zoom <= 1}
+                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 cursor-pointer`}
+                  title="Alejar zoom"
                 >
                   <Minus size={18} />
                 </button>
                 <button
-                  onClick={() => setZoom(prev => Math.min(prev + 0.2, 2.5))}
-                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer`}
-                  title="Acercar"
+                  onClick={handleResetZoom}
+                  className={`px-2.5 py-1.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-mono text-xs font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer`}
+                  title="Restablecer zoom a 100%"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  onClick={handleZoomIn}
+                  disabled={zoom >= 2.5}
+                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 cursor-pointer`}
+                  title="Acercar zoom"
                 >
                   <Plus size={18} />
+                </button>
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 text-xs uppercase cursor-pointer`}
+                  title="Ver en pantalla completa"
+                >
+                  <Maximize2 size={18} />
+                  {!isMobile && <span>Pantalla Completa</span>}
                 </button>
               </>
             )}
@@ -1743,114 +1844,281 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                         playBookOpenSound();
                         setBookOpened(true);
                         setSpreadIndex(0);
+                        if (typeof window !== "undefined" && (window.innerWidth <= 768 || isMobile)) {
+                          setIsFullscreen(true);
+                        }
                       }}
                       snapLineX={snapLineX}
                       snapLineY={snapLineY}
                     />
                   ) : !editMode ? (
-                    <div className="w-full h-full flex items-center justify-center relative perspective-1000 select-none">
-                      {/* Zonas Virtuales de Navegación Táctil (División virtual de pantalla para móviles y escritorio) */}
-                      <div className="absolute inset-0 z-30 pointer-events-none flex select-none">
-                        {/* Zona Izquierda: Pasar a la página anterior (retroceder) */}
-                        <div
-                          onTouchStart={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleFlipPrev();
-                          }}
+                    isFullscreen ? (
+                      /* PANTALLA TOTALMENTE APARTE / PANTALLA COMPLETA */
+                      <div className="fixed inset-0 z-[9999] bg-stone-950/95 backdrop-blur-2xl flex flex-col justify-between overflow-hidden select-none">
+                        {/* Top Bar en Pantalla Completa */}
+                        <header className="w-full h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between z-50 bg-stone-900/60 backdrop-blur-xl border-b border-white/10 shrink-0">
+                          {/* Botón de Cerrar */}
+                          <button
+                            onClick={() => {
+                              setIsFullscreen(false);
+                              handleResetZoom();
+                            }}
+                            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white backdrop-blur-md border border-white/20 flex items-center gap-2 text-xs sm:text-sm font-black transition-all shadow-lg cursor-pointer"
+                            title="Cerrar pantalla completa"
+                          >
+                            <X size={18} />
+                            <span>Cerrar</span>
+                          </button>
+
+                          {/* Título & Número de Página */}
+                          <div className="flex flex-col items-center text-center">
+                            <span className="text-white text-xs sm:text-sm font-black tracking-tight line-clamp-1 max-w-[140px] sm:max-w-[280px]">
+                              {sectionTitle || "Álbum Digital 3D"}
+                            </span>
+                            <span className="text-stone-300 text-[10px] sm:text-xs font-semibold">
+                              Página {currentFlipPageIndex + 1} de {flipBookPages.length}
+                            </span>
+                          </div>
+
+                          {/* Controles de Zoom y Audio */}
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <button
+                              onClick={handleZoomOut}
+                              disabled={zoom <= 1}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
+                              title="Alejar zoom"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <button
+                              onClick={handleResetZoom}
+                              className="px-2 sm:px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] sm:text-xs font-mono font-bold active:scale-95 transition-all border border-white/20 cursor-pointer"
+                              title="Restablecer zoom a 100%"
+                            >
+                              {Math.round(zoom * 100)}%
+                            </button>
+                            <button
+                              onClick={handleZoomIn}
+                              disabled={zoom >= 2.5}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
+                              title="Acercar zoom"
+                            >
+                              <Plus size={16} />
+                            </button>
+                            <button
+                              onClick={handleToggleMute}
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all ml-1 cursor-pointer"
+                              title={isMuted ? "Activar sonido" : "Silenciar sonido"}
+                            >
+                              {isMuted ? <VolumeX size={16} className="opacity-40" /> : <Volume2 size={16} />}
+                            </button>
+                          </div>
+                        </header>
+
+                        {/* Botones Laterales Flotantes en Pantalla Completa */}
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFlipPrev();
                           }}
-                          className="w-1/2 h-full pointer-events-auto cursor-pointer flex items-center justify-start pl-2 sm:pl-6 group"
-                          title="Toca del lado izquierdo para retroceder"
+                          className="fixed left-2 sm:left-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+                          title="Página anterior"
+                          aria-label="Página anterior"
                         >
-                          <div className="p-3 sm:p-4 rounded-full bg-stone-900/60 text-white backdrop-blur-md shadow-2xl border border-white/20 transition-all opacity-40 group-hover:opacity-100 group-hover:scale-110 active:scale-95">
-                            <ChevronLeft size={isMobile ? 26 : 36} />
-                          </div>
-                        </div>
+                          <ChevronLeft size={28} className="group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
 
-                        {/* Zona Derecha: Pasar a la página siguiente (avanzar) */}
-                        <div
-                          onTouchStart={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleFlipNext();
-                          }}
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleFlipNext();
                           }}
-                          className="w-1/2 h-full pointer-events-auto cursor-pointer flex items-center justify-end pr-2 sm:pr-6 group"
-                          title="Toca del lado derecho para avanzar"
+                          className="fixed right-2 sm:right-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+                          title="Página siguiente"
+                          aria-label="Página siguiente"
                         >
-                          <div className="p-3 sm:p-4 rounded-full bg-stone-900/60 text-white backdrop-blur-md shadow-2xl border border-white/20 transition-all opacity-40 group-hover:opacity-100 group-hover:scale-110 active:scale-95">
-                            <ChevronRight size={isMobile ? 26 : 36} />
+                          <ChevronRight size={28} className="group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+
+                        {/* Escenario Central con Zoom y Paneo */}
+                        <div
+                          className="flex-1 w-full flex items-center justify-center relative overflow-hidden"
+                          style={{ cursor: zoom > 1 ? "grab" : "default" }}
+                          onPointerDown={handleStagePointerDown}
+                          onPointerMove={handleStagePointerMove}
+                          onPointerUp={handleStagePointerUp}
+                          onPointerCancel={handleStagePointerUp}
+                        >
+                          <div
+                            className="transition-transform duration-75 ease-out select-none will-change-transform drop-shadow-2xl flex justify-center items-center"
+                            style={{
+                              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
+                              transformOrigin: "center center",
+                              width: `${dimensions.isLandscape ? dimensions.width * 2 : dimensions.width}px`,
+                              height: `${dimensions.height}px`,
+                            }}
+                          >
+                            {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
+                            <HTMLFlipBook
+                              key={`${dimensions.isLandscape ? "land" : "port"}-${dimensions.width}-${dimensions.height}`}
+                              ref={flipBookRef}
+                              width={dimensions.width}
+                              height={dimensions.height}
+                              size="fixed"
+                              minWidth={dimensions.width}
+                              maxWidth={dimensions.width}
+                              minHeight={dimensions.height}
+                              maxHeight={dimensions.height}
+                              maxShadowOpacity={0.5}
+                              showCover={false}
+                              flippingTime={500}
+                              useMouseEvents={false}
+                              clickEventForward={false}
+                              mobileScrollSupport={false}
+                              className="album-flipbook"
+                              usePortrait={!dimensions.isLandscape}
+                              onFlip={(e: any) => setCurrentFlipPageIndex(e.data)}
+                            >
+                              {flipBookPages.map((page, index) => (
+                                <FlipPage key={page.page_number || index}>
+                                  {page.page_number === 99999 ? (
+                                    <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
+                                      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
+                                        <Sparkles size={28} />
+                                      </div>
+                                      <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
+                                      <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
+                                    </div>
+                                  ) : (
+                                    <AlbumPageView
+                                      page={page}
+                                      isMobile={!dimensions.isLandscape}
+                                      isLeft={dimensions.isLandscape && index % 2 === 0}
+                                      editMode={false}
+                                      selectedPageNumber={null}
+                                      selectedElementId={null}
+                                      theme={theme}
+                                      onSelectPage={() => {}}
+                                      onSelectElement={() => {}}
+                                      onStartDrag={startDrag}
+                                      onStartResize={startResize}
+                                      onDeletePage={() => {}}
+                                      onMediaClick={setMediaModal}
+                                    />
+                                  )}
+                                </FlipPage>
+                              ))}
+                            </HTMLFlipBook>
+                          </div>
+
+                          {/* Indicador de ayuda cuando hay zoom activo */}
+                          {zoom > 1 && (
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-stone-900/80 text-white text-[11px] font-medium backdrop-blur-md border border-white/10 pointer-events-none shadow-lg z-30">
+                              Arrastra para explorar fotos • Toca {Math.round(zoom * 100)}% para restablecer
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      /* MODO NORMAL INLINE */
+                      <div className="w-full h-full flex items-center justify-center relative perspective-1000 select-none">
+                        {/* Botones Laterales Flotantes en Modo Normal */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFlipPrev();
+                          }}
+                          className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-stone-900/80 hover:bg-stone-800 text-white backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+                          title="Página anterior"
+                          aria-label="Página anterior"
+                        >
+                          <ChevronLeft size={26} className="group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFlipNext();
+                          }}
+                          className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-stone-900/80 hover:bg-stone-800 text-white backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+                          title="Página siguiente"
+                          aria-label="Página siguiente"
+                        >
+                          <ChevronRight size={26} className="group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+
+                        <div
+                          className="flex-1 w-full flex items-center justify-center relative overflow-hidden"
+                          style={{ cursor: zoom > 1 ? "grab" : "default" }}
+                          onPointerDown={handleStagePointerDown}
+                          onPointerMove={handleStagePointerMove}
+                          onPointerUp={handleStagePointerUp}
+                          onPointerCancel={handleStagePointerUp}
+                        >
+                          <div
+                            className="drop-shadow-2xl flex justify-center items-center transition-transform duration-75 relative z-20"
+                            style={{
+                              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
+                              transformOrigin: "center center",
+                              width: `${dimensions.isLandscape ? dimensions.width * 2 : dimensions.width}px`,
+                              height: `${dimensions.height}px`,
+                            }}
+                          >
+                            {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
+                            <HTMLFlipBook
+                              key={`${dimensions.isLandscape ? "land" : "port"}-${dimensions.width}-${dimensions.height}`}
+                              ref={flipBookRef}
+                              width={dimensions.width}
+                              height={dimensions.height}
+                              size="fixed"
+                              minWidth={dimensions.width}
+                              maxWidth={dimensions.width}
+                              minHeight={dimensions.height}
+                              maxHeight={dimensions.height}
+                              maxShadowOpacity={0.5}
+                              showCover={false}
+                              flippingTime={500}
+                              useMouseEvents={false}
+                              clickEventForward={false}
+                              mobileScrollSupport={false}
+                              className="album-flipbook"
+                              usePortrait={!dimensions.isLandscape}
+                              onFlip={(e: any) => setCurrentFlipPageIndex(e.data)}
+                            >
+                              {flipBookPages.map((page, index) => (
+                                <FlipPage key={page.page_number || index}>
+                                  {page.page_number === 99999 ? (
+                                    <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
+                                      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
+                                        <Sparkles size={28} />
+                                      </div>
+                                      <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
+                                      <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
+                                    </div>
+                                  ) : (
+                                    <AlbumPageView
+                                      page={page}
+                                      isMobile={!dimensions.isLandscape}
+                                      isLeft={dimensions.isLandscape && index % 2 === 0}
+                                      editMode={false}
+                                      selectedPageNumber={null}
+                                      selectedElementId={null}
+                                      theme={theme}
+                                      onSelectPage={() => {}}
+                                      onSelectElement={() => {}}
+                                      onStartDrag={startDrag}
+                                      onStartResize={startResize}
+                                      onDeletePage={() => {}}
+                                      onMediaClick={setMediaModal}
+                                    />
+                                  )}
+                                </FlipPage>
+                              ))}
+                            </HTMLFlipBook>
                           </div>
                         </div>
                       </div>
-
-                      <div 
-                        className="drop-shadow-2xl flex justify-center transition-all duration-300 relative z-20"
-                        style={{ 
-                          width: `${(dimensions.isLandscape ? dimensions.width * 2 : dimensions.width) * zoom}px`, 
-                          height: `${dimensions.height * zoom}px`,
-                          maxWidth: '96vw',
-                          maxHeight: '85vh'
-                        }}
-                      >
-                        {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
-                        <HTMLFlipBook
-                          key={`${dimensions.isLandscape ? 'land' : 'port'}-${dimensions.width}-${dimensions.height}`}
-                          ref={flipBookRef}
-                          width={dimensions.width}
-                          height={dimensions.height}
-                          size="fixed"
-                          minWidth={dimensions.width}
-                          maxWidth={dimensions.width}
-                          minHeight={dimensions.height}
-                          maxHeight={dimensions.height}
-                          maxShadowOpacity={0.5}
-                          showCover={false}
-                          flippingTime={500}
-                          useMouseEvents={false}
-                          clickEventForward={false}
-                          mobileScrollSupport={false}
-                          className="album-flipbook"
-                          usePortrait={!dimensions.isLandscape}
-                        >
-                        {flipBookPages.map((page, index) => (
-                          <FlipPage key={page.page_number || index}>
-                            {page.page_number === 99999 ? (
-                              <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
-                                <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
-                                  <Sparkles size={28} />
-                                </div>
-                                <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
-                                <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
-                              </div>
-                            ) : (
-                              <AlbumPageView
-                                page={page}
-                                isMobile={!dimensions.isLandscape}
-                                isLeft={dimensions.isLandscape && index % 2 === 0}
-                                editMode={false}
-                                selectedPageNumber={null}
-                                selectedElementId={null}
-                                theme={theme}
-                                onSelectPage={() => {}}
-                                onSelectElement={() => {}}
-                                onStartDrag={startDrag}
-                                onStartResize={startResize}
-                                onDeletePage={() => {}}
-                                onMediaClick={setMediaModal}
-                              />
-                            )}
-                          </FlipPage>
-                        ))}
-                      </HTMLFlipBook>
-                      </div>
-                    </div>
+                    )
                   ) : (
                   <motion.div
                     key={`${spreadIndex}-${isMobile ? "m" : "d"}`}
