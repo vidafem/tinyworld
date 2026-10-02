@@ -61,70 +61,88 @@ async function requireParentForChild(req: NextRequest, childId: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const files = formData.getAll("files").filter((file): file is File => file instanceof File);
-  const childId = String(formData.get("childId") || "");
-  const moduleName = slugPart(String(formData.get("module") || "general"));
-  const section = slugPart(String(formData.get("section") || "uploads"));
-  const mediaType = slugPart(String(formData.get("mediaType") || "file"));
-  const monthNumber = Number(formData.get("monthNumber") || 0);
+  try {
+    const formData = await req.formData();
+    const files = formData.getAll("files").filter((file): file is File => file instanceof File);
+    const childId = String(formData.get("childId") || "");
+    const moduleName = slugPart(String(formData.get("module") || "general"));
+    const section = slugPart(String(formData.get("section") || "uploads"));
+    const mediaType = slugPart(String(formData.get("mediaType") || "file"));
+    const monthNumber = Number(formData.get("monthNumber") || 0);
 
-  if (!childId || files.length === 0) {
-    return NextResponse.json({ error: "Faltan archivos o childId." }, { status: 400 });
-  }
+    if (!childId || files.length === 0) {
+      return NextResponse.json({ error: "Faltan archivos o childId." }, { status: 400 });
+    }
 
-  const user = await requireParentForChild(req, childId);
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 403 });
-  }
+    // Verificar límite individual de archivo para evitar error 413
+    for (const file of files) {
+      if (file.size > 4.5 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: `El archivo "${file.name}" supera el límite de 4.5 MB.` },
+          { status: 413 }
+        );
+      }
+    }
 
-  const bucket = process.env.R2_BUCKET_NAME;
-  const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+    const user = await requireParentForChild(req, childId);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 403 });
+    }
 
-  if (!bucket || !publicUrl) {
-    return NextResponse.json({ error: "Cloudflare R2 no está configurado." }, { status: 500 });
-  }
+    const bucket = process.env.R2_BUCKET_NAME;
+    const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
 
-  const monthFolder = monthNumber > 0 ? `month-${String(monthNumber).padStart(2, "0")}` : "unassigned";
-  const uploaded = [];
+    if (!bucket || !publicUrl) {
+      return NextResponse.json({ error: "Cloudflare R2 no está configurado." }, { status: 500 });
+    }
 
-  for (const file of files) {
-    const ext = extensionFromFile(file);
-    const baseName = slugPart(file.name.replace(/\.[^.]+$/, "")) || "media";
-    const key = [
-      "children",
-      childId,
-      moduleName,
-      section,
-      monthFolder,
-      mediaType,
-      `${Date.now()}-${crypto.randomUUID()}-${baseName}.${ext}`,
-    ].join("/");
+    const monthFolder = monthNumber > 0 ? `month-${String(monthNumber).padStart(2, "0")}` : "unassigned";
+    const uploaded = [];
 
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: Buffer.from(await file.arrayBuffer()),
-        ContentType: file.type || "application/octet-stream",
-        Metadata: {
-          childId,
-          ownerId: user.id,
-          module: moduleName,
-          section,
-          mediaType,
-        },
-      })
+    for (const file of files) {
+      const ext = extensionFromFile(file);
+      const baseName = slugPart(file.name.replace(/\.[^.]+$/, "")) || "media";
+      const key = [
+        "children",
+        childId,
+        moduleName,
+        section,
+        monthFolder,
+        mediaType,
+        `${Date.now()}-${crypto.randomUUID()}-${baseName}.${ext}`,
+      ].join("/");
+
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: Buffer.from(await file.arrayBuffer()),
+          ContentType: file.type || "application/octet-stream",
+          Metadata: {
+            childid: childId,
+            ownerid: user.id,
+            module: moduleName,
+            section: section,
+            mediatype: mediaType,
+          },
+        })
+      );
+
+      uploaded.push({
+        key,
+        url: `${publicUrl}/${key}`,
+        type: file.type,
+        size: file.size,
+        name: file.name,
+      });
+    }
+
+    return NextResponse.json({ uploaded });
+  } catch (err: any) {
+    console.error("Error en POST /api/media:", err);
+    return NextResponse.json(
+      { error: err.message || "Error al procesar la subida del archivo." },
+      { status: 500 }
     );
-
-    uploaded.push({
-      key,
-      url: `${publicUrl}/${key}`,
-      type: file.type,
-      size: file.size,
-      name: file.name,
-    });
   }
-
-  return NextResponse.json({ uploaded });
 }

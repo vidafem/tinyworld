@@ -5,88 +5,144 @@
  * 
  * Resuelve:
  * 1. Fotos pesadas de celulares modernos (8MB - 25MB) que exceden el límite de Next.js / Vercel (4.5MB)
- *    reduciéndolas a alta calidad WebP/JPEG (< 1MB) de forma instantánea.
- * 2. Formatos pesados o problemáticos convirtiéndolos a estándares web compatibles.
- * 3. Reduce tiempos de subida de 15+ segundos a menos de 1 segundo.
+ *    reduciéndolas a alta calidad JPEG (< 800 KB) de forma instantánea.
+ * 2. Soporte total para iPhone (iOS Safari), Android y computadoras de escritorio.
+ * 3. Detección segura de imágenes incluso si el móvil no provee MIME type estándar.
+ * 4. Reduce tiempos de subida de 15+ segundos a menos de 1 segundo.
  */
 export async function optimizeImageForUpload(
   file: File,
   maxDimension = 2048,
-  quality = 0.85
+  quality = 0.82
 ): Promise<File> {
-  // Si no es imagen o es GIF o SVG, no manipular para preservar animaciones o vectores
-  if (!file.type.startsWith("image/") || file.type.includes("gif") || file.type.includes("svg")) {
+  if (!file) return file;
+
+  // Si es video o audio, no es imagen, no manipular
+  if (file.type?.startsWith("video/") || file.type?.startsWith("audio/")) {
     return file;
   }
 
-  // Si ya es muy liviana (< 350 KB), no necesita compresión
-  if (file.size < 350 * 1024) {
+  const fileName = (file.name || "").toLowerCase();
+  const isImageMime = Boolean(file.type && file.type.startsWith("image/"));
+  const isImageExt = /\.(jpe?g|png|webp|heic|heif|bmp|tiff|avif)$/i.test(fileName);
+
+  // Si no es imagen por tipo ni extensión, retornar el archivo original
+  if (!isImageMime && !isImageExt) {
     return file;
   }
 
-  return new Promise((resolve) => {
+  // Si es GIF animado o SVG vectorial, no manipular para preservar animaciones/vectores
+  if (
+    file.type?.includes("gif") ||
+    file.type?.includes("svg") ||
+    fileName.endsWith(".gif") ||
+    fileName.endsWith(".svg")
+  ) {
+    return file;
+  }
+
+  // Si ya es muy liviana (< 300 KB) y no es un formato pesado como HEIC, no necesita recompresión
+  if (file.size < 300 * 1024 && !fileName.endsWith(".heic") && !fileName.endsWith(".heif")) {
+    return file;
+  }
+
+  return new Promise(async (resolve) => {
+    let objectUrl: string | null = null;
     try {
-      const objectUrl = URL.createObjectURL(file);
-      const img = new Image();
+      let width = 0;
+      let height = 0;
+      let sourceElement: CanvasImageSource | null = null;
 
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-
-        let { width, height } = img;
-
-        // Escalar manteniendo proporción si supera la dimensión máxima
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
+      // 1. Intentar decodificar con createImageBitmap si el navegador lo soporta
+      if (typeof createImageBitmap === "function") {
+        try {
+          const bitmap = await createImageBitmap(file);
+          width = bitmap.width;
+          height = bitmap.height;
+          sourceElement = bitmap;
+        } catch {
+          sourceElement = null;
         }
+      }
 
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+      // 2. Si no se pudo con createImageBitmap, intentar con HTML Image
+      if (!sourceElement) {
+        objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.crossOrigin = "anonymous";
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(file);
-          return;
-        }
+        await new Promise<void>((imgResolve, imgReject) => {
+          img.onload = () => {
+            width = img.naturalWidth || img.width;
+            height = img.naturalHeight || img.height;
+            sourceElement = img;
+            imgResolve();
+          };
+          img.onerror = () => {
+            imgReject(new Error("No se pudo cargar la imagen en canvas"));
+          };
+          img.src = objectUrl!;
+        });
+      }
 
-        // Fondo blanco suave para evitar transparencias accidentales en PNG/JPEG
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convertir a WebP con fallback a JPEG
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size < file.size) {
-              const baseName = file.name.replace(/\.[^.]+$/, "") || "foto";
-              const optimizedFile = new File([blob], `${baseName}.webp`, {
-                type: "image/webp",
-                lastModified: Date.now(),
-              });
-              resolve(optimizedFile);
-            } else {
-              resolve(file);
-            }
-          },
-          "image/webp",
-          quality
-        );
-      };
-
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        // Si no se pudo decodificar en canvas, continuar con el archivo original sin romper el flujo
+      if (!sourceElement || width <= 0 || height <= 0) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
         resolve(file);
-      };
+        return;
+      }
 
-      img.src = objectUrl;
+      // 3. Escalar manteniendo proporción si supera la dimensión máxima
+      let targetWidth = width;
+      let targetHeight = height;
+      if (targetWidth > maxDimension || targetHeight > maxDimension) {
+        if (targetWidth > targetHeight) {
+          targetHeight = Math.round((targetHeight * maxDimension) / targetWidth);
+          targetWidth = maxDimension;
+        } else {
+          targetWidth = Math.round((targetWidth * maxDimension) / targetHeight);
+          targetHeight = maxDimension;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const ctx = canvas.getContext("2d", { willReadFrequently: false });
+      if (!ctx) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        resolve(file);
+        return;
+      }
+
+      // Fondo blanco suave para evitar transparencias accidentales en PNG/JPEG
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+      ctx.drawImage(sourceElement, 0, 0, targetWidth, targetHeight);
+
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+
+      // Usar image/jpeg: 100% COMPATIBLE CON TODOS LOS DISPOSITIVOS MÓVILES (iOS Safari, Android)
+      // Genera archivos livianos de ~300KB - 700KB sin riesgos de fallback a PNG pesado
+      canvas.toBlob(
+        (blob) => {
+          if (blob && (blob.size < file.size || file.size > 2.5 * 1024 * 1024)) {
+            const baseName = file.name.replace(/\.[^.]+$/, "") || "foto";
+            const optimizedFile = new File([blob], `${baseName}.jpg`, {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            });
+            resolve(optimizedFile);
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        quality
+      );
     } catch {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      // Si la compresión falló pero el archivo no excede 4MB, continuar con el original
       resolve(file);
     }
   });

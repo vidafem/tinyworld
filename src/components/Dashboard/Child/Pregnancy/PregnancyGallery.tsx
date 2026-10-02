@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabase";
 import MediaEditor from "@/components/Common/MediaEditor";
 import { getThumbnailUrl, getPreviewUrl, handleImageFallback } from "@/lib/optimizedImage";
 import MemoryLoadingModal from "@/components/Common/MemoryLoadingModal";
-import { optimizeImageForUpload } from "@/lib/imageCompression";
+import { optimizeImageForUpload, optimizeImagesBatch } from "@/lib/imageCompression";
 
 interface GalleryItem {
   id: string; // memoryId-url
@@ -124,6 +124,7 @@ export default function PregnancyGallery({
   const [newFolderName, setNewFolderName] = useState("");
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadSubtitle, setUploadSubtitle] = useState("Optimizando y guardando tus recuerdos con amor...");
   const [isMobile, setIsMobile] = useState(false);
   const [fileToEdit, setFileToEdit] = useState<File | null>(null);
 
@@ -556,21 +557,25 @@ export default function PregnancyGallery({
 
   async function processAndUpload(files: File[], forcedType?: 'video' | 'audio') {
     setIsUploading(true);
+    setUploadSubtitle("Optimizando y preparando las imágenes...");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No hay sesión activa");
+      if (!session) throw new Error("No hay sesión activa. Por favor vuelve a iniciar sesión.");
 
       const [y, m] = (uploadDate || "").split('-').map(Number);
       const computedMonth = (!isNaN(m) && m >= 1 && m <= 12) ? m : (new Date().getMonth() + 1);
 
+      // 1. Optimizar todas las fotos concurrentemente a formato liviano (< 800 KB)
+      const optimizedFiles = await optimizeImagesBatch(files);
+
       let successCount = 0;
 
-      for (const rawFile of files) {
-        let file = rawFile;
-        try {
-          file = await optimizeImageForUpload(rawFile);
-        } catch (optErr) {
-          console.warn("Optimización omitida:", optErr);
+      for (let i = 0; i < optimizedFiles.length; i++) {
+        const file = optimizedFiles[i];
+        setUploadSubtitle(`Subiendo archivo ${i + 1} de ${optimizedFiles.length}...`);
+
+        if (file.size > 4.5 * 1024 * 1024) {
+          throw new Error(`El archivo "${file.name}" supera el límite de 4.5 MB del servidor.`);
         }
 
         const formData = new FormData();
@@ -581,6 +586,7 @@ export default function PregnancyGallery({
         formData.append("module", "pregnancy");
         formData.append("section", "gallery");
         formData.append("mediaType", mediaType);
+        formData.append("monthNumber", String(computedMonth));
         formData.append("files", file);
 
         const response = await fetch("/api/media", {
@@ -589,15 +595,28 @@ export default function PregnancyGallery({
           body: formData,
         });
 
+        const responseText = await response.text();
         let payload: any = null;
         try {
-          payload = await response.json();
+          payload = JSON.parse(responseText);
         } catch {
-          throw new Error("Respuesta no válida del servidor");
+          payload = null;
         }
 
         if (!response.ok) {
-          throw new Error(payload?.error || `Error al subir (${response.status})`);
+          let errMsg = payload?.error;
+          if (!errMsg) {
+            if (response.status === 413) {
+              errMsg = "La foto supera el límite de tamaño permitido por el servidor (4.5 MB).";
+            } else if (response.status === 403) {
+              errMsg = "No tienes permisos para subir archivos en este perfil.";
+            } else if (response.status === 504) {
+              errMsg = "El servidor tardó demasiado en responder.";
+            } else {
+              errMsg = `Error ${response.status}: ${responseText.slice(0, 100) || 'Error al subir archivo'}`;
+            }
+          }
+          throw new Error(errMsg);
         }
 
         const url = payload?.uploaded?.[0]?.url;
@@ -630,7 +649,7 @@ export default function PregnancyGallery({
       if (setToast) {
         setToast({ 
           type: "success", 
-          message: successCount > 1 ? `¡${successCount} fotos subidas con éxito!` : "¡Archivo subido con éxito!" 
+          message: successCount > 1 ? `¡${successCount} archivos subidos con éxito!` : "¡Archivo subido con éxito!" 
         });
       }
     } catch (err: any) { 
@@ -638,6 +657,7 @@ export default function PregnancyGallery({
       alert("Error al subir: " + (err.message || "Error desconocido")); 
     } finally { 
       setIsUploading(false); 
+      setUploadSubtitle("Optimizando y guardando tus recuerdos con amor...");
     }
   }
 
@@ -1224,7 +1244,7 @@ export default function PregnancyGallery({
                     {isUploading ? <Loader2 className="animate-spin" size={24} /> : <Camera size={24} />}
                   </div>
                   <span className={`text-[10px] font-black ${theme.text} opacity-40 uppercase tracking-[0.2em]`}>Seleccionar Archivos</span>
-                  <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={isUploading} accept="image/*,video/*,audio/*" />
+                  <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={isUploading} accept="image/*,video/*" />
                 </label>
               </div>
             </motion.div>
@@ -1247,7 +1267,7 @@ export default function PregnancyGallery({
       <MemoryLoadingModal
         isOpen={isUploading}
         title="Subiendo a tu galería mágica... ✨"
-        subtitle="Optimizando y guardando tus recuerdos con amor..."
+        subtitle={uploadSubtitle}
         theme={theme}
       />
     </div>
