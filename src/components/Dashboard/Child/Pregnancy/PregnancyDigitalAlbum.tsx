@@ -30,6 +30,7 @@ import {
   Minus,
   Move,
   Palette,
+  Pause,
   PlayCircle,
   Plus,
   RotateCcw,
@@ -584,14 +585,44 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
     panStartRef.current = null;
   };
 
+  const handleOpenFullscreen = useCallback(() => {
+    setIsFullscreen(true);
+    try {
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleCloseFullscreen = useCallback(() => {
+    setIsFullscreen(false);
+    handleResetZoom();
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        setIsFullscreen(false);
+        handleResetZoom();
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, [isFullscreen]);
+
   const updateDimensions = useCallback(() => {
     if (typeof window === "undefined") return;
     const w = window.innerWidth;
     const h = window.innerHeight;
     const isLand = w > h && w >= 640;
 
-    const reservedH = isFullscreen ? 110 : 130;
-    const reservedW = isFullscreen ? 36 : 48;
+    const reservedH = isFullscreen ? 16 : 130;
+    const reservedW = isFullscreen ? 16 : 48;
     const maxAvailW = Math.max(w - reservedW, 260);
     const maxAvailH = Math.max(h - reservedH, 260);
     const pageAspect = 3 / 4; // 0.75 (w/h)
@@ -605,7 +636,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
         targetW = maxAvailW;
         targetH = Math.round(targetW / spreadAspect);
       }
-      targetH = Math.min(targetH, 700);
+      targetH = Math.min(targetH, isFullscreen ? 880 : 700);
       targetW = Math.round(targetH * spreadAspect);
       const pageW = Math.round(targetW / 2);
       setDimensions({ width: Math.max(pageW, 220), height: Math.max(targetH, 280), isLandscape: true });
@@ -617,7 +648,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
         pageW = maxAvailW;
         pageH = Math.round(pageW / pageAspect);
       }
-      pageH = Math.min(pageH, 720);
+      pageH = Math.min(pageH, isFullscreen ? 900 : 720);
       pageW = Math.round(pageH * pageAspect);
       setDimensions({ width: Math.max(pageW, 220), height: Math.max(pageH, 290), isLandscape: false });
     }
@@ -638,10 +669,10 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
     if (typeof window !== "undefined") {
       const isMobilePortrait = window.innerWidth <= 768 && window.innerHeight > window.innerWidth;
       if (isMobilePortrait && bookOpened && !editMode) {
-        setIsFullscreen(true);
+        handleOpenFullscreen();
       }
     }
-  }, [bookOpened, editMode]);
+  }, [bookOpened, editMode, handleOpenFullscreen]);
 
   const handleFlipNext = useCallback(() => {
     if (isFlippingRef.current) return;
@@ -1614,6 +1645,197 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
     );
   }
 
+  // PANTALLA COMPLETA DIRECTA / AISLADA DE TODO EL CONTENEDOR PADRE
+  if (isFullscreen && bookOpened && !editMode) {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-stone-950 flex flex-col items-center justify-center overflow-hidden select-none touch-none">
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Cinzel:wght@400..900&family=Dancing+Script:wght@400..700&family=Great+Vibes&family=Pacifico&family=Satisfy&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,300..900;1,300..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:ital,wght@0,100..900;1,100..900&family=Raleway:ital,wght@0,100..900;1,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Amatic+SC:wght@400;700&family=Indie+Flower&family=Shadows+Into+Light&family=Architects+Daughter&display=swap');`}</style>
+
+        {/* 1. Botón Cerrar en la esquina superior izquierda */}
+        <button
+          onClick={handleCloseFullscreen}
+          className="fixed top-4 left-4 z-[10001] px-4 py-2 rounded-full bg-stone-900/85 hover:bg-stone-800 active:scale-95 text-white backdrop-blur-md border border-white/20 flex items-center gap-2 text-xs font-bold transition-all shadow-2xl cursor-pointer"
+          title="Cerrar pantalla completa"
+        >
+          <X size={16} />
+          <span>Cerrar</span>
+        </button>
+
+        {/* 2. Botones de Zoom en la esquina superior derecha */}
+        <div className="fixed top-4 right-4 z-[10001] flex items-center gap-1.5 bg-stone-900/85 backdrop-blur-md border border-white/20 p-1 rounded-full shadow-2xl">
+          <button
+            onClick={handleZoomOut}
+            disabled={zoom <= 1}
+            className="w-8 h-8 rounded-full hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+            title="Alejar zoom"
+          >
+            <Minus size={16} />
+          </button>
+          <button
+            onClick={handleResetZoom}
+            className="px-2.5 py-0.5 rounded-full hover:bg-white/20 text-white text-xs font-mono font-bold active:scale-95 transition-all cursor-pointer"
+            title="Restablecer zoom a 100%"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            onClick={handleZoomIn}
+            disabled={zoom >= 2.5}
+            className="w-8 h-8 rounded-full hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+            title="Acercar zoom"
+          >
+            <Plus size={16} />
+          </button>
+          <button
+            onClick={handleToggleMute}
+            className="w-8 h-8 rounded-full hover:bg-white/20 text-white flex items-center justify-center active:scale-95 transition-all border-l border-white/10 ml-0.5 cursor-pointer"
+            title={isMuted ? "Activar sonido" : "Silenciar sonido"}
+          >
+            {isMuted ? <VolumeX size={15} className="opacity-40" /> : <Volume2 size={15} />}
+          </button>
+        </div>
+
+        {/* 3. Botones Flotantes Laterales para Pasar Página */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFlipPrev();
+          }}
+          className="fixed left-2 sm:left-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+          title="Página anterior"
+          aria-label="Página anterior"
+        >
+          <ChevronLeft size={28} className="group-hover:-translate-x-0.5 transition-transform" />
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFlipNext();
+          }}
+          className="fixed right-2 sm:right-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+          title="Página siguiente"
+          aria-label="Página siguiente"
+        >
+          <ChevronRight size={28} className="group-hover:translate-x-0.5 transition-transform" />
+        </button>
+
+        {/* Escenario central que ocupa 100% de la pantalla */}
+        <div
+          className="w-full h-full flex items-center justify-center relative overflow-hidden"
+          style={{ cursor: zoom > 1 ? "grab" : "default" }}
+          onPointerDown={handleStagePointerDown}
+          onPointerMove={handleStagePointerMove}
+          onPointerUp={handleStagePointerUp}
+          onPointerCancel={handleStagePointerUp}
+        >
+          <div
+            className="transition-transform duration-75 ease-out select-none will-change-transform drop-shadow-2xl flex justify-center items-center"
+            style={{
+              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
+              transformOrigin: "center center",
+              width: `${dimensions.isLandscape ? dimensions.width * 2 : dimensions.width}px`,
+              height: `${dimensions.height}px`,
+            }}
+          >
+            {/* @ts-ignore - react-pageflip typings */}
+            <HTMLFlipBook
+              key={`fs-${dimensions.isLandscape ? "land" : "port"}-${dimensions.width}-${dimensions.height}`}
+              ref={flipBookRef}
+              width={dimensions.width}
+              height={dimensions.height}
+              size="fixed"
+              minWidth={dimensions.width}
+              maxWidth={dimensions.width}
+              minHeight={dimensions.height}
+              maxHeight={dimensions.height}
+              maxShadowOpacity={0.5}
+              showCover={false}
+              flippingTime={500}
+              useMouseEvents={false}
+              clickEventForward={false}
+              mobileScrollSupport={false}
+              className="album-flipbook"
+              usePortrait={!dimensions.isLandscape}
+              onFlip={(e: any) => setCurrentFlipPageIndex(e.data)}
+            >
+              {flipBookPages.map((page, index) => (
+                <FlipPage key={page.page_number || index}>
+                  {page.page_number === 99999 ? (
+                    <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
+                      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
+                        <Sparkles size={28} />
+                      </div>
+                      <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
+                      <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
+                    </div>
+                  ) : (
+                    <AlbumPageView
+                      page={page}
+                      pageWidth={dimensions.width}
+                      isMobile={!dimensions.isLandscape}
+                      isLeft={dimensions.isLandscape && index % 2 === 0}
+                      editMode={false}
+                      selectedPageNumber={null}
+                      selectedElementId={null}
+                      theme={theme}
+                      onSelectPage={() => {}}
+                      onSelectElement={() => {}}
+                      onStartDrag={startDrag}
+                      onStartResize={startResize}
+                      onDeletePage={() => {}}
+                      onMediaClick={setMediaModal}
+                    />
+                  )}
+                </FlipPage>
+              ))}
+            </HTMLFlipBook>
+          </div>
+
+          {zoom > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-stone-900/80 text-white text-[11px] font-medium backdrop-blur-md border border-white/10 pointer-events-none shadow-lg z-30">
+              Arrastra para explorar fotos • Toca {Math.round(zoom * 100)}% para restablecer
+            </div>
+          )}
+        </div>
+
+        {/* Media Lightbox Modal */}
+        {mediaModal && (
+          <div
+            className="fixed inset-0 z-[100000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 cursor-pointer"
+            onClick={() => setMediaModal(null)}
+          >
+            <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center justify-center">
+              <button
+                onClick={() => setMediaModal(null)}
+                className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm transition-all cursor-pointer"
+                title="Cerrar vista previa"
+              >
+                <X size={24} />
+              </button>
+              {mediaModal.type === "image" ? (
+                <img
+                  src={mediaModal.url}
+                  alt="Vista previa"
+                  className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl cursor-default"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <video
+                  src={mediaModal.url}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[85vh] rounded-xl shadow-2xl cursor-default"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${theme.bg} overflow-hidden`}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Cinzel:wght@400..900&family=Dancing+Script:wght@400..700&family=Great+Vibes&family=Pacifico&family=Satisfy&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,300..900;1,300..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:ital,wght@0,100..900;1,100..900&family=Raleway:ital,wght@0,100..900;1,100..900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Amatic+SC:wght@400;700&family=Indie+Flower&family=Shadows+Into+Light&family=Architects+Daughter&display=swap');`}</style>
@@ -1656,7 +1878,7 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                   <Plus size={18} />
                 </button>
                 <button
-                  onClick={() => setIsFullscreen(true)}
+                  onClick={handleOpenFullscreen}
                   className={`p-2.5 bg-white ${theme.text} border ${theme.borderAccent} rounded-2xl font-black shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 text-xs uppercase cursor-pointer`}
                   title="Ver en pantalla completa"
                 >
@@ -1845,280 +2067,112 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
                         setBookOpened(true);
                         setSpreadIndex(0);
                         if (typeof window !== "undefined" && (window.innerWidth <= 768 || isMobile)) {
-                          setIsFullscreen(true);
+                          handleOpenFullscreen();
                         }
                       }}
                       snapLineX={snapLineX}
                       snapLineY={snapLineY}
                     />
                   ) : !editMode ? (
-                    isFullscreen ? (
-                      /* PANTALLA TOTALMENTE APARTE / PANTALLA COMPLETA */
-                      <div className="fixed inset-0 z-[9999] bg-stone-950/95 backdrop-blur-2xl flex flex-col justify-between overflow-hidden select-none">
-                        {/* Top Bar en Pantalla Completa */}
-                        <header className="w-full h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between z-50 bg-stone-900/60 backdrop-blur-xl border-b border-white/10 shrink-0">
-                          {/* Botón de Cerrar */}
-                          <button
-                            onClick={() => {
-                              setIsFullscreen(false);
-                              handleResetZoom();
-                            }}
-                            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white backdrop-blur-md border border-white/20 flex items-center gap-2 text-xs sm:text-sm font-black transition-all shadow-lg cursor-pointer"
-                            title="Cerrar pantalla completa"
-                          >
-                            <X size={18} />
-                            <span>Cerrar</span>
-                          </button>
+                    /* MODO NORMAL INLINE */
+                    <div className="w-full h-full flex items-center justify-center relative perspective-1000 select-none">
+                      {/* Botones Laterales Flotantes en Modo Normal */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFlipPrev();
+                        }}
+                        className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-stone-900/80 hover:bg-stone-800 text-white backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+                        title="Página anterior"
+                        aria-label="Página anterior"
+                      >
+                        <ChevronLeft size={26} className="group-hover:-translate-x-0.5 transition-transform" />
+                      </button>
 
-                          {/* Título & Número de Página */}
-                          <div className="flex flex-col items-center text-center">
-                            <span className="text-white text-xs sm:text-sm font-black tracking-tight line-clamp-1 max-w-[140px] sm:max-w-[280px]">
-                              {sectionTitle || "Álbum Digital 3D"}
-                            </span>
-                            <span className="text-stone-300 text-[10px] sm:text-xs font-semibold">
-                              Página {currentFlipPageIndex + 1} de {flipBookPages.length}
-                            </span>
-                          </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFlipNext();
+                        }}
+                        className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-stone-900/80 hover:bg-stone-800 text-white backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
+                        title="Página siguiente"
+                        aria-label="Página siguiente"
+                      >
+                        <ChevronRight size={26} className="group-hover:translate-x-0.5 transition-transform" />
+                      </button>
 
-                          {/* Controles de Zoom y Audio */}
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <button
-                              onClick={handleZoomOut}
-                              disabled={zoom <= 1}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
-                              title="Alejar zoom"
-                            >
-                              <Minus size={16} />
-                            </button>
-                            <button
-                              onClick={handleResetZoom}
-                              className="px-2 sm:px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] sm:text-xs font-mono font-bold active:scale-95 transition-all border border-white/20 cursor-pointer"
-                              title="Restablecer zoom a 100%"
-                            >
-                              {Math.round(zoom * 100)}%
-                            </button>
-                            <button
-                              onClick={handleZoomIn}
-                              disabled={zoom >= 2.5}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
-                              title="Acercar zoom"
-                            >
-                              <Plus size={16} />
-                            </button>
-                            <button
-                              onClick={handleToggleMute}
-                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all ml-1 cursor-pointer"
-                              title={isMuted ? "Activar sonido" : "Silenciar sonido"}
-                            >
-                              {isMuted ? <VolumeX size={16} className="opacity-40" /> : <Volume2 size={16} />}
-                            </button>
-                          </div>
-                        </header>
-
-                        {/* Botones Laterales Flotantes en Pantalla Completa */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFlipPrev();
-                          }}
-                          className="fixed left-2 sm:left-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
-                          title="Página anterior"
-                          aria-label="Página anterior"
-                        >
-                          <ChevronLeft size={28} className="group-hover:-translate-x-0.5 transition-transform" />
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFlipNext();
-                          }}
-                          className="fixed right-2 sm:right-6 top-1/2 -translate-y-1/2 z-[10000] w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-stone-900/85 hover:bg-stone-800 text-white backdrop-blur-xl border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
-                          title="Página siguiente"
-                          aria-label="Página siguiente"
-                        >
-                          <ChevronRight size={28} className="group-hover:translate-x-0.5 transition-transform" />
-                        </button>
-
-                        {/* Escenario Central con Zoom y Paneo */}
+                      <div
+                        className="flex-1 w-full flex items-center justify-center relative overflow-hidden"
+                        style={{ cursor: zoom > 1 ? "grab" : "default" }}
+                        onPointerDown={handleStagePointerDown}
+                        onPointerMove={handleStagePointerMove}
+                        onPointerUp={handleStagePointerUp}
+                        onPointerCancel={handleStagePointerUp}
+                      >
                         <div
-                          className="flex-1 w-full flex items-center justify-center relative overflow-hidden"
-                          style={{ cursor: zoom > 1 ? "grab" : "default" }}
-                          onPointerDown={handleStagePointerDown}
-                          onPointerMove={handleStagePointerMove}
-                          onPointerUp={handleStagePointerUp}
-                          onPointerCancel={handleStagePointerUp}
+                          className="drop-shadow-2xl flex justify-center items-center transition-transform duration-75 relative z-20"
+                          style={{
+                            transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
+                            transformOrigin: "center center",
+                            width: `${dimensions.isLandscape ? dimensions.width * 2 : dimensions.width}px`,
+                            height: `${dimensions.height}px`,
+                          }}
                         >
-                          <div
-                            className="transition-transform duration-75 ease-out select-none will-change-transform drop-shadow-2xl flex justify-center items-center"
-                            style={{
-                              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
-                              transformOrigin: "center center",
-                              width: `${dimensions.isLandscape ? dimensions.width * 2 : dimensions.width}px`,
-                              height: `${dimensions.height}px`,
-                            }}
+                          {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
+                          <HTMLFlipBook
+                            key={`${dimensions.isLandscape ? "land" : "port"}-${dimensions.width}-${dimensions.height}`}
+                            ref={flipBookRef}
+                            width={dimensions.width}
+                            height={dimensions.height}
+                            size="fixed"
+                            minWidth={dimensions.width}
+                            maxWidth={dimensions.width}
+                            minHeight={dimensions.height}
+                            maxHeight={dimensions.height}
+                            maxShadowOpacity={0.5}
+                            showCover={false}
+                            flippingTime={500}
+                            useMouseEvents={false}
+                            clickEventForward={false}
+                            mobileScrollSupport={false}
+                            className="album-flipbook"
+                            usePortrait={!dimensions.isLandscape}
+                            onFlip={(e: any) => setCurrentFlipPageIndex(e.data)}
                           >
-                            {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
-                            <HTMLFlipBook
-                              key={`${dimensions.isLandscape ? "land" : "port"}-${dimensions.width}-${dimensions.height}`}
-                              ref={flipBookRef}
-                              width={dimensions.width}
-                              height={dimensions.height}
-                              size="fixed"
-                              minWidth={dimensions.width}
-                              maxWidth={dimensions.width}
-                              minHeight={dimensions.height}
-                              maxHeight={dimensions.height}
-                              maxShadowOpacity={0.5}
-                              showCover={false}
-                              flippingTime={500}
-                              useMouseEvents={false}
-                              clickEventForward={false}
-                              mobileScrollSupport={false}
-                              className="album-flipbook"
-                              usePortrait={!dimensions.isLandscape}
-                              onFlip={(e: any) => setCurrentFlipPageIndex(e.data)}
-                            >
-                              {flipBookPages.map((page, index) => (
-                                <FlipPage key={page.page_number || index}>
-                                  {page.page_number === 99999 ? (
-                                    <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
-                                      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
-                                        <Sparkles size={28} />
-                                      </div>
-                                      <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
-                                      <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
+                            {flipBookPages.map((page, index) => (
+                              <FlipPage key={page.page_number || index}>
+                                {page.page_number === 99999 ? (
+                                  <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
+                                    <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
+                                      <Sparkles size={28} />
                                     </div>
-                                  ) : (
-                                    <AlbumPageView
-                                      page={page}
-                                      isMobile={!dimensions.isLandscape}
-                                      isLeft={dimensions.isLandscape && index % 2 === 0}
-                                      editMode={false}
-                                      selectedPageNumber={null}
-                                      selectedElementId={null}
-                                      theme={theme}
-                                      onSelectPage={() => {}}
-                                      onSelectElement={() => {}}
-                                      onStartDrag={startDrag}
-                                      onStartResize={startResize}
-                                      onDeletePage={() => {}}
-                                      onMediaClick={setMediaModal}
-                                    />
-                                  )}
-                                </FlipPage>
-                              ))}
-                            </HTMLFlipBook>
-                          </div>
-
-                          {/* Indicador de ayuda cuando hay zoom activo */}
-                          {zoom > 1 && (
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-stone-900/80 text-white text-[11px] font-medium backdrop-blur-md border border-white/10 pointer-events-none shadow-lg z-30">
-                              Arrastra para explorar fotos • Toca {Math.round(zoom * 100)}% para restablecer
-                            </div>
-                          )}
+                                    <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
+                                    <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
+                                  </div>
+                                ) : (
+                                  <AlbumPageView
+                                    page={page}
+                                    pageWidth={dimensions.width}
+                                    isMobile={!dimensions.isLandscape}
+                                    isLeft={dimensions.isLandscape && index % 2 === 0}
+                                    editMode={false}
+                                    selectedPageNumber={null}
+                                    selectedElementId={null}
+                                    theme={theme}
+                                    onSelectPage={() => {}}
+                                    onSelectElement={() => {}}
+                                    onStartDrag={startDrag}
+                                    onStartResize={startResize}
+                                    onDeletePage={() => {}}
+                                    onMediaClick={setMediaModal}
+                                  />
+                                )}
+                              </FlipPage>
+                            ))}
+                          </HTMLFlipBook>
                         </div>
                       </div>
-                    ) : (
-                      /* MODO NORMAL INLINE */
-                      <div className="w-full h-full flex items-center justify-center relative perspective-1000 select-none">
-                        {/* Botones Laterales Flotantes en Modo Normal */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFlipPrev();
-                          }}
-                          className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-stone-900/80 hover:bg-stone-800 text-white backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
-                          title="Página anterior"
-                          aria-label="Página anterior"
-                        >
-                          <ChevronLeft size={26} className="group-hover:-translate-x-0.5 transition-transform" />
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFlipNext();
-                          }}
-                          className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-stone-900/80 hover:bg-stone-800 text-white backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer group"
-                          title="Página siguiente"
-                          aria-label="Página siguiente"
-                        >
-                          <ChevronRight size={26} className="group-hover:translate-x-0.5 transition-transform" />
-                        </button>
-
-                        <div
-                          className="flex-1 w-full flex items-center justify-center relative overflow-hidden"
-                          style={{ cursor: zoom > 1 ? "grab" : "default" }}
-                          onPointerDown={handleStagePointerDown}
-                          onPointerMove={handleStagePointerMove}
-                          onPointerUp={handleStagePointerUp}
-                          onPointerCancel={handleStagePointerUp}
-                        >
-                          <div
-                            className="drop-shadow-2xl flex justify-center items-center transition-transform duration-75 relative z-20"
-                            style={{
-                              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
-                              transformOrigin: "center center",
-                              width: `${dimensions.isLandscape ? dimensions.width * 2 : dimensions.width}px`,
-                              height: `${dimensions.height}px`,
-                            }}
-                          >
-                            {/* @ts-ignore - react-pageflip typings are strict/incorrect */}
-                            <HTMLFlipBook
-                              key={`${dimensions.isLandscape ? "land" : "port"}-${dimensions.width}-${dimensions.height}`}
-                              ref={flipBookRef}
-                              width={dimensions.width}
-                              height={dimensions.height}
-                              size="fixed"
-                              minWidth={dimensions.width}
-                              maxWidth={dimensions.width}
-                              minHeight={dimensions.height}
-                              maxHeight={dimensions.height}
-                              maxShadowOpacity={0.5}
-                              showCover={false}
-                              flippingTime={500}
-                              useMouseEvents={false}
-                              clickEventForward={false}
-                              mobileScrollSupport={false}
-                              className="album-flipbook"
-                              usePortrait={!dimensions.isLandscape}
-                              onFlip={(e: any) => setCurrentFlipPageIndex(e.data)}
-                            >
-                              {flipBookPages.map((page, index) => (
-                                <FlipPage key={page.page_number || index}>
-                                  {page.page_number === 99999 ? (
-                                    <div className="w-full h-full bg-[#fdfbf7] flex flex-col items-center justify-center p-8 border-l border-stone-200 text-center select-none">
-                                      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 text-amber-600 shadow-sm border border-amber-100">
-                                        <Sparkles size={28} />
-                                      </div>
-                                      <h3 className={`font-outfit font-black text-xl ${theme.text} tracking-wider uppercase`}>Fin del Álbum</h3>
-                                      <p className="text-xs text-stone-500 mt-2 font-medium max-w-[200px]">Cada recuerdo guardado con amor para siempre ✨</p>
-                                    </div>
-                                  ) : (
-                                    <AlbumPageView
-                                      page={page}
-                                      isMobile={!dimensions.isLandscape}
-                                      isLeft={dimensions.isLandscape && index % 2 === 0}
-                                      editMode={false}
-                                      selectedPageNumber={null}
-                                      selectedElementId={null}
-                                      theme={theme}
-                                      onSelectPage={() => {}}
-                                      onSelectElement={() => {}}
-                                      onStartDrag={startDrag}
-                                      onStartResize={startResize}
-                                      onDeletePage={() => {}}
-                                      onMediaClick={setMediaModal}
-                                    />
-                                  )}
-                                </FlipPage>
-                              ))}
-                            </HTMLFlipBook>
-                          </div>
-                        </div>
-                      </div>
-                    )
+                    </div>
                   ) : (
                   <motion.div
                     key={`${spreadIndex}-${isMobile ? "m" : "d"}`}
@@ -2717,6 +2771,40 @@ export default function PregnancyDigitalAlbum({ childId, sectionId = null, secti
           </div>
         )}
       </AnimatePresence>
+
+      {/* MEDIA PREVIEW LIGHTBOX MODAL */}
+      {mediaModal && (
+        <div
+          className="fixed inset-0 z-[100000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setMediaModal(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center justify-center">
+            <button
+              onClick={() => setMediaModal(null)}
+              className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm transition-all cursor-pointer"
+              title="Cerrar vista previa"
+            >
+              <X size={24} />
+            </button>
+            {mediaModal.type === "image" ? (
+              <img
+                src={mediaModal.url}
+                alt="Vista previa"
+                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl cursor-default"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <video
+                src={mediaModal.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[85vh] rounded-xl shadow-2xl cursor-default"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2795,6 +2883,7 @@ function ClosedBookCover({
       )}
       <AlbumPageView
         page={page}
+        pageWidth={isMobile ? 320 : 420}
         isMobile
         isLeft={false}
         editMode={editMode}
@@ -2823,6 +2912,7 @@ function ClosedBookCover({
 
 function AlbumPageView({
   page,
+  pageWidth,
   isMobile,
   isLeft,
   editMode,
@@ -2840,6 +2930,7 @@ function AlbumPageView({
   snapLineY,
 }: {
   page: AlbumPage;
+  pageWidth?: number;
   isMobile: boolean;
   isLeft: boolean;
   editMode: boolean;
@@ -2857,6 +2948,7 @@ function AlbumPageView({
   snapLineY?: { pageNumber: number; y: number } | null;
 }) {
   const pageDate = page.memory_id && page.content_json.find((element) => element.id.includes("date"))?.text;
+  const fontScale = pageWidth ? Math.min(1.15, Math.max(0.58, pageWidth / 440)) : (isMobile ? 0.72 : 1);
 
   return (
     <div
@@ -2933,6 +3025,7 @@ function AlbumPageView({
           onMediaClick={onMediaClick}
           onUpdateElement={onUpdateElement}
           theme={theme}
+          fontScale={fontScale}
         />
       ))}
       {/* Snap Lines */}
@@ -2963,6 +3056,7 @@ function AlbumElementView({
   onMediaClick,
   onUpdateElement,
   theme,
+  fontScale = 1,
 }: {
   element: AlbumElement;
   pageNumber: number;
@@ -2974,7 +3068,43 @@ function AlbumElementView({
   onMediaClick?: (media: {url: string, type: "image"|"video"}) => void;
   onUpdateElement?: (element: AlbumElement) => void;
   theme: any;
+  fontScale?: number;
 }) {
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const audioInstanceRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+        audioInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  const toggleAudio = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!element.url) return;
+    if (isPlayingAudio && audioInstanceRef.current) {
+      audioInstanceRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      if (audioInstanceRef.current) {
+        audioInstanceRef.current.pause();
+      }
+      const audio = new Audio(getProxiedUrl(element.url));
+      audioInstanceRef.current = audio;
+      audio.onended = () => setIsPlayingAudio(false);
+      audio.onerror = () => setIsPlayingAudio(false);
+      audio.play().then(() => setIsPlayingAudio(true)).catch((err) => {
+        console.error("Error al reproducir audio:", err);
+        setIsPlayingAudio(false);
+      });
+    }
+  };
+
+  const scaledFontSize = Math.max(9, Math.round((element.fontSize || 14) * fontScale));
+
   let extraStyles: React.CSSProperties = {};
 
   if (element.type === "image" || element.type === "video") {
@@ -3051,11 +3181,13 @@ function AlbumElementView({
         ...(selected ? { outline: `3px solid ${theme.hex}`, outlineOffset: '2px', boxShadow: `0 0 0 5px white` } : {})
       }}
     >
-      {/* DRAG HANDLE OVERLAY */}
-      <div 
-        className={`absolute inset-0 z-10 ${editMode && !element.isLocked ? 'cursor-move' : ''}`} 
-        onPointerDown={(e) => !element.isLocked && onStartDrag(pageNumber, element, e)} 
-      />
+      {/* DRAG HANDLE OVERLAY - SOLO EN MODO EDICION */}
+      {editMode && (
+        <div 
+          className={`absolute inset-0 z-10 ${!element.isLocked ? 'cursor-move' : ''}`} 
+          onPointerDown={(e) => !element.isLocked && onStartDrag(pageNumber, element, e)} 
+        />
+      )}
       
       {/* LOCK BADGE INDICATOR */}
       {element.isLocked && editMode && (
@@ -3085,26 +3217,47 @@ function AlbumElementView({
               <Move size={12} />
             </div>
           )}
-          <textarea
-            className={`w-full h-full whitespace-pre-wrap leading-snug flex relative z-20 bg-transparent resize-none outline-none border-0 ${selected && editMode ? 'pointer-events-auto' : 'pointer-events-none'}`}
-            value={element.text || ""}
-            onChange={(e) => {
-              if (selected && editMode && onUpdateElement) {
-                onUpdateElement({ ...element, text: e.target.value });
-              }
-            }}
-            disabled={!editMode || !selected}
-            style={{
-              color: element.textStyle === 'ribbon' ? '#fff' : element.color,
-              fontSize: `${element.fontSize || 14}px`,
-              fontFamily,
-              fontWeight: element.isBold ? "bold" : "normal",
-              fontStyle: element.isItalic ? "italic" : "normal",
-              textDecoration: element.isUnderline ? "underline" : "none",
-              textAlign: element.textAlign || "center",
-              overflow: 'hidden'
-            }}
-          />
+          {editMode ? (
+            <textarea
+              className={`w-full h-full whitespace-pre-wrap leading-snug flex relative z-20 bg-transparent resize-none outline-none border-0 ${selected ? 'pointer-events-auto' : 'pointer-events-none'}`}
+              value={element.text || ""}
+              onChange={(e) => {
+                if (selected && onUpdateElement) {
+                  onUpdateElement({ ...element, text: e.target.value });
+                }
+              }}
+              disabled={!selected}
+              style={{
+                color: element.textStyle === 'ribbon' ? '#fff' : element.color,
+                fontSize: `${scaledFontSize}px`,
+                fontFamily,
+                fontWeight: element.isBold ? "bold" : "normal",
+                fontStyle: element.isItalic ? "italic" : "normal",
+                textDecoration: element.isUnderline ? "underline" : "none",
+                textAlign: element.textAlign || "center",
+                overflow: 'hidden'
+              }}
+            />
+          ) : (
+            <div
+              className="w-full h-full flex flex-col justify-center relative z-20 bg-transparent select-none overflow-hidden"
+              style={{
+                color: element.textStyle === 'ribbon' ? '#fff' : element.color,
+                fontSize: `${scaledFontSize}px`,
+                fontFamily,
+                fontWeight: element.isBold ? "bold" : "normal",
+                fontStyle: element.isItalic ? "italic" : "normal",
+                textDecoration: element.isUnderline ? "underline" : "none",
+                textAlign: element.textAlign || "center",
+                lineHeight: 1.35,
+                wordBreak: "break-word",
+                whiteSpace: "pre-wrap",
+                pointerEvents: "none",
+              }}
+            >
+              {element.text || ""}
+            </div>
+          )}
         </>
       ) : element.type === "shape" ? (
         <div className="w-full h-full pointer-events-none" style={{ background: element.color }} />
@@ -3121,29 +3274,39 @@ function AlbumElementView({
           )}
         </div>
       ) : element.type === "audio" ? (
-        <div className={`w-full h-full flex flex-col items-center justify-center rounded-[inherit] shadow-sm border p-2 relative overflow-hidden ${element.mediaStyle === 'light' ? 'bg-white' : element.mediaStyle === 'colorful' ? 'bg-pink-100 border-pink-300' : element.mediaStyle === 'minimal' ? 'bg-transparent border-transparent' : 'bg-[#1A1A1A] border-gray-800'}`} style={element.mediaStyle === 'light' ? { borderColor: `${theme.hex}33` } : {}}>
+        <div 
+          onClick={!editMode ? toggleAudio : undefined}
+          className={`w-full h-full flex flex-col items-center justify-center rounded-[inherit] shadow-sm border p-2 relative overflow-hidden transition-all ${!editMode ? 'cursor-pointer hover:brightness-105 active:scale-[0.98]' : ''} ${element.mediaStyle === 'light' ? 'bg-white' : element.mediaStyle === 'colorful' ? 'bg-pink-100 border-pink-300' : element.mediaStyle === 'minimal' ? 'bg-transparent border-transparent' : 'bg-[#1A1A1A] border-gray-800'}`} 
+          style={element.mediaStyle === 'light' ? { borderColor: `${theme.hex}33` } : {}}
+        >
           <div className={`absolute left-0 top-0 w-1/2 h-full bg-gradient-to-r mix-blend-overlay ${element.mediaStyle === 'colorful' ? 'from-pink-500/20' : 'from-orange-500/20 to-transparent'}`} />
-          <div className="w-full flex items-center gap-3 relative z-10">
+          <div className="w-full flex items-center gap-2.5 relative z-10">
             <button
-              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg border cursor-pointer pointer-events-auto ${element.mediaStyle === 'light' ? 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200' : element.mediaStyle === 'colorful' ? 'bg-gradient-to-br from-pink-400 to-pink-600 border-pink-300/50 text-white hover:from-pink-500 hover:to-pink-700' : 'bg-gradient-to-br from-orange-400 to-orange-600 border-orange-300/50 text-white hover:from-orange-500 hover:to-orange-700'}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (element.url) {
-                  const a = new Audio(getProxiedUrl(element.url));
-                  a.play().catch(console.error);
-                }
-              }}
+              type="button"
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg border cursor-pointer pointer-events-auto transition-transform active:scale-90 ${element.mediaStyle === 'light' ? 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200' : element.mediaStyle === 'colorful' ? 'bg-gradient-to-br from-pink-400 to-pink-600 border-pink-300/50 text-white hover:from-pink-500 hover:to-pink-700' : 'bg-gradient-to-br from-orange-400 to-orange-600 border-orange-300/50 text-white hover:from-orange-500 hover:to-orange-700'}`}
+              onClick={toggleAudio}
+              title={isPlayingAudio ? "Pausar audio" : "Reproducir audio"}
             >
-              <PlayCircle size={16} />
+              {isPlayingAudio ? <Pause size={16} /> : <PlayCircle size={16} />}
             </button>
-            <div className="flex-1 flex flex-col gap-1">
-              <div className="flex justify-between items-end">
-                <span className={`text-[9px] font-black uppercase tracking-widest truncate ${element.mediaStyle === 'light' || element.mediaStyle === 'colorful' ? 'text-gray-800' : 'text-white/90'}`}>{element.variable || "Audio"}</span>
-                <span className={`text-[8px] font-mono ${element.mediaStyle === 'light' || element.mediaStyle === 'colorful' ? 'text-gray-500' : 'text-white/50'}`}>▶</span>
+            <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+              <div className="flex justify-between items-center">
+                <span className={`text-[9px] font-black uppercase tracking-wider truncate ${element.mediaStyle === 'light' || element.mediaStyle === 'colorful' ? 'text-gray-800' : 'text-white/90'}`}>{element.variable || "Audio"}</span>
+                <span className={`text-[8px] font-mono ${isPlayingAudio ? 'text-emerald-400 font-bold animate-pulse' : element.mediaStyle === 'light' || element.mediaStyle === 'colorful' ? 'text-gray-500' : 'text-white/50'}`}>
+                  {isPlayingAudio ? "Reproduciendo" : "Tocar para oír"}
+                </span>
               </div>
-              <div className="w-full h-2 flex items-end gap-[1px]">
-                {[...Array(20)].map((_, i) => (
-                  <div key={i} className={`flex-1 rounded-t-sm ${element.mediaStyle === 'light' ? 'bg-gray-400' : element.mediaStyle === 'colorful' ? 'bg-pink-400' : 'bg-orange-400/80'}`} style={{ height: `${20 + Math.sin(i * 0.8) * 40 + 30}%` }} />
+              <div className="w-full h-2.5 flex items-end gap-[1px]">
+                {[...Array(18)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`flex-1 rounded-t-sm transition-all duration-150 ${element.mediaStyle === 'light' ? 'bg-gray-400' : element.mediaStyle === 'colorful' ? 'bg-pink-400' : 'bg-orange-400/80'}`}
+                    style={{
+                      height: isPlayingAudio
+                        ? `${25 + ((i * 7) % 65) + 10}%`
+                        : `${20 + Math.sin(i * 0.8) * 40 + 30}%`,
+                    }}
+                  />
                 ))}
               </div>
             </div>

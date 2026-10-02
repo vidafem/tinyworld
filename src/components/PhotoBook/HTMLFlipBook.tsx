@@ -17,8 +17,8 @@ interface PhotoBookViewerProps {
 }
 
 // Creamos la página individual del libro (Estructurada)
-const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover?: boolean; isBackCover?: boolean }>((props, ref) => {
-  const { urls, index, isCover, isBackCover } = props;
+const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover?: boolean; isBackCover?: boolean; onPhotoClick?: (url: string) => void }>((props, ref) => {
+  const { urls, index, isCover, isBackCover, onPhotoClick } = props;
   const count = urls ? urls.length : 0;
 
   if (isCover) {
@@ -52,13 +52,16 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
     if (count === 1) {
       return (
         <div className="w-full h-full p-4 sm:p-6 flex items-center justify-center bg-white">
-          <div className="w-full h-full relative rounded-xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.08)] bg-stone-100 flex items-center justify-center">
+          <div 
+            onClick={() => onPhotoClick?.(urls[0])}
+            className="w-full h-full relative rounded-xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.08)] bg-stone-100 flex items-center justify-center cursor-pointer group"
+          >
             <img
               src={getPreviewUrl(urls[0])}
               alt="Foto del recuerdo"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover object-center"
+              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
               onError={(e) => handleImageFallback(e, urls[0])}
             />
           </div>
@@ -72,13 +75,17 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
       return (
         <div className={`w-full h-full p-3 sm:p-5 grid gap-3 ${isVertical ? "grid-rows-2" : "grid-cols-2"}`}>
           {urls.map((url, idx) => (
-            <div key={idx} className="w-full h-full bg-white rounded-lg shadow-sm p-1.5 overflow-hidden flex items-center justify-center">
+            <div 
+              key={idx} 
+              onClick={() => onPhotoClick?.(url)}
+              className="w-full h-full bg-white rounded-lg shadow-sm p-1.5 overflow-hidden flex items-center justify-center cursor-pointer group"
+            >
               <img
                 src={getPreviewUrl(url)}
                 alt={`Foto ${idx + 1}`}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-cover object-center rounded"
+                className="w-full h-full object-cover object-center rounded group-hover:scale-105 transition-transform duration-300"
                 onError={(e) => handleImageFallback(e, url)}
               />
             </div>
@@ -91,33 +98,42 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
     if (count === 3) {
       return (
         <div className="w-full h-full p-3 sm:p-4 grid grid-cols-2 grid-rows-2 gap-2.5">
-          <div className="col-span-2 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+          <div 
+            onClick={() => onPhotoClick?.(urls[0])}
+            className="col-span-2 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden cursor-pointer group"
+          >
             <img
               src={getPreviewUrl(urls[0])}
               alt="Foto principal"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover object-center rounded"
+              className="w-full h-full object-cover object-center rounded group-hover:scale-105 transition-transform duration-300"
               onError={(e) => handleImageFallback(e, urls[0])}
             />
           </div>
-          <div className="col-span-1 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+          <div 
+            onClick={() => onPhotoClick?.(urls[1])}
+            className="col-span-1 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden cursor-pointer group"
+          >
             <img
               src={getPreviewUrl(urls[1])}
               alt="Secundaria 1"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover object-center rounded"
+              className="w-full h-full object-cover object-center rounded group-hover:scale-105 transition-transform duration-300"
               onError={(e) => handleImageFallback(e, urls[1])}
             />
           </div>
-          <div className="col-span-1 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+          <div 
+            onClick={() => onPhotoClick?.(urls[2])}
+            className="col-span-1 row-span-1 bg-white rounded-lg shadow-sm p-1.5 overflow-hidden cursor-pointer group"
+          >
             <img
               src={getPreviewUrl(urls[2])}
               alt="Secundaria 2"
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover object-center rounded"
+              className="w-full h-full object-cover object-center rounded group-hover:scale-105 transition-transform duration-300"
               onError={(e) => handleImageFallback(e, urls[2])}
             />
           </div>
@@ -130,13 +146,17 @@ const Page = forwardRef<HTMLDivElement, { urls: string[]; index: number; isCover
       return (
         <div className="w-full h-full p-3 sm:p-4 grid grid-cols-2 grid-rows-2 gap-2.5">
           {urls.slice(0, 4).map((url, idx) => (
-            <div key={idx} className="w-full h-full bg-white rounded-lg shadow-sm p-1.5 overflow-hidden">
+            <div 
+              key={idx} 
+              onClick={() => onPhotoClick?.(url)}
+              className="w-full h-full bg-white rounded-lg shadow-sm p-1.5 overflow-hidden cursor-pointer group"
+            >
               <img
                 src={getPreviewUrl(url)}
                 alt={`Foto cuadrícula ${idx + 1}`}
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-cover object-center rounded"
+                className="w-full h-full object-cover object-center rounded group-hover:scale-105 transition-transform duration-300"
                 onError={(e) => handleImageFallback(e, url)}
               />
             </div>
@@ -187,6 +207,7 @@ export default function PhotoBookViewer({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isMuted, setIsMuted] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
   const panStartRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
 
@@ -197,8 +218,8 @@ export default function PhotoBookViewer({
     const h = window.innerHeight;
     const isLand = w > h && w >= 640;
 
-    const reservedH = isFullscreen ? 110 : 130;
-    const reservedW = isFullscreen ? 36 : 48;
+    const reservedH = isFullscreen ? 16 : 130;
+    const reservedW = isFullscreen ? 16 : 48;
     const maxAvailW = Math.max(w - reservedW, 260);
     const maxAvailH = Math.max(h - reservedH, 260);
     const pageAspect = 3 / 4; // 0.75 (w/h)
@@ -212,7 +233,7 @@ export default function PhotoBookViewer({
         targetW = maxAvailW;
         targetH = Math.round(targetW / spreadAspect);
       }
-      targetH = Math.min(targetH, 700);
+      targetH = Math.min(targetH, isFullscreen ? 880 : 700);
       targetW = Math.round(targetH * spreadAspect);
       const pageW = Math.round(targetW / 2);
       setDimensions({ width: Math.max(pageW, 220), height: Math.max(targetH, 280), isLandscape: true });
@@ -224,7 +245,7 @@ export default function PhotoBookViewer({
         pageW = maxAvailW;
         pageH = Math.round(pageW / pageAspect);
       }
-      pageH = Math.min(pageH, 720);
+      pageH = Math.min(pageH, isFullscreen ? 900 : 720);
       pageW = Math.round(pageH * pageAspect);
       setDimensions({ width: Math.max(pageW, 220), height: Math.max(pageH, 290), isLandscape: false });
     }
@@ -369,42 +390,32 @@ export default function PhotoBookViewer({
 
   const viewerContent = (
     <div className="w-full h-full flex flex-col items-center justify-between relative select-none">
-      {/* Barra de Controles Superior en Pantalla Completa */}
+      {/* Botones Flotantes en Esquinas en Pantalla Completa */}
       {isFullscreen && (
-        <header className="w-full h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between z-50 bg-stone-900/60 backdrop-blur-xl border-b border-white/10 shrink-0">
-          {/* Botón de Cerrar */}
+        <>
+          {/* 1. Botón Cerrar en esquina superior izquierda */}
           <button
             onClick={onClose || onToggleFullscreen}
-            className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white backdrop-blur-md border border-white/20 flex items-center gap-2 text-xs sm:text-sm font-black transition-all shadow-lg cursor-pointer"
+            className="fixed top-4 left-4 z-[10001] px-4 py-2 rounded-full bg-stone-900/85 hover:bg-stone-800 active:scale-95 text-white backdrop-blur-md border border-white/20 flex items-center gap-2 text-xs font-bold transition-all shadow-2xl cursor-pointer"
             title="Cerrar pantalla completa"
           >
-            <X size={18} />
+            <X size={16} />
             <span>Cerrar</span>
           </button>
 
-          {/* Título & Número de Página */}
-          <div className="flex flex-col items-center text-center">
-            <span className="text-white text-xs sm:text-sm font-black tracking-tight line-clamp-1 max-w-[140px] sm:max-w-[280px]">
-              {title}
-            </span>
-            <span className="text-stone-300 text-[10px] sm:text-xs font-semibold">
-              Página {currentPage + 1} de {totalPages}
-            </span>
-          </div>
-
-          {/* Controles de Zoom y Audio */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* 2. Botones de Zoom en esquina superior derecha */}
+          <div className="fixed top-4 right-4 z-[10001] flex items-center gap-1.5 bg-stone-900/85 backdrop-blur-md border border-white/20 p-1 rounded-full shadow-2xl">
             <button
               onClick={handleZoomOut}
               disabled={zoom <= 1}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
               title="Alejar zoom"
             >
               <Minus size={16} />
             </button>
             <button
               onClick={handleResetZoom}
-              className="px-2 sm:px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] sm:text-xs font-mono font-bold active:scale-95 transition-all border border-white/20 cursor-pointer"
+              className="px-2.5 py-0.5 rounded-full hover:bg-white/20 text-white text-xs font-mono font-bold active:scale-95 transition-all cursor-pointer"
               title="Restablecer zoom a 100%"
             >
               {Math.round(zoom * 100)}%
@@ -412,20 +423,20 @@ export default function PhotoBookViewer({
             <button
               onClick={handleZoomIn}
               disabled={zoom >= 2.5}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
               title="Acercar zoom"
             >
               <Plus size={16} />
             </button>
             <button
               onClick={handleToggleMute}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center border border-white/15 active:scale-95 transition-all ml-1 cursor-pointer"
+              className="w-8 h-8 rounded-full hover:bg-white/20 text-white flex items-center justify-center active:scale-95 transition-all border-l border-white/10 ml-0.5 cursor-pointer"
               title={isMuted ? "Activar sonido" : "Silenciar sonido"}
             >
-              {isMuted ? <VolumeX size={16} className="opacity-40" /> : <Volume2 size={16} />}
+              {isMuted ? <VolumeX size={15} className="opacity-40" /> : <Volume2 size={15} />}
             </button>
           </div>
-        </header>
+        </>
       )}
 
       {/* Botones Laterales Flotantes para Pasar Página */}
@@ -497,7 +508,7 @@ export default function PhotoBookViewer({
 
             {/* Páginas interiores con fotos */}
             {pages.map((urls, i) => (
-              <Page key={i} urls={urls} index={i + 1} />
+              <Page key={i} urls={urls} index={i + 1} onPhotoClick={setLightboxPhoto} />
             ))}
 
             {/* Contraportada */}
@@ -524,12 +535,36 @@ export default function PhotoBookViewer({
           </button>
         </div>
       )}
+
+      {/* Lightbox Modal para fotos */}
+      {lightboxPhoto && (
+        <div
+          className="fixed inset-0 z-[100000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setLightboxPhoto(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center justify-center">
+            <button
+              onClick={() => setLightboxPhoto(null)}
+              className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm transition-all cursor-pointer"
+              title="Cerrar vista previa"
+            >
+              <X size={24} />
+            </button>
+            <img
+              src={lightboxPhoto}
+              alt="Foto ampliada"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-[1000] bg-stone-950/95 backdrop-blur-2xl flex flex-col justify-between overflow-hidden">
+      <div className="fixed inset-0 z-[99999] bg-stone-950 flex flex-col justify-between overflow-hidden select-none touch-none">
         {viewerContent}
       </div>
     );
